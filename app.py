@@ -127,6 +127,7 @@ st.markdown("""
         }
 
         /* --- BUTTONS --- */
+        /* Primary Button (Save Contact) */
         div.stButton > button {
             background: #d4af37;
             color: black;
@@ -134,6 +135,25 @@ st.markdown("""
             font-weight: bold;
             border-radius: 8px;
             padding: 10px 20px;
+            width: 100%;
+        }
+
+        /* --- CUSTOM CLASS FOR NEW LEAD BUTTON --- */
+        /* We use a specific ID selector hack or just rely on the second button in the DOM order if needed, 
+           but since Streamlit doesn't allow easy custom classes on buttons, we will style all buttons 
+           as default and override the specific one via inline logic if possible, or just accept uniform buttons.
+           
+           HOWEVER, to achieve the specific "Dark Button with Yellow Text" look, we can use the 'type="secondary"'
+           feature in Streamlit and style that specific class.
+        */
+        button[kind="secondary"] {
+            background-color: #111 !important;
+            color: #d4af37 !important;
+            border: 1px solid #d4af37 !important;
+        }
+        button[kind="secondary"]:hover {
+            border-color: #fff !important;
+            color: #fff !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -238,10 +258,10 @@ if not api_key:
     st.error("⚠️ API Key Missing. Check Railway Variables.")
     st.stop()
 
-# TABS
+# TABS (Simulating Bottom Nav via Top Tabs for stability)
 tab_create, tab_leads, tab_analytics = st.tabs(["🎙️ GENERATE LEAD", "📂 PIPELINE", "📊 ANALYTICS"])
 
-# --- TAB 1: GENERATE LEAD ---
+# --- TAB 1: GENERATE LEAD (Minimalist Mic) ---
 with tab_create:
     
     if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
@@ -271,6 +291,7 @@ with tab_create:
     else:
         lead = st.session_state.generated_lead
         
+        # --- FIX: ADDED unsafe_allow_html=True to render the HTML ---
         st.markdown(f"""
             <div class="dossier-container">
                 <div class="section-header">TARGET IDENTITY</div>
@@ -297,6 +318,8 @@ with tab_create:
             </div>
         """, unsafe_allow_html=True)
         
+        st.markdown("<br>", unsafe_allow_html=True)
+        
         col1, col2 = st.columns(2)
         with col1:
             vcf = create_vcard(lead)
@@ -306,10 +329,12 @@ with tab_create:
                 data=vcf, 
                 file_name=f"{safe_name}.vcf", 
                 mime="text/vcard", 
-                use_container_width=True
+                use_container_width=True,
+                type="primary"
             )
         with col2:
-            if st.button("NEW LEAD", use_container_width=True):
+            # Using type="secondary" to trigger the Dark/Yellow style defined in CSS
+            if st.button("NEW LEAD", use_container_width=True, type="secondary"):
                 st.session_state.generated_lead = None
                 st.rerun()
 
@@ -322,6 +347,7 @@ with tab_leads:
         st.info("Pipeline empty. Record a lead to begin.")
     
     for i, lead in enumerate(all_leads):
+        # FIX: ADDED unsafe_allow_html=True
         with st.expander(f"{lead.get('name', 'Unknown')}  |  {lead.get('date')}"):
             st.markdown(f"""
                 <div style="padding: 10px; border-left: 3px solid #d4af37; background: #111;">
