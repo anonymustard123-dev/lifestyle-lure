@@ -202,9 +202,21 @@ def process_voice_contact(audio_bytes):
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
         
-        # Clean the response string before parsing
+        # Clean string
         clean_text = clean_json_string(response.text)
-        return json.loads(clean_text)
+        
+        # Parse JSON
+        data = json.loads(clean_text)
+        
+        # --- FIX: Unwrap List if AI returns [{...}] ---
+        if isinstance(data, list):
+            if len(data) > 0:
+                data = data[0]
+            else:
+                return {"error": "AI returned an empty list."}
+                
+        return data
+
     except Exception as e:
         return {"error": str(e)}
 
@@ -226,19 +238,17 @@ if not api_key:
     st.error("⚠️ API Key Missing. Check Railway Variables.")
     st.stop()
 
-# TABS (Simulating Bottom Nav via Top Tabs for stability)
+# TABS
 tab_create, tab_leads, tab_analytics = st.tabs(["🎙️ GENERATE LEAD", "📂 PIPELINE", "📊 ANALYTICS"])
 
-# --- TAB 1: GENERATE LEAD (Minimalist Mic) ---
+# --- TAB 1: GENERATE LEAD ---
 with tab_create:
     
-    # State for this specific view
     if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
     
     # If no lead generated yet, show Mic
     if not st.session_state.generated_lead:
         st.markdown('<div class="mic-container">', unsafe_allow_html=True)
-        # Audio Input
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         st.markdown('<div class="mic-label">Generate Lead</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -247,13 +257,15 @@ with tab_create:
             with st.spinner("Decrypting signal..."):
                 data = process_voice_contact(audio_val.read())
                 
-                # ERROR HANDLING LOGIC ADDED HERE
+                # Check for errors strictly
                 if isinstance(data, dict) and "error" not in data:
-                    save_lead(data) # SAVE TO DB
+                    save_lead(data)
                     st.session_state.generated_lead = data
                     st.rerun()
                 else:
-                    st.error(f"Analysis Failed: {data.get('error', 'Unknown Error')}")
+                    # Safely handle error display
+                    error_msg = data.get('error', 'Unknown Error') if isinstance(data, dict) else "Invalid Data Format"
+                    st.error(f"Analysis Failed: {error_msg}")
 
     # If lead exists, show Unified Dossier Card
     else:
@@ -287,7 +299,6 @@ with tab_create:
         
         col1, col2 = st.columns(2)
         with col1:
-            # Save VCF
             vcf = create_vcard(lead)
             safe_name = lead.get('name').strip().replace(" ", "_")
             st.download_button(
@@ -302,7 +313,7 @@ with tab_create:
                 st.session_state.generated_lead = None
                 st.rerun()
 
-# --- TAB 2: PIPELINE (List View) ---
+# --- TAB 2: PIPELINE ---
 with tab_leads:
     st.markdown("<br>", unsafe_allow_html=True)
     all_leads = load_leads()
@@ -321,7 +332,7 @@ with tab_leads:
                 </div>
             """, unsafe_allow_html=True)
 
-# --- TAB 3: ANALYTICS (Stats) ---
+# --- TAB 3: ANALYTICS ---
 with tab_analytics:
     st.markdown("<br>", unsafe_allow_html=True)
     all_leads = load_leads()
@@ -331,19 +342,15 @@ with tab_analytics:
     else:
         df = pd.DataFrame(all_leads)
         
-        # Top Metrics
         c1, c2, c3 = st.columns(3)
         c1.metric("Total Leads", len(all_leads))
         
-        # Simple processing for stats
         try:
             top_prod = df['product_pitch'].mode()[0]
         except:
             top_prod = "N/A"
         c2.metric("Top Product", top_prod)
         
-        # Recent Activity Chart (Mocking "Leads per Day" if we had real dates)
-        # Using Product Distribution for now
         st.markdown("### Product Demand")
         if 'product_pitch' in df.columns:
             chart_data = df['product_pitch'].value_counts()
