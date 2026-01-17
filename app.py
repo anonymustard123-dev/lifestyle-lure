@@ -17,11 +17,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Styling: "Luxury/High-Status" Dark Mode
+# Custom Styling: Dark Mode + Luxury Gold + Hide Header
 st.markdown("""
     <style>
         /* General App Styling */
         .stApp { background-color: #0e1117; color: #ffffff; }
+        
+        /* HIDE STREAMLIT HEADER (The White Bar) */
+        [data-testid="stHeader"] { display: none; }
         
         /* Headers */
         h1, h2, h3 { color: #d4af37 !important; font-family: 'Helvetica Neue', sans-serif; } 
@@ -123,13 +126,14 @@ def process_voice_contact(audio_bytes):
     """
     prompt = """
     Listen to this voice memo of a sales interaction.
-    Extract the following 5 fields accurately.
+    Extract the following 6 fields accurately.
     Return ONLY a raw JSON object with these keys:
     {
         "name": "Full Name (if not mentioned, use description e.g. 'Yoga Mom from Gym')",
         "contact_info": "Phone or Email found",
         "background": "Key details about them (job, kids, pain points)",
-        "sales_angle": "How to sell to them based on the audio",
+        "sales_angle": "How to approach the sale psychologically",
+        "product_pitch": "Which specific product (e.g. Energy Drink, Collagen, Skincare) fits their need?",
         "follow_up": "When to contact them next (Time/Day)"
     }
     """
@@ -146,7 +150,7 @@ def process_voice_contact(audio_bytes):
         
         data = json.loads(response.text)
         
-        # --- FIX: Unwrap list if Gemini returns [{...}] instead of {...} ---
+        # Unwrap list if Gemini returns [{...}] instead of {...}
         if isinstance(data, list):
             if len(data) > 0:
                 data = data[0]
@@ -164,7 +168,8 @@ def create_vcard(data):
     """
     # Create the notes block
     notes = f"BACKGROUND: {data.get('background','')}\\n"
-    notes += f"STRATEGY: {data.get('sales_angle','')}\\n"
+    notes += f"ANGLE: {data.get('sales_angle','')}\\n"
+    notes += f"PITCH: {data.get('product_pitch','')}\\n"
     notes += f"FOLLOW UP: {data.get('follow_up','')}"
     
     # Simple VCard 3.0 Format
@@ -188,7 +193,7 @@ if not api_key:
 st.title("💎 Lifestyle Lure")
 st.markdown("*Fake it 'til you make it. Build your downline faster.*")
 
-# UPDATED TABS: Added "Voice Contact"
+# TABS
 tab1, tab2, tab3, tab4 = st.tabs(["📸 Lifestyle Editor", "📝 Caption Writer", "🕵️ Prospect Analyzer", "🎤 Voice Contact"])
 
 # --- FEATURE 1: IMAGE EDITOR ---
@@ -238,43 +243,39 @@ with tab3:
                 analysis = analyze_prospect(p_img)
                 st.markdown(analysis)
 
-# --- FEATURE 4: VOICE CONTACT (NEW) ---
+# --- FEATURE 4: VOICE CONTACT (UPDATED) ---
 with tab4:
     st.header("🗣️ Instant Lead Capture")
-    st.info("Record a voice memo after meeting someone. We'll extract the details and create a phone contact for you.")
+    st.info("Record a voice memo. We'll split the details into a strategy card.")
     
-    # New Native Audio Input (Streamlit 1.40+)
     audio_value = st.audio_input("Record Voice Note")
 
     if audio_value:
         st.success("Recording received! Processing...")
         
         with st.spinner("Extracting lead details..."):
-            # Read audio bytes
             audio_bytes = audio_value.read()
-            
-            # Send to Gemini
             contact_data = process_voice_contact(audio_bytes)
             
-            # Validate Response Type
             if isinstance(contact_data, dict) and "error" not in contact_data:
-                # Display extracted info cleanly
                 st.subheader("✅ Lead Detected")
+                
+                # Row 1: Contact Info
                 c1, c2 = st.columns(2)
                 with c1:
                     st.text_input("Name", value=contact_data.get("name", ""), key="c_name")
                     st.text_input("Contact", value=contact_data.get("contact_info", ""), key="c_info")
                 with c2:
                     st.text_input("Next Step", value=contact_data.get("follow_up", ""), key="c_follow")
+                    st.text_input("💡 Product Pitch", value=contact_data.get("product_pitch", ""), key="c_pitch")
                 
-                st.text_area("Background & Strategy", 
-                             value=f"Background: {contact_data.get('background', '')}\n\nAngle: {contact_data.get('sales_angle', '')}", 
-                             height=150)
+                # Row 2: Strategy (Split)
+                st.text_area("Background Info", value=contact_data.get("background", ""), height=100, key="c_bg")
+                st.text_area("Sales Angle / Strategy", value=contact_data.get("sales_angle", ""), height=100, key="c_angle")
                 
-                # Generate VCard
+                # VCard
                 vcf_string = create_vcard(contact_data)
                 
-                # Download Button
                 st.download_button(
                     label="💾 Save to Phone Contacts",
                     data=vcf_string,
