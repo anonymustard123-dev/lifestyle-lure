@@ -176,11 +176,12 @@ def create_vcard(data):
     Generates a .vcf file string compatible with iOS/Android Contacts.
     We stuff the context notes into the 'NOTE' field.
     """
-    # Create the notes block
-    notes = f"BACKGROUND: {data.get('background','')}\\n"
-    notes += f"ANGLE: {data.get('sales_angle','')}\\n"
-    notes += f"PITCH: {data.get('product_pitch','')}\\n"
-    notes += f"FOLLOW UP: {data.get('follow_up','')}"
+    # Create the notes block with clear section headers and spacing
+    # FIX: Using double newlines (\\n\\n) to ensure iOS displays line breaks
+    notes = f"--- LEAD BACKGROUND ---\\n{data.get('background','')}\\n\\n"
+    notes += f"--- SALES STRATEGY ---\\n{data.get('sales_angle','')}\\n\\n"
+    notes += f"--- PRODUCT PITCH ---\\n{data.get('product_pitch','')}\\n\\n"
+    notes += f"--- FOLLOW UP ---\\n{data.get('follow_up','')}"
     
     # Simple VCard 3.0 Format
     vcard = [
