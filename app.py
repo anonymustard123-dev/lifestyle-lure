@@ -5,6 +5,7 @@ import os
 import json
 import pandas as pd
 from datetime import datetime
+import re
 
 # ==========================================
 # 1. CONFIG & CSS
@@ -170,10 +171,21 @@ if api_key:
 
 TEXT_MODEL_ID = "gemini-2.0-flash"
 
+def clean_json_string(json_str):
+    """Removes markdown backticks if the AI adds them."""
+    json_str = json_str.strip()
+    if json_str.startswith("```json"):
+        json_str = json_str[7:]
+    if json_str.startswith("```"):
+        json_str = json_str[3:]
+    if json_str.endswith("```"):
+        json_str = json_str[:-3]
+    return json_str
+
 def process_voice_contact(audio_bytes):
     prompt = """
     Listen to this sales voice memo. Extract these fields.
-    Return ONLY raw JSON:
+    Return ONLY raw JSON (no markdown formatting):
     {
         "name": "Full Name",
         "contact_info": "Phone/Email",
@@ -189,9 +201,12 @@ def process_voice_contact(audio_bytes):
             contents=[types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"), prompt],
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
-        return json.loads(response.text)
-    except:
-        return {"error": "Processing Failed"}
+        
+        # Clean the response string before parsing
+        clean_text = clean_json_string(response.text)
+        return json.loads(clean_text)
+    except Exception as e:
+        return {"error": str(e)}
 
 def create_vcard(data):
     # iOS compatible VCard
@@ -231,10 +246,14 @@ with tab_create:
         if audio_val:
             with st.spinner("Decrypting signal..."):
                 data = process_voice_contact(audio_val.read())
+                
+                # ERROR HANDLING LOGIC ADDED HERE
                 if isinstance(data, dict) and "error" not in data:
                     save_lead(data) # SAVE TO DB
                     st.session_state.generated_lead = data
                     st.rerun()
+                else:
+                    st.error(f"Analysis Failed: {data.get('error', 'Unknown Error')}")
 
     # If lead exists, show Unified Dossier Card
     else:
