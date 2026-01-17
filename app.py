@@ -180,7 +180,7 @@ def create_vcard(data):
     # FIX: Using double newlines (\\n\\n) to ensure iOS displays line breaks
     notes = f"--- LEAD BACKGROUND ---\\n{data.get('background','')}\\n\\n"
     notes += f"--- SALES STRATEGY ---\\n{data.get('sales_angle','')}\\n\\n"
-    notes += f"--- PRODUCT PITCH ---\\n{data.get('product_pitch','')}\\n\\n"
+    notes += f"--- RECOMMENDED PRODUCT ---\\n{data.get('product_pitch','')}\\n\\n"
     notes += f"--- FOLLOW UP ---\\n{data.get('follow_up','')}"
     
     # Simple VCard 3.0 Format
