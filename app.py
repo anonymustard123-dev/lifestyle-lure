@@ -137,23 +137,12 @@ st.markdown("""
             padding: 10px 20px;
             width: 100%;
         }
-
-        /* --- CUSTOM CLASS FOR NEW LEAD BUTTON --- */
-        /* We use a specific ID selector hack or just rely on the second button in the DOM order if needed, 
-           but since Streamlit doesn't allow easy custom classes on buttons, we will style all buttons 
-           as default and override the specific one via inline logic if possible, or just accept uniform buttons.
-           
-           HOWEVER, to achieve the specific "Dark Button with Yellow Text" look, we can use the 'type="secondary"'
-           feature in Streamlit and style that specific class.
-        */
+        
+        /* Secondary Button Hack */
         button[kind="secondary"] {
             background-color: #111 !important;
             color: #d4af37 !important;
             border: 1px solid #d4af37 !important;
-        }
-        button[kind="secondary"]:hover {
-            border-color: #fff !important;
-            color: #fff !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -174,9 +163,7 @@ def load_leads():
 
 def save_lead(lead_data):
     leads = load_leads()
-    # Add timestamp
     lead_data['date'] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    # Insert at beginning
     leads.insert(0, lead_data)
     with open(DB_FILE, "w") as f:
         json.dump(leads, f)
@@ -192,7 +179,6 @@ if api_key:
 TEXT_MODEL_ID = "gemini-2.0-flash"
 
 def clean_json_string(json_str):
-    """Removes markdown backticks if the AI adds them."""
     json_str = json_str.strip()
     if json_str.startswith("```json"):
         json_str = json_str[7:]
@@ -221,27 +207,16 @@ def process_voice_contact(audio_bytes):
             contents=[types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"), prompt],
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
-        
-        # Clean string
         clean_text = clean_json_string(response.text)
-        
-        # Parse JSON
         data = json.loads(clean_text)
-        
-        # --- FIX: Unwrap List if AI returns [{...}] ---
         if isinstance(data, list):
-            if len(data) > 0:
-                data = data[0]
-            else:
-                return {"error": "AI returned an empty list."}
-                
+            if len(data) > 0: data = data[0]
+            else: return {"error": "AI returned an empty list."}
         return data
-
     except Exception as e:
         return {"error": str(e)}
 
 def create_vcard(data):
-    # iOS compatible VCard
     notes = f"STRATEGY: {data.get('sales_angle','')}\\n\\nPRODUCT: {data.get('product_pitch','')}\\n\\nBG: {data.get('background','')}"
     vcard = [
         "BEGIN:VCARD", "VERSION:3.0",
@@ -258,15 +233,12 @@ if not api_key:
     st.error("⚠️ API Key Missing. Check Railway Variables.")
     st.stop()
 
-# TABS (Simulating Bottom Nav via Top Tabs for stability)
 tab_create, tab_leads, tab_analytics = st.tabs(["🎙️ GENERATE LEAD", "📂 PIPELINE", "📊 ANALYTICS"])
 
-# --- TAB 1: GENERATE LEAD (Minimalist Mic) ---
+# --- TAB 1: GENERATE LEAD ---
 with tab_create:
-    
     if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
     
-    # If no lead generated yet, show Mic
     if not st.session_state.generated_lead:
         st.markdown('<div class="mic-container">', unsafe_allow_html=True)
         audio_val = st.audio_input("Record", label_visibility="collapsed")
@@ -276,47 +248,40 @@ with tab_create:
         if audio_val:
             with st.spinner("Decrypting signal..."):
                 data = process_voice_contact(audio_val.read())
-                
-                # Check for errors strictly
                 if isinstance(data, dict) and "error" not in data:
                     save_lead(data)
                     st.session_state.generated_lead = data
                     st.rerun()
                 else:
-                    # Safely handle error display
                     error_msg = data.get('error', 'Unknown Error') if isinstance(data, dict) else "Invalid Data Format"
                     st.error(f"Analysis Failed: {error_msg}")
 
-    # If lead exists, show Unified Dossier Card
     else:
         lead = st.session_state.generated_lead
         
-        # --- FIX: ADDED unsafe_allow_html=True to render the HTML ---
+        # NOTE: I have removed extra indentation in the HTML string below to prevent Markdown code blocks
         st.markdown(f"""
-            <div class="dossier-container">
-                <div class="section-header">TARGET IDENTITY</div>
-                <h1 class="hero-text">{lead.get('name', 'Unknown').upper()}</h1>
-                <p class="strategy-text">{lead.get('sales_angle')}</p>
-                
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top:30px;">
-                    <div>
-                        <div class="section-header">CONTACT</div>
-                        <p>{lead.get('contact_info')}</p>
-                    </div>
-                    <div>
-                        <div class="section-header">TIMING</div>
-                        <p>{lead.get('follow_up')}</p>
-                    </div>
-                </div>
-
-                <div class="section-header">INTELLIGENCE</div>
-                <p>{lead.get('background')}</p>
-
-                <div style="background: rgba(212, 175, 55, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #d4af37;">
-                    <span style="color: #d4af37; font-weight: bold; font-size: 0.9rem;">RECOMMENDED: {lead.get('product_pitch').upper()}</span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+<div class="dossier-container">
+<div class="section-header">TARGET IDENTITY</div>
+<h1 class="hero-text">{lead.get('name', 'Unknown').upper()}</h1>
+<p class="strategy-text">{lead.get('sales_angle')}</p>
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top:30px;">
+<div>
+<div class="section-header">CONTACT</div>
+<p>{lead.get('contact_info')}</p>
+</div>
+<div>
+<div class="section-header">TIMING</div>
+<p>{lead.get('follow_up')}</p>
+</div>
+</div>
+<div class="section-header">INTELLIGENCE</div>
+<p>{lead.get('background')}</p>
+<div style="background: rgba(212, 175, 55, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #d4af37;">
+<span style="color: #d4af37; font-weight: bold; font-size: 0.9rem;">RECOMMENDED: {lead.get('product_pitch').upper()}</span>
+</div>
+</div>
+""", unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -333,7 +298,6 @@ with tab_create:
                 type="primary"
             )
         with col2:
-            # Using type="secondary" to trigger the Dark/Yellow style defined in CSS
             if st.button("NEW LEAD", use_container_width=True, type="secondary"):
                 st.session_state.generated_lead = None
                 st.rerun()
@@ -347,16 +311,16 @@ with tab_leads:
         st.info("Pipeline empty. Record a lead to begin.")
     
     for i, lead in enumerate(all_leads):
-        # FIX: ADDED unsafe_allow_html=True
         with st.expander(f"{lead.get('name', 'Unknown')}  |  {lead.get('date')}"):
+            # Removed indentation in HTML string here too
             st.markdown(f"""
-                <div style="padding: 10px; border-left: 3px solid #d4af37; background: #111;">
-                    <p><strong>Strategy:</strong> {lead.get('sales_angle')}</p>
-                    <p><strong>Product:</strong> {lead.get('product_pitch')}</p>
-                    <p><strong>Next Step:</strong> {lead.get('follow_up')}</p>
-                    <p style="font-size: 0.8rem; color: #666;">{lead.get('contact_info')}</p>
-                </div>
-            """, unsafe_allow_html=True)
+<div style="padding: 10px; border-left: 3px solid #d4af37; background: #111;">
+<p><strong>Strategy:</strong> {lead.get('sales_angle')}</p>
+<p><strong>Product:</strong> {lead.get('product_pitch')}</p>
+<p><strong>Next Step:</strong> {lead.get('follow_up')}</p>
+<p style="font-size: 0.8rem; color: #666;">{lead.get('contact_info')}</p>
+</div>
+""", unsafe_allow_html=True)
 
 # --- TAB 3: ANALYTICS ---
 with tab_analytics:
