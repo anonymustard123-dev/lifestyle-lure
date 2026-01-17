@@ -23,7 +23,7 @@ st.markdown("""
         /* General App Styling */
         .stApp { background-color: #0e1117; color: #ffffff; }
         
-        /* HIDE STREAMLIT HEADER (The White Bar) */
+        /* HIDE STREAMLIT HEADER */
         [data-testid="stHeader"] { display: none; }
         
         /* Headers */
@@ -61,7 +61,20 @@ IMAGE_MODEL_ID = "gemini-2.0-flash"
 TEXT_MODEL_ID = "gemini-2.0-flash"
 
 # ==========================================
-# 2. UTILITY FUNCTIONS
+# 2. STATE MANAGEMENT (Fixes the "Stale Data" Bug)
+# ==========================================
+if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
+if 'has_lead' not in st.session_state: st.session_state.has_lead = False
+# Initialize contact fields in state so edits persist
+if 'c_name' not in st.session_state: st.session_state.c_name = ""
+if 'c_info' not in st.session_state: st.session_state.c_info = ""
+if 'c_follow' not in st.session_state: st.session_state.c_follow = ""
+if 'c_pitch' not in st.session_state: st.session_state.c_pitch = ""
+if 'c_bg' not in st.session_state: st.session_state.c_bg = ""
+if 'c_angle' not in st.session_state: st.session_state.c_angle = ""
+
+# ==========================================
+# 3. UTILITY FUNCTIONS
 # ==========================================
 def compress_image(image, max_size=(800, 800)):
     """Optimizes images for mobile upload stability."""
@@ -122,7 +135,6 @@ def analyze_prospect(screenshot_img):
 def process_voice_contact(audio_bytes):
     """
     Takes audio bytes, sends to Gemini, and extracts contact fields.
-    Handles both List and Dictionary JSON responses to prevent crashes.
     """
     prompt = """
     Listen to this voice memo of a sales interaction.
@@ -138,7 +150,6 @@ def process_voice_contact(audio_bytes):
     }
     """
     try:
-        # Convert audio bytes to a format Gemini accepts part-wise
         response = client.models.generate_content(
             model=TEXT_MODEL_ID,
             contents=[
@@ -156,7 +167,6 @@ def process_voice_contact(audio_bytes):
                 data = data[0]
             else:
                 return {"error": "No valid data found."}
-                
         return data
     except Exception as e:
         return {"error": str(e)}
@@ -184,7 +194,7 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 # ==========================================
-# 3. UI LAYOUT
+# 4. UI LAYOUT
 # ==========================================
 if not api_key:
     st.warning("⚠️ API Key Missing. Please set GOOGLE_API_KEY in Railway variables.")
@@ -243,7 +253,7 @@ with tab3:
                 analysis = analyze_prospect(p_img)
                 st.markdown(analysis)
 
-# --- FEATURE 4: VOICE CONTACT (UPDATED) ---
+# --- FEATURE 4: VOICE CONTACT (FIXED) ---
 with tab4:
     st.header("🗣️ Instant Lead Capture")
     st.info("Record a voice memo. We'll split the details into a strategy card.")
@@ -251,43 +261,72 @@ with tab4:
     audio_value = st.audio_input("Record Voice Note")
 
     if audio_value:
-        st.success("Recording received! Processing...")
+        # Check if this is a NEW recording or just a screen refresh
+        current_audio_bytes = audio_value.read()
         
-        with st.spinner("Extracting lead details..."):
-            audio_bytes = audio_value.read()
-            contact_data = process_voice_contact(audio_bytes)
+        if current_audio_bytes != st.session_state.last_audio_bytes:
+            # NEW AUDIO DETECTED - Process it
+            st.session_state.last_audio_bytes = current_audio_bytes
+            st.success("Recording received! Processing...")
             
-            if isinstance(contact_data, dict) and "error" not in contact_data:
-                st.subheader("✅ Lead Detected")
+            with st.spinner("Extracting lead details..."):
+                contact_data = process_voice_contact(current_audio_bytes)
                 
-                # Row 1: Contact Info
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.text_input("Name", value=contact_data.get("name", ""), key="c_name")
-                    st.text_input("Contact", value=contact_data.get("contact_info", ""), key="c_info")
-                with c2:
-                    st.text_input("Next Step", value=contact_data.get("follow_up", ""), key="c_follow")
-                    st.text_input("💡 Product Pitch", value=contact_data.get("product_pitch", ""), key="c_pitch")
-                
-                # Row 2: Strategy (Split)
-                st.text_area("Background Info", value=contact_data.get("background", ""), height=100, key="c_bg")
-                st.text_area("Sales Angle / Strategy", value=contact_data.get("sales_angle", ""), height=100, key="c_angle")
-                
-                # VCard
-                vcf_string = create_vcard(contact_data)
-                
-                st.download_button(
-                    label="💾 Save to Phone Contacts",
-                    data=vcf_string,
-                    file_name=f"{contact_data.get('name', 'Lead')}.vcf",
-                    mime="text/vcard",
-                    use_container_width=True,
-                    type="primary"
-                )
-            elif isinstance(contact_data, dict) and "error" in contact_data:
-                st.error(f"Error: {contact_data['error']}")
-            else:
-                st.error("Unexpected data format received.")
+                if isinstance(contact_data, dict) and "error" not in contact_data:
+                    # Update Session State with new data
+                    st.session_state.c_name = contact_data.get("name", "")
+                    st.session_state.c_info = contact_data.get("contact_info", "")
+                    st.session_state.c_follow = contact_data.get("follow_up", "")
+                    st.session_state.c_pitch = contact_data.get("product_pitch", "")
+                    st.session_state.c_bg = contact_data.get("background", "")
+                    st.session_state.c_angle = contact_data.get("sales_angle", "")
+                    st.session_state.has_lead = True
+                elif isinstance(contact_data, dict) and "error" in contact_data:
+                    st.error(f"Error: {contact_data['error']}")
+                else:
+                    st.error("Unexpected data format received.")
+
+    # ALWAYS DISPLAY FORM IF WE HAVE LEAD DATA (Allows editing)
+    if st.session_state.has_lead:
+        st.subheader("✅ Lead Detected")
+        
+        # NOTE: Keys match session state variables, so edits automatically update state
+        c1, c2 = st.columns(2)
+        with c1:
+            st.text_input("Name", key="c_name")
+            st.text_input("Contact", key="c_info")
+        with c2:
+            st.text_input("Next Step", key="c_follow")
+            st.text_input("💡 Product Pitch", key="c_pitch")
+        
+        st.text_area("Background Info", height=100, key="c_bg")
+        st.text_area("Sales Angle / Strategy", height=100, key="c_angle")
+        
+        # GENERATE VCARD FROM CURRENT STATE (Fixes "Stale Data" bug)
+        current_data = {
+            "name": st.session_state.c_name,
+            "contact_info": st.session_state.c_info,
+            "follow_up": st.session_state.c_follow,
+            "product_pitch": st.session_state.c_pitch,
+            "background": st.session_state.c_bg,
+            "sales_angle": st.session_state.c_angle
+        }
+        
+        vcf_string = create_vcard(current_data)
+        
+        # Dynamic filename forces iOS to treat it as a new contact
+        safe_name = st.session_state.c_name.strip().replace(" ", "_")
+        if not safe_name: safe_name = "New_Lead"
+        
+        st.download_button(
+            label="💾 Save to Phone Contacts",
+            data=vcf_string,
+            file_name=f"{safe_name}.vcf",
+            mime="text/vcard",
+            use_container_width=True,
+            type="primary",
+            help="Tap this, then select 'Create New Contact' on the next screen."
+        )
 
 st.markdown("---")
 st.caption("🔒 Private Tool for Diamond Team Members Only.")
