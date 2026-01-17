@@ -354,3 +354,73 @@ with tab4:
     # VIEW 2: DOSSIER STATE (If lead data exists)
     else:
         # 1. The Container "Card"
+        with st.container():
+            st.markdown('<div class="dossier-card">', unsafe_allow_html=True)
+            
+            # HEADER
+            st.markdown(f"""
+                <div class="dossier-header">
+                    <p style="font-size: 0.9rem; margin-bottom: 0;">DOSSIER</p>
+                    <h2 style="margin-top: 0; font-size: 2.5rem;">{st.session_state.c_name.upper()}</h2>
+                    <p class="strategy-hook">STRATEGY HOOK: {st.session_state.c_angle}</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # EDITABLE FIELDS (Styled to blend in)
+            c1, c2 = st.columns(2)
+            with c1:
+                st.caption("CONTACT")
+                st.text_input("Contact", value=st.session_state.c_info, key="c_info", label_visibility="collapsed")
+            with c2:
+                st.caption("FOLLOW UP")
+                st.text_input("Follow Up", value=st.session_state.c_follow, key="c_follow", label_visibility="collapsed")
+            
+            # TAGS VISUALIZATION (For Background)
+            st.markdown('<div class="tag-container">', unsafe_allow_html=True)
+            # Split background by commas to make fake tags, or just show text
+            bg_points = st.session_state.c_bg.split(',') if ',' in st.session_state.c_bg else [st.session_state.c_bg]
+            for point in bg_points:
+                st.markdown(f'<span class="tag">⚡ {point.strip().upper()}</span>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # RECOMMENDED PRODUCT BOX
+            st.markdown(f"""
+                <div class="product-box">
+                    📦 RECOMMENDED: {st.session_state.c_pitch.upper()}
+                </div>
+                <br>
+            """, unsafe_allow_html=True)
+
+            # SAVE BUTTON
+            current_data = {
+                "name": st.session_state.c_name, "contact_info": st.session_state.c_info,
+                "follow_up": st.session_state.c_follow, "product_pitch": st.session_state.c_pitch,
+                "background": st.session_state.c_bg, "sales_angle": st.session_state.c_angle
+            }
+            vcf_string = create_vcard(current_data)
+            safe_name = st.session_state.c_name.strip().replace(" ", "_")
+            
+            st.download_button(
+                label="SAVE TO PIPELINE (CONTACTS)",
+                data=vcf_string,
+                file_name=f"{safe_name}.vcf",
+                mime="text/vcard",
+                type="primary"
+            )
+
+            # RESET BUTTON (To go back to recorder)
+            if st.button("LOG NEW INTERACTION"):
+                st.session_state.has_lead = False
+                st.session_state.last_audio_bytes = None
+                st.rerun()
+
+            st.markdown('</div>', unsafe_allow_html=True) # End Card
+
+with tab5:
+    st.header("Call Auditor")
+    call_file = st.file_uploader("Upload Audio", type=["mp3", "wav"])
+    if call_file and st.button("Audit"):
+        st.write(analyze_call_recording(call_file.read(), "audio/mp3"))
+
+st.markdown("---")
+st.caption("🔒 Private Tool for Diamond Team Members Only.")
