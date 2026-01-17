@@ -119,6 +119,7 @@ def analyze_prospect(screenshot_img):
 def process_voice_contact(audio_bytes):
     """
     Takes audio bytes, sends to Gemini, and extracts contact fields.
+    Handles both List and Dictionary JSON responses to prevent crashes.
     """
     prompt = """
     Listen to this voice memo of a sales interaction.
@@ -142,7 +143,17 @@ def process_voice_contact(audio_bytes):
             ],
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
-        return json.loads(response.text)
+        
+        data = json.loads(response.text)
+        
+        # --- FIX: Unwrap list if Gemini returns [{...}] instead of {...} ---
+        if isinstance(data, list):
+            if len(data) > 0:
+                data = data[0]
+            else:
+                return {"error": "No valid data found."}
+                
+        return data
     except Exception as e:
         return {"error": str(e)}
 
@@ -245,20 +256,19 @@ with tab4:
             # Send to Gemini
             contact_data = process_voice_contact(audio_bytes)
             
-            if "error" in contact_data:
-                st.error(f"Error: {contact_data['error']}")
-            else:
+            # Validate Response Type
+            if isinstance(contact_data, dict) and "error" not in contact_data:
                 # Display extracted info cleanly
                 st.subheader("✅ Lead Detected")
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.text_input("Name", value=contact_data.get("name"), key="c_name")
-                    st.text_input("Contact", value=contact_data.get("contact_info"), key="c_info")
+                    st.text_input("Name", value=contact_data.get("name", ""), key="c_name")
+                    st.text_input("Contact", value=contact_data.get("contact_info", ""), key="c_info")
                 with c2:
-                    st.text_input("Next Step", value=contact_data.get("follow_up"), key="c_follow")
+                    st.text_input("Next Step", value=contact_data.get("follow_up", ""), key="c_follow")
                 
                 st.text_area("Background & Strategy", 
-                             value=f"Background: {contact_data.get('background')}\n\nAngle: {contact_data.get('sales_angle')}", 
+                             value=f"Background: {contact_data.get('background', '')}\n\nAngle: {contact_data.get('sales_angle', '')}", 
                              height=150)
                 
                 # Generate VCard
@@ -273,6 +283,10 @@ with tab4:
                     use_container_width=True,
                     type="primary"
                 )
+            elif isinstance(contact_data, dict) and "error" in contact_data:
+                st.error(f"Error: {contact_data['error']}")
+            else:
+                st.error("Unexpected data format received.")
 
 st.markdown("---")
 st.caption("🔒 Private Tool for Diamond Team Members Only.")
