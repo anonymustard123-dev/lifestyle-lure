@@ -22,115 +22,105 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
 
 # ==========================================
-# 2. AIRBNB-STYLE CSS (Refined for Mobile)
+# 2. AIRBNB-STYLE CSS (Mobile Forced Horizontal)
 # ==========================================
 st.markdown("""
     <style>
         /* --- RESET & BASICS --- */
         .stApp { background-color: #ffffff; color: #222222; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif; }
         [data-testid="stHeader"] { display: none; }
+        footer {visibility: hidden;}
         
         /* --- TYPOGRAPHY --- */
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- FLOATING CAPSULE RECORDER (FIXED BLACK BAR) --- */
+        /* --- AUDIO RECORDER (ROUNDED BOX STYLE) --- */
         [data-testid="stAudioInput"] {
-            max-width: 400px !important;
-            margin: 0 auto !important;
-            border-radius: 50px !important; /* Pill Shape */
-            border: 1px solid #ebebeb !important;
-            background-color: #ffffff !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-            padding: 5px !important;
+            border-radius: 12px !important; /* Rounded Box, not Pill */
+            border: 1px solid #e0e0e0 !important;
+            background-color: #f7f7f7 !important; /* Light Grey Background */
+            padding: 10px !important;
+            box-shadow: none !important;
         }
         
-        /* Target the internal audio element to remove default styling and black background */
-        [data-testid="stAudioInput"] audio {
-            width: 100% !important;
-            height: 40px !important;
-            border-radius: 25px !important;
-            background-color: #f7f7f7 !important; /* Light grey instead of black */
-            outline: none !important;
+        /* Fix the ugly black audio player inside */
+        [data-testid="stAudioInput"] > div > div {
+            background-color: #f7f7f7 !important; /* Match container */
+            color: #222 !important;
+        }
+        audio {
+            background-color: #f7f7f7 !important;
         }
 
-        /* --- FIXED BOTTOM NAV BAR (REFINED) --- */
+        /* --- FIXED BOTTOM NAV BAR (FORCED HORIZONTAL) --- */
         .nav-container {
             position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 400px;
-            background: #fafafa !important; /* Subtle off-white background */
-            border-radius: 30px; /* Floating Pill Container */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            border: 1px solid #ebebeb;
-            z-index: 99999;
-            padding: 5px;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #ffffff;
+            border-top: 1px solid #ebebeb;
+            z-index: 999999;
+            padding: 10px 0 25px 0; /* Extra padding at bottom for iPhone home bar */
+            display: flex;
+            justify-content: space-around; /* Distribute evenly */
+            align-items: center;
         }
 
-        /* Style for the columns holding the buttons */
-        .nav-button-col {
-            text-align: center;
-        }
-
-        /* Style the Streamlit buttons inside the nav */
-        .nav-button-col button {
+        /* The buttons themselves */
+        .nav-btn {
             background: transparent !important;
             border: none !important;
-            color: #888 !important; /* Default non-active color */
-            font-size: 12px !important;
+            color: #b0b0b0 !important;
+            font-size: 11px !important;
             font-weight: 600 !important;
             text-transform: uppercase !important;
-            letter-spacing: 1px !important;
-            padding: 10px 0 !important;
-            width: 100% !important;
+            letter-spacing: 0.5px !important;
+            padding: 8px 0 !important;
+            cursor: pointer;
+            text-align: center;
+            flex: 1; /* Grow to fill space */
         }
         
-        /* Style for the active tab's button */
-        .nav-button-active button {
-            color: #FF6B6B !important; /* Nice light salmon color for active state */
-        }
+        .nav-btn:hover { color: #FF385C !important; }
+        
+        /* Active State */
+        .nav-active { color: #FF385C !important; }
 
         /* --- CARDS & UI --- */
         .airbnb-card {
             background: white;
-            border-radius: 24px;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-            padding: 32px 24px;
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+            padding: 24px;
             margin-bottom: 24px;
-            border: 1px solid #f0f0f0;
+            border: 1px solid #f2f2f2;
         }
         
-        .card-title { font-size: 26px; font-weight: 800; color: #222; margin-bottom: 5px; }
-        .card-subtitle { font-size: 14px; color: #FF6B6B; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
+        .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
+        .card-subtitle { font-size: 14px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
         
-        /* --- PRIMARY BUTTONS (Salmon/Red) --- */
+        /* --- PRIMARY BUTTONS (Salmon) --- */
         div.stButton > button {
-            background-color: #FF6B6B; /* Changed to match salmon theme */
+            background-color: #FF385C;
             color: white;
-            border-radius: 24px; /* Pill Shape */
-            padding: 14px 24px;
+            border-radius: 8px;
+            padding: 12px 24px;
             font-weight: 600;
             border: none;
             width: 100%;
-            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.25);
-            transition: transform 0.1s, background-color 0.2s;
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2);
         }
-        div.stButton > button:active { transform: scale(0.98); }
-        div.stButton > button:hover { background-color: #e65a5a; color: white; }
+        div.stButton > button:hover { background-color: #d90b3e; color: white; }
         
         /* --- SECONDARY BUTTONS (Outline) --- */
         button[kind="secondary"] {
             background-color: transparent !important;
             color: #222 !important;
-            border: 2px solid #e0e0e0 !important;
+            border: 1px solid #222 !important;
             box-shadow: none !important;
         }
-        
-        /* Hide default streamlit footer */
-        footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -200,16 +190,16 @@ def view_generate():
     if not st.session_state.generated_lead:
         # Empty State
         st.markdown("""
-            <div style="text-align: center; padding: 60px 20px;">
+            <div style="text-align: center; padding: 40px 20px;">
                 <h2 style="font-size: 32px; margin-bottom: 8px;">New Lead</h2>
                 <p style="font-size: 16px;">Capture intelligence instantly.</p>
             </div>
         """, unsafe_allow_html=True)
         
-        # Audio Input
+        # Audio Input (Standard Box Style)
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         
-        st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:15px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-size:12px; color:#aaa; margin-top:10px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
 
         if audio_val:
             with st.spinner("Processing..."):
@@ -229,7 +219,7 @@ def view_generate():
             <div class="airbnb-card">
                 <div class="card-subtitle">Intel Captured</div>
                 <div class="card-title">{lead.get('name', 'Unknown Lead')}</div>
-                <p style="color:#222; font-size:17px; margin-bottom:24px; line-height:1.5;">{lead.get('sales_angle')}</p>
+                <p style="color:#222; font-size:18px; margin-bottom:20px;">{lead.get('sales_angle')}</p>
                 
                 <div style="border-top:1px solid #f0f0f0; margin:20px 0;"></div>
                 
@@ -269,7 +259,6 @@ def view_pipeline():
         st.info("No leads recorded yet.")
         
     for lead in all_leads:
-        # Styled list item
         with st.expander(f"{lead.get('name')}"):
             st.markdown(f"""
                 <div style="padding:10px;">
@@ -290,52 +279,50 @@ def view_analytics():
     
     st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    c1.metric("Leads", len(all_leads))
+    c1.metric("Total Leads", len(all_leads))
     try: top = df['product_pitch'].mode()[0]
     except: top = "-"
     c2.metric("Top Product", top)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 5. MAIN ROUTER
+# 5. MAIN ROUTER & CUSTOM NAV
 # ==========================================
 if not api_key:
     st.error("⚠️ API Key Missing.")
     st.stop()
 
-# Content
+# Content Area
 if st.session_state.active_tab == "generate": view_generate()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
-# Spacer for bottom nav
+# Spacer for nav
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# --- NAVIGATION BAR (The "Floating Pill") ---
+# --- CUSTOM HTML NAVIGATION ---
+# This uses Streamlit columns but relies on the CSS 'nav-container' class to force fixed positioning
+# We use Python buttons to trigger state changes, but CSS positions them horizontally.
 with st.container():
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    
-    # Create 3 columns *inside* the styled container
     c1, c2, c3 = st.columns(3)
     
-    # Define tabs and their labels (no emojis)
-    tabs = [("Generate", "generate"), ("Leads", "pipeline"), ("Analytics", "analytics")]
-    
-    cols = [c1, c2, c3]
-    for i, (label, tab_name) in enumerate(tabs):
-        col = cols[i]
-        # Determine if this tab is active
-        is_active = st.session_state.active_tab == tab_name
-        
-        # Apply active class if needed
-        active_class = "nav-button-active" if is_active else ""
-        
-        with col:
-            # Wrap button in a div to apply column & active styles
-            st.markdown(f'<div class="nav-button-col {active_class}">', unsafe_allow_html=True)
-            if st.button(label, key=f"nav_{tab_name}", use_container_width=True):
-                st.session_state.active_tab = tab_name
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+    # Generate Button
+    with c1:
+        if st.button("Generate", key="nav_gen", use_container_width=True): 
+            st.session_state.active_tab = "generate"
+            st.rerun()
+            
+    # Leads Button
+    with c2:
+        if st.button("Leads", key="nav_leads", use_container_width=True): 
+            st.session_state.active_tab = "pipeline"
+            st.rerun()
+
+    # Analytics Button
+    with c3:
+        if st.button("Analytics", key="nav_an", use_container_width=True): 
+            st.session_state.active_tab = "analytics"
+            st.rerun()
             
     st.markdown('</div>', unsafe_allow_html=True)
