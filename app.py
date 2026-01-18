@@ -25,7 +25,6 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 # ==========================================
 # 2. SUPABASE CONNECTION
 # ==========================================
-# Uses Railway/Env variables. If missing, it safely handles the error.
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -37,7 +36,7 @@ if SUPABASE_URL and SUPABASE_KEY:
         st.error(f"Supabase Connection Error: {e}")
 
 # ==========================================
-# 3. AIRBNB-STYLE CSS (Global + Login Fixes)
+# 3. AIRBNB-STYLE CSS (Input Visibility Fixes)
 # ==========================================
 st.markdown("""
     <style>
@@ -50,19 +49,32 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- INPUT FIELDS (Global Light Mode Force) --- */
-        /* Forces inputs to be white with grey borders, fixing the "Blacked Out" issue */
-        div[data-baseweb="input"] {
+        /* --- INPUT FIELD FIX (THE "INVISIBLE TEXT" FIX) --- */
+        /* 1. Target the container to ensure white background */
+        div[data-baseweb="input"], div[data-baseweb="base-input"] {
             background-color: #ffffff !important;
             border: 1px solid #e0e0e0 !important;
             border-radius: 12px !important;
-            color: #222222 !important;
         }
-        input {
-            color: #222222 !important;
-            caret-color: #FF385C !important;
+
+        /* 2. Target the actual input element to force text color */
+        input.st-bd, input.st-bc, input {
+            background-color: #ffffff !important;
+            color: #222222 !important; /* Force Dark Text */
+            -webkit-text-fill-color: #222222 !important; /* Safari/iOS Force */
+            caret-color: #FF385C !important; /* Cursor Color */
         }
-        /* Fix label colors */
+
+        /* 3. Fix Browser Autofill (Often turns yellow/blue) */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+            -webkit-text-fill-color: #222222 !important;
+        }
+
+        /* 4. Fix Labels */
         .stTextInput label {
             color: #222222 !important;
             font-weight: 600 !important;
@@ -132,8 +144,7 @@ st.markdown("""
             border-radius: 20px !important;
         }
 
-        /* --- PRIMARY BUTTONS (Login & Actions) --- */
-        /* Targets buttons that are 'primary' type */
+        /* --- PRIMARY BUTTONS --- */
         button[kind="primary"] {
             background-color: #FF385C !important;
             color: white !important;
@@ -168,11 +179,10 @@ st.markdown("""
             margin-bottom: 24px;
             border: 1px solid #f2f2f2;
         }
-        
         .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
         .card-subtitle { font-size: 13px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
         
-        /* --- TAB STYLING (Login Toggle) --- */
+        /* --- TABS --- */
         .stTabs [data-baseweb="tab-list"] {
             gap: 10px;
             background-color: #f7f7f7;
@@ -198,7 +208,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. BACKEND LOGIC (AI & DATA)
+# 4. BACKEND LOGIC
 # ==========================================
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
@@ -241,22 +251,16 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 # ==========================================
-# 5. DATA MANAGER (SUPABASE HYBRID)
+# 5. DATA MANAGER
 # ==========================================
-# If Supabase is connected, we use it. If not, we use local session state for demo.
 def save_lead(lead_data):
-    if not st.session_state.user: return # Should not happen
-    
+    if not st.session_state.user: return
     lead_data['user_id'] = st.session_state.user.id
     lead_data['created_at'] = datetime.now().isoformat()
-    
     if supabase:
-        try:
-            supabase.table("leads").insert(lead_data).execute()
-        except Exception as e:
-            st.error(f"Save Error: {e}")
+        try: supabase.table("leads").insert(lead_data).execute()
+        except Exception as e: st.error(f"Save Error: {e}")
     else:
-        # Fallback to local file for demo if supabase isn't set up yet
         DB_FILE = "leads_db.json"
         leads = []
         if os.path.exists(DB_FILE):
@@ -266,14 +270,12 @@ def save_lead(lead_data):
 
 def load_leads():
     if not st.session_state.user: return []
-    
     if supabase:
         try:
             response = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
             return response.data
         except: return []
     else:
-        # Fallback
         DB_FILE = "leads_db.json"
         if os.path.exists(DB_FILE):
             with open(DB_FILE, "r") as f: return json.load(f)
@@ -283,10 +285,7 @@ def load_leads():
 # 6. LOGIN SCREEN
 # ==========================================
 def login_screen():
-    # Title at the very top
     st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>The Closer</h1>", unsafe_allow_html=True)
-    
-    # Styled Tabs for Toggle
     tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
     
     with tab_login:
@@ -294,10 +293,8 @@ def login_screen():
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Password", type="password", key="login_pass")
         st.markdown("<br>", unsafe_allow_html=True)
-        
         if st.button("Log In", type="primary", use_container_width=True):
             if not supabase:
-                # Mock Login for Demo if no DB
                 st.session_state.user = type('obj', (object,), {'id': 'demo_user', 'email': email})
                 st.rerun()
             else:
@@ -305,36 +302,29 @@ def login_screen():
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Login failed: {e}")
+                except Exception as e: st.error(f"Login failed: {e}")
 
     with tab_signup:
         st.markdown("<br>", unsafe_allow_html=True)
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_pass")
         st.markdown("<br>", unsafe_allow_html=True)
-        
         if st.button("Create Account", type="primary", use_container_width=True):
             if supabase:
                 try:
                     res = supabase.auth.sign_up({"email": email, "password": password})
-                    st.success("Account created! Check your email or log in.")
-                except Exception as e:
-                    st.error(f"Signup failed: {e}")
-            else:
-                st.warning("Database not connected.")
+                    st.success("Account created! Check your email.")
+                except Exception as e: st.error(f"Signup failed: {e}")
+            else: st.warning("Database not connected.")
 
 # ==========================================
 # 7. MAIN APP ROUTER
 # ==========================================
-
-# Check Auth
 if not st.session_state.user:
     login_screen()
     st.stop()
 
-# --- APP VIEWS (Only accessible if logged in) ---
-
+# --- APP VIEWS ---
 def view_generate():
     st.markdown("<br>", unsafe_allow_html=True)
     if not st.session_state.generated_lead:
@@ -353,8 +343,7 @@ def view_generate():
                     save_lead(data)
                     st.session_state.generated_lead = data
                     st.rerun()
-                else:
-                    st.error(f"Error: {data.get('error')}")
+                else: st.error(f"Error: {data.get('error')}")
     else:
         lead = st.session_state.generated_lead
         st.markdown(f"""
@@ -410,7 +399,6 @@ def view_analytics():
     c2.metric("Top Product", top)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Render View based on Tab
 if st.session_state.active_tab == "generate": view_generate()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
