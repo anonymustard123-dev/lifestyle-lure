@@ -36,7 +36,7 @@ if SUPABASE_URL and SUPABASE_KEY:
         st.error(f"Supabase Connection Error: {e}")
 
 # ==========================================
-# 3. AIRBNB-STYLE CSS
+# 3. AIRBNB-STYLE CSS (Refined)
 # ==========================================
 st.markdown("""
     <style>
@@ -49,7 +49,7 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- INPUT FIELD FIX --- */
+        /* --- INPUT FIELD FIXES --- */
         div[data-baseweb="input"], div[data-baseweb="base-input"] {
             background-color: #ffffff !important;
             border: 1px solid #e0e0e0 !important;
@@ -62,26 +62,24 @@ st.markdown("""
             caret-color: #FF385C !important;
         }
         
-        /* --- HEADER (LOGOUT BUTTON) --- */
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 5px;
-            margin-bottom: 20px;
-        }
-        .logout-btn button {
-            background-color: transparent !important;
+        /* --- HEADER PROFILE BUTTON --- */
+        /* Style the popover button to look like a profile circle */
+        [data-testid="stPopover"] > button {
+            border-radius: 50% !important;
+            width: 40px !important;
+            height: 40px !important;
+            border: 1px solid #dddddd !important;
+            background: white !important;
             color: #717171 !important;
-            border: 1px solid #e0e0e0 !important;
-            padding: 5px 15px !important;
-            font-size: 12px !important;
-            border-radius: 20px !important;
-            height: auto !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .logout-btn button:hover {
-            border-color: #FF385C !important;
-            color: #FF385C !important;
+        [data-testid="stPopover"] > button:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+            color: #222 !important;
         }
 
         /* --- MICROPHONE FIX --- */
@@ -253,25 +251,16 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 # ==========================================
-# 5. DATA MANAGER (SUPABASE HYBRID)
+# 5. DATA MANAGER
 # ==========================================
 def save_lead(lead_data):
     if not st.session_state.user: return "Not logged in"
-    
     lead_data['user_id'] = st.session_state.user.id
-    # Ensure current timestamp format compatible with timestamptz
     lead_data['created_at'] = datetime.now().isoformat()
-    
     if supabase:
-        try:
-            # We assume user has created correct columns in supabase.
-            # If not, this throws an error which we now return to the UI.
-            supabase.table("leads").insert(lead_data).execute()
-            return None # Success
-        except Exception as e:
-            return str(e) # Return the specific error message
+        try: supabase.table("leads").insert(lead_data).execute(); return None
+        except Exception as e: return str(e)
     else:
-        # Fallback to local file for demo
         DB_FILE = "leads_db.json"
         leads = []
         if os.path.exists(DB_FILE):
@@ -305,10 +294,8 @@ def login_screen():
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Password", type="password", key="login_pass")
         st.markdown("<br>", unsafe_allow_html=True)
-        
         if st.button("Log In", type="primary", use_container_width=True):
             if not supabase:
-                # Mock Login for Demo if no DB key
                 st.session_state.user = type('obj', (object,), {'id': 'demo_user', 'email': email})
                 st.rerun()
             else:
@@ -316,24 +303,20 @@ def login_screen():
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Login failed: {e}")
+                except Exception as e: st.error(f"Login failed: {e}")
 
     with tab_signup:
         st.markdown("<br>", unsafe_allow_html=True)
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_pass")
         st.markdown("<br>", unsafe_allow_html=True)
-        
         if st.button("Create Account", type="primary", use_container_width=True):
             if supabase:
                 try:
                     res = supabase.auth.sign_up({"email": email, "password": password})
                     st.success("Account created! Check your email.")
-                except Exception as e:
-                    st.error(f"Signup failed: {e}")
-            else:
-                st.warning("Database not connected.")
+                except Exception as e: st.error(f"Signup failed: {e}")
+            else: st.warning("Database not connected.")
 
 # ==========================================
 # 7. MAIN APP ROUTER
@@ -342,18 +325,23 @@ if not st.session_state.user:
     login_screen()
     st.stop()
 
-# --- HEADER (LOGOUT) ---
+# --- HEADER (PROFILE & LOGOUT) ---
 def render_header():
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        st.caption(f"Logged in: {st.session_state.user.email}")
-    with c2:
-        st.markdown('<div class="logout-btn">', unsafe_allow_html=True)
-        if st.button("Sign Out"):
-            if supabase: supabase.auth.sign_out()
-            st.session_state.user = None
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Use 3 columns to push profile to far right
+    c1, c2, c3 = st.columns([1, 4, 1])
+    with c3:
+        # Profile Popover (Icon Button)
+        with st.popover("👤", help="Profile"):
+            st.markdown(f"<div style='text-align:center; margin-bottom:10px; font-weight:600;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
+            if st.button("Payments", use_container_width=True):
+                st.info("Stripe integration coming soon.")
+            
+            st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+            
+            if st.button("Sign Out", type="primary", use_container_width=True):
+                if supabase: supabase.auth.sign_out()
+                st.session_state.user = None
+                st.rerun()
 
 # --- APP VIEWS ---
 def view_generate():
@@ -368,21 +356,18 @@ def view_generate():
         """, unsafe_allow_html=True)
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:10px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
-        
         if audio_val:
             with st.spinner("Processing..."):
                 data = process_voice_contact(audio_val.read())
                 if isinstance(data, dict) and "error" not in data:
-                    # Try to save and capture error if any
                     err = save_lead(data)
                     if err:
                         st.error(f"Database Error: {err}")
-                        st.error("Tip: Check if columns (contact_info, background, etc.) exist in Supabase.")
+                        st.info("Ensure you have run the RLS Policy SQL in Supabase.")
                     else:
                         st.session_state.generated_lead = data
                         st.rerun()
-                else:
-                    st.error(f"AI Error: {data.get('error')}")
+                else: st.error(f"Error: {data.get('error')}")
     else:
         lead = st.session_state.generated_lead
         st.markdown(f"""
