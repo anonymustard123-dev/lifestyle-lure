@@ -6,6 +6,7 @@ import json
 import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
+import stripe
 
 # ==========================================
 # 1. CONFIG & STATE
@@ -19,24 +20,29 @@ st.set_page_config(
 
 # Initialize Session State
 if 'user' not in st.session_state: st.session_state.user = None
+if 'is_subscribed' not in st.session_state: st.session_state.is_subscribed = False
 if 'active_tab' not in st.session_state: st.session_state.active_tab = "generate"
 if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
 
 # ==========================================
-# 2. SUPABASE CONNECTION
+# 2. CONNECTIONS (SUPABASE & STRIPE)
 # ==========================================
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501") # Fallback for local testing
 
 supabase: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
-    try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception as e:
-        st.error(f"Supabase Connection Error: {e}")
+    try: supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e: st.error(f"Supabase Error: {e}")
+
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. AIRBNB-STYLE CSS (Refined)
+# 3. AIRBNB-STYLE CSS
 # ==========================================
 st.markdown("""
     <style>
@@ -49,7 +55,7 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- INPUT FIELD FIXES --- */
+        /* --- INPUTS --- */
         div[data-baseweb="input"], div[data-baseweb="base-input"] {
             background-color: #ffffff !important;
             border: 1px solid #e0e0e0 !important;
@@ -63,7 +69,6 @@ st.markdown("""
         }
         
         /* --- HEADER PROFILE BUTTON --- */
-        /* Style the popover button to look like a profile circle */
         [data-testid="stPopover"] > button {
             border-radius: 50% !important;
             width: 40px !important;
@@ -76,10 +81,31 @@ st.markdown("""
             display: flex;
             align-items: center;
             justify-content: center;
+            float: right;
         }
         [data-testid="stPopover"] > button:hover {
             box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
             color: #222 !important;
+            border-color: #222 !important;
+        }
+
+        /* --- PAYWALL CARD --- */
+        .paywall-container {
+            text-align: center;
+            padding: 40px 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .price-tag {
+            font-size: 32px;
+            font-weight: 800;
+            color: #222;
+            margin: 20px 0;
+        }
+        .price-sub {
+            font-size: 16px;
+            color: #717171;
+            font-weight: 400;
         }
 
         /* --- MICROPHONE FIX --- */
@@ -125,7 +151,30 @@ st.markdown("""
             }
         }
 
-        /* --- NAV BUTTONS --- */
+        /* --- BUTTONS --- */
+        button[kind="primary"] {
+            background-color: #FF385C !important;
+            color: white !important;
+            border-radius: 12px !important;
+            padding: 12px 24px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            height: 50px !important;
+            width: 100% !important;
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important;
+        }
+        button[kind="primary"]:hover { background-color: #d90b3e !important; }
+
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #222 !important;
+            border: 1px solid #e0e0e0 !important;
+            box-shadow: none !important;
+            border-radius: 12px !important;
+            height: 50px !important;
+        }
+
+        /* Nav Buttons */
         .nav-btn button {
             background-color: transparent !important;
             color: #b0b0b0 !important;
@@ -142,32 +191,6 @@ st.markdown("""
             color: #FF385C !important;
             background-color: #FFF0F3 !important;
             border-radius: 20px !important;
-        }
-
-        /* --- PRIMARY BUTTONS --- */
-        button[kind="primary"] {
-            background-color: #FF385C !important;
-            color: white !important;
-            border-radius: 12px !important;
-            padding: 12px 24px !important;
-            font-weight: 600 !important;
-            border: none !important;
-            height: 50px !important;
-            width: 100% !important;
-            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important;
-        }
-        button[kind="primary"]:hover {
-            background-color: #d90b3e !important;
-        }
-
-        /* --- SECONDARY BUTTONS --- */
-        button[kind="secondary"] {
-            background-color: transparent !important;
-            color: #222 !important;
-            border: 1px solid #e0e0e0 !important;
-            box-shadow: none !important;
-            border-radius: 12px !important;
-            height: 50px !important;
         }
 
         /* --- CARDS --- */
@@ -208,7 +231,63 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. BACKEND LOGIC (AI & DATA)
+# 4. SUBSCRIPTION LOGIC (STRIPE)
+# ==========================================
+def check_subscription_status(email):
+    """
+    Checks if the user has an active Stripe subscription.
+    Returns True if subscribed, False otherwise.
+    """
+    if not STRIPE_SECRET_KEY: return True # Bypass if no key set (for dev)
+    
+    try:
+        # 1. Find customer by email
+        customers = stripe.Customer.list(email=email).data
+        if not customers:
+            return False
+        
+        customer = customers[0]
+        
+        # 2. Check for active subscriptions
+        subscriptions = stripe.Subscription.list(customer=customer.id, status='active').data
+        if subscriptions:
+            return True
+        return False
+    except Exception as e:
+        print(f"Stripe Error: {e}")
+        return False
+
+def create_checkout_session(email):
+    """
+    Creates a Stripe Checkout Session and returns the URL.
+    """
+    try:
+        # 1. Get or Create Customer
+        customers = stripe.Customer.list(email=email).data
+        if customers:
+            customer_id = customers[0].id
+        else:
+            customer = stripe.Customer.create(email=email)
+            customer_id = customer.id
+            
+        # 2. Create Session
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=['card'],
+            line_items=[{
+                'price': STRIPE_PRICE_ID,
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=f"{APP_BASE_URL}?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{APP_BASE_URL}",
+        )
+        return session.url
+    except Exception as e:
+        return None
+
+# ==========================================
+# 5. BACKEND LOGIC (AI & DATA)
 # ==========================================
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
@@ -250,9 +329,6 @@ def create_vcard(data):
     vcard = ["BEGIN:VCARD", "VERSION:3.0", f"FN:{data.get('name', 'Lead')}", f"TEL;TYPE=CELL:{data.get('contact_info', '')}", f"NOTE:{notes}", "END:VCARD"]
     return "\n".join(vcard)
 
-# ==========================================
-# 5. DATA MANAGER
-# ==========================================
 def save_lead(lead_data):
     if not st.session_state.user: return "Not logged in"
     lead_data['user_id'] = st.session_state.user.id
@@ -260,14 +336,7 @@ def save_lead(lead_data):
     if supabase:
         try: supabase.table("leads").insert(lead_data).execute(); return None
         except Exception as e: return str(e)
-    else:
-        DB_FILE = "leads_db.json"
-        leads = []
-        if os.path.exists(DB_FILE):
-            with open(DB_FILE, "r") as f: leads = json.load(f)
-        leads.insert(0, lead_data)
-        with open(DB_FILE, "w") as f: json.dump(leads, f)
-        return None
+    else: return "DB Error"
 
 def load_leads():
     if not st.session_state.user: return []
@@ -276,11 +345,7 @@ def load_leads():
             response = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
             return response.data
         except: return []
-    else:
-        DB_FILE = "leads_db.json"
-        if os.path.exists(DB_FILE):
-            with open(DB_FILE, "r") as f: return json.load(f)
-        return []
+    return []
 
 # ==========================================
 # 6. LOGIN SCREEN
@@ -295,13 +360,12 @@ def login_screen():
         password = st.text_input("Password", type="password", key="login_pass")
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Log In", type="primary", use_container_width=True):
-            if not supabase:
-                st.session_state.user = type('obj', (object,), {'id': 'demo_user', 'email': email})
-                st.rerun()
-            else:
+            if supabase:
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
+                    # Check Sub Status on Login
+                    st.session_state.is_subscribed = check_subscription_status(res.user.email)
                     st.rerun()
                 except Exception as e: st.error(f"Login failed: {e}")
 
@@ -316,7 +380,6 @@ def login_screen():
                     res = supabase.auth.sign_up({"email": email, "password": password})
                     st.success("Account created! Check your email.")
                 except Exception as e: st.error(f"Signup failed: {e}")
-            else: st.warning("Database not connected.")
 
 # ==========================================
 # 7. MAIN APP ROUTER
@@ -325,28 +388,52 @@ if not st.session_state.user:
     login_screen()
     st.stop()
 
-# --- HEADER (PROFILE & LOGOUT) ---
+# --- HEADER (PROFILE & MENU) ---
 def render_header():
-    # Use 3 columns to push profile to far right
-    c1, c2, c3 = st.columns([1, 4, 1])
-    with c3:
-        # Profile Popover (Icon Button)
-        with st.popover("👤", help="Profile"):
-            st.markdown(f"<div style='text-align:center; margin-bottom:10px; font-weight:600;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
-            if st.button("Payments", use_container_width=True):
-                st.info("Stripe integration coming soon.")
-            
-            st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
-            
+    c1, c2 = st.columns([8, 1]) 
+    with c2:
+        with st.popover("👤", help="Menu"):
+            st.markdown(f"<div style='font-size:12px; color:#888; text-align:center; margin-bottom:10px;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
             if st.button("Sign Out", type="primary", use_container_width=True):
                 if supabase: supabase.auth.sign_out()
                 st.session_state.user = None
+                st.session_state.is_subscribed = False
                 st.rerun()
 
-# --- APP VIEWS ---
+# --- CHECK SUBSCRIPTION GATE ---
+# If user is logged in but not subscribed, show paywall
+if not st.session_state.is_subscribed:
+    # Check if they just returned from Stripe
+    query_params = st.query_params
+    if "session_id" in query_params:
+        # Re-check status if they have a session_id
+        st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
+        if st.session_state.is_subscribed:
+            st.toast("Welcome to Premium!", icon="🎉")
+            st.rerun()
+    
+    # Render Paywall
+    render_header()
+    st.markdown("""
+        <div class="paywall-container">
+            <h1 style="font-size: 42px; margin-bottom: 10px;">Unlock The Closer</h1>
+            <p style="font-size: 18px; color: #717171;">Get unlimited AI lead generation and pipeline tracking.</p>
+            <div class="price-tag">$15.00 <span class="price-sub">/ month</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("Subscribe via Stripe", type="primary", use_container_width=True):
+        checkout_url = create_checkout_session(st.session_state.user.email)
+        if checkout_url:
+            st.link_button("Proceed to Checkout 👉", checkout_url, type="primary", use_container_width=True)
+        else:
+            st.error("Error creating checkout. Check Stripe keys.")
+    st.stop() # HALT APP HERE
+
+# --- APP VIEWS (Only reaches here if paid) ---
 def view_generate():
     render_header()
-    
+    st.markdown("<br>", unsafe_allow_html=True)
     if not st.session_state.generated_lead:
         st.markdown("""
             <div style="text-align: center; padding: 40px 20px;">
@@ -361,9 +448,7 @@ def view_generate():
                 data = process_voice_contact(audio_val.read())
                 if isinstance(data, dict) and "error" not in data:
                     err = save_lead(data)
-                    if err:
-                        st.error(f"Database Error: {err}")
-                        st.info("Ensure you have run the RLS Policy SQL in Supabase.")
+                    if err: st.error(f"Database Error: {err}")
                     else:
                         st.session_state.generated_lead = data
                         st.rerun()
