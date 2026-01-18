@@ -27,114 +27,110 @@ if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes
 st.markdown("""
     <style>
         /* --- RESET & BASICS --- */
-        .stApp { background-color: #ffffff; color: #222222; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .stApp { background-color: #ffffff; color: #222222; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif; }
         [data-testid="stHeader"] { display: none; }
         
         /* --- TYPOGRAPHY --- */
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- SLEEK MICROPHONE (Pill Shape) --- */
+        /* --- FLOATING CAPSULE RECORDER --- */
         [data-testid="stAudioInput"] {
             max-width: 400px !important;
-            margin: 0 auto !important; /* Center it */
-            border-radius: 50px !important;
-            border: 1px solid #e0e0e0 !important;
-            background-color: #f7f7f7 !important;
-            overflow: hidden !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-        }
-        [data-testid="stAudioInput"] > div {
-            border: none !important;
-            background: transparent !important;
+            margin: 0 auto !important;
+            border-radius: 50px !important; /* Pill Shape */
+            border: 1px solid #ebebeb !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
+            padding: 5px !important;
         }
         
-        /* --- FIXED BOTTOM NAV (The "App" Feel) --- */
-        /* This targets the LAST container in the app to force it to the bottom */
-        div[data-testid="stVerticalBlock"] > div:last-child {
+        /* Remove the ugly black background on the internal audio player */
+        audio {
+            width: 100% !important;
+            height: 40px !important;
+            border-radius: 25px !important;
+            background-color: #f7f7f7 !important; /* Light grey instead of black */
+        }
+
+        /* --- FIXED BOTTOM NAV BAR --- */
+        /* This forces the nav to stay at the bottom and maintain row layout on mobile */
+        .nav-container {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid #ebebeb;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: #ffffff;
+            border-radius: 30px; /* Floating Pill Container */
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            border: 1px solid #ebebeb;
             z-index: 99999;
-            padding-bottom: 20px; /* Safe area for iPhone home bar */
-            padding-top: 10px;
+            display: flex;
+            justify-content: space-between; /* Space buttons evenly */
+            padding: 8px 15px;
         }
 
-        /* FORCE HORIZONTAL ROW ON MOBILE */
-        div[data-testid="stVerticalBlock"] > div:last-child [data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important; /* Forces side-by-side */
-            gap: 0px !important;
+        /* Hide the default Streamlit container usually wrapping these buttons */
+        div[data-testid="column"] {
+            flex: 1; /* Force equal width */
+            text-align: center;
         }
 
-        /* FORCE COLUMNS TO SHARE WIDTH EQUALLY */
-        div[data-testid="stVerticalBlock"] > div:last-child [data-testid="column"] {
-            width: 33.33% !important;
-            flex: 1 !important;
-            min-width: 0 !important;
-        }
-        
-        /* STYLE THE NAV BUTTONS */
-        div[data-testid="stVerticalBlock"] > div:last-child button {
-            background-color: transparent !important;
+        /* Style the Nav Buttons */
+        .nav-btn {
+            background: transparent !important;
             border: none !important;
-            color: #b0b0b0 !important;
+            color: #717171 !important;
             font-size: 11px !important;
             font-weight: 600 !important;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 10px 0 !important;
-            margin: 0 !important;
-            width: 100%;
-            box-shadow: none !important;
+            text-transform: uppercase !important;
+            padding: 8px 0 !important;
+            width: 100% !important;
         }
         
-        div[data-testid="stVerticalBlock"] > div:last-child button:hover {
-            color: #FF385C !important;
-        }
+        .nav-btn:hover { color: #FF385C !important; }
+        .nav-btn:active { color: #FF385C !important; }
         
-        div[data-testid="stVerticalBlock"] > div:last-child button:focus {
+        /* Active State Indicator */
+        .nav-active {
             color: #FF385C !important;
         }
 
         /* --- CARDS & UI --- */
         .airbnb-card {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-            padding: 24px;
+            border-radius: 24px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            padding: 32px 24px;
             margin-bottom: 24px;
             border: 1px solid #f0f0f0;
         }
         
-        .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
-        .card-subtitle { font-size: 16px; color: #FF385C; font-weight: 600; margin-bottom: 20px; }
+        .card-title { font-size: 26px; font-weight: 800; color: #222; margin-bottom: 5px; }
+        .card-subtitle { font-size: 14px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
         
         /* --- PRIMARY BUTTONS (Airbnb Red) --- */
         div.stButton > button {
             background-color: #FF385C;
             color: white;
-            border-radius: 8px;
-            padding: 12px 24px;
+            border-radius: 24px; /* Pill Shape */
+            padding: 14px 24px;
             font-weight: 600;
             border: none;
             width: 100%;
-            box-shadow: 0 2px 10px rgba(255, 56, 92, 0.2);
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.25);
+            transition: transform 0.1s;
         }
-        div.stButton > button:hover {
-            background-color: #d90b3e;
-            color: white;
-        }
+        div.stButton > button:active { transform: scale(0.98); }
+        div.stButton > button:hover { background-color: #d90b3e; color: white; }
         
         /* --- SECONDARY BUTTONS (Outline) --- */
         button[kind="secondary"] {
             background-color: transparent !important;
             color: #222 !important;
-            border: 2px solid #222 !important;
+            border: 2px solid #e0e0e0 !important;
             box-shadow: none !important;
         }
     </style>
@@ -197,25 +193,25 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 # ==========================================
-# 4. VIEWS
+# 4. VIEW CONTROLLERS
 # ==========================================
 
 def view_generate():
     st.markdown("<br>", unsafe_allow_html=True)
     
     if not st.session_state.generated_lead:
-        # Initial State
+        # Empty State
         st.markdown("""
-            <div style="text-align: center; padding: 40px 20px;">
-                <h2 style="font-size: 32px; margin-bottom: 10px;">New Lead</h2>
+            <div style="text-align: center; padding: 60px 20px;">
+                <h2 style="font-size: 32px; margin-bottom: 8px;">New Lead</h2>
                 <p style="font-size: 16px;">Capture intelligence instantly.</p>
             </div>
         """, unsafe_allow_html=True)
         
-        # Audio Input (Styled by CSS above to be sleek/pill)
+        # Audio Input
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         
-        st.markdown("<p style='text-align:center; font-size:12px; color:#aaa; margin-top:10px;'>TAP TO RECORD</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:15px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
 
         if audio_val:
             with st.spinner("Processing..."):
@@ -228,31 +224,31 @@ def view_generate():
                     st.error(f"Error: {data.get('error')}")
 
     else:
-        # Result State
+        # Result Card
         lead = st.session_state.generated_lead
         
         st.markdown(f"""
             <div class="airbnb-card">
-                <div class="card-subtitle">SUCCESSFULLY CAPTURED</div>
+                <div class="card-subtitle">Intel Captured</div>
                 <div class="card-title">{lead.get('name', 'Unknown Lead')}</div>
-                <p style="color:#222; font-size:18px; margin-bottom:20px;">{lead.get('sales_angle')}</p>
+                <p style="color:#222; font-size:17px; margin-bottom:24px; line-height:1.5;">{lead.get('sales_angle')}</p>
                 
-                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+                <div style="border-top:1px solid #f0f0f0; margin:20px 0;"></div>
                 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
                     <div>
-                        <span style="font-size:12px; font-weight:700;">CONTACT</span>
-                        <div style="color:#222;">{lead.get('contact_info')}</div>
+                        <span style="font-size:11px; font-weight:700; text-transform:uppercase;">Contact</span>
+                        <div style="color:#222; font-size:15px; font-weight:500;">{lead.get('contact_info')}</div>
                     </div>
                     <div>
-                        <span style="font-size:12px; font-weight:700;">NEXT STEP</span>
-                        <div style="color:#222;">{lead.get('follow_up')}</div>
+                        <span style="font-size:11px; font-weight:700; text-transform:uppercase;">Follow Up</span>
+                        <div style="color:#222; font-size:15px; font-weight:500;">{lead.get('follow_up')}</div>
                     </div>
                 </div>
                 
-                <div style="background:#f7f7f7; padding:15px; border-radius:10px;">
-                    <span style="font-size:12px; font-weight:700;">RECOMMENDATION</span>
-                    <div style="color:#222; font-weight:600;">{lead.get('product_pitch')}</div>
+                <div style="background:#f7f7f7; padding:20px; border-radius:12px; margin-top:10px;">
+                    <span style="font-size:11px; font-weight:700; text-transform:uppercase;">Recommendation</span>
+                    <div style="color:#222; font-weight:600; font-size:16px; margin-top:4px;">{lead.get('product_pitch')}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -268,20 +264,25 @@ def view_generate():
                 st.rerun()
 
 def view_pipeline():
-    st.markdown("<h2 style='padding:20px;'>Pipeline</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:20px 0 10px 0;'>Pipeline</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
     
     if not all_leads:
-        st.info("No leads yet.")
+        st.info("No leads recorded yet.")
         
     for lead in all_leads:
+        # Styled list item
         with st.expander(f"{lead.get('name')}"):
-            st.write(f"**Strategy:** {lead.get('sales_angle')}")
-            st.write(f"**Product:** {lead.get('product_pitch')}")
-            st.caption(f"Contact: {lead.get('contact_info')}")
+            st.markdown(f"""
+                <div style="padding:10px;">
+                    <p style="color:#222; margin-bottom:5px;"><strong>Strategy:</strong> {lead.get('sales_angle')}</p>
+                    <p style="color:#222; margin-bottom:5px;"><strong>Product:</strong> {lead.get('product_pitch')}</p>
+                    <p style="font-size:13px; margin-top:10px;">{lead.get('contact_info')}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
 def view_analytics():
-    st.markdown("<h2 style='padding:20px;'>Analytics</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:20px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
     if not all_leads:
         st.warning("No data.")
@@ -291,37 +292,50 @@ def view_analytics():
     
     st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    c1.metric("Leads", len(all_leads))
+    c1.metric("Total Leads", len(all_leads))
     try: top = df['product_pitch'].mode()[0]
     except: top = "-"
     c2.metric("Top Product", top)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 5. MAIN ROUTER & NAV
+# 5. MAIN ROUTER
 # ==========================================
 if not api_key:
     st.error("⚠️ API Key Missing.")
     st.stop()
 
-# Content Area
-if st.session_state.active_tab == "generate":
-    view_generate()
-elif st.session_state.active_tab == "pipeline":
-    view_pipeline()
-elif st.session_state.active_tab == "analytics":
-    view_analytics()
+# Content
+if st.session_state.active_tab == "generate": view_generate()
+elif st.session_state.active_tab == "pipeline": view_pipeline()
+elif st.session_state.active_tab == "analytics": view_analytics()
 
-# Spacer to prevent content being hidden behind nav
+# Spacer for bottom nav
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# NAVIGATION BAR (MUST BE LAST)
-# We use a container to group the buttons, and CSS forces them horizontal
+# --- NAVIGATION BAR (The "Floating Pill") ---
+# We use a container and columns, but the CSS .nav-container class handles the layout
+nav_col1, nav_col2, nav_col3 = st.columns(3)
 with st.container():
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("Generate", key="nav_gen"): st.session_state.active_tab = "generate"; st.rerun()
-    with c2:
-        if st.button("Leads", key="nav_pipe"): st.session_state.active_tab = "pipeline"; st.rerun()
-    with c3:
-        if st.button("Analytics", key="nav_an"): st.session_state.active_tab = "analytics"; st.rerun()
+    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+    
+    # We create 3 columns inside the nav container logic
+    # Note: Streamlit buttons must be created in Python, but we use CSS to position them
+    # We use a unique key for each button to track state
+    
+    # Button 1: Generate
+    if nav_col1.button("🎙️ Generate", key="nav_gen", use_container_width=True): 
+        st.session_state.active_tab = "generate"
+        st.rerun()
+        
+    # Button 2: Leads
+    if nav_col2.button("📂 Leads", key="nav_leads", use_container_width=True): 
+        st.session_state.active_tab = "pipeline"
+        st.rerun()
+
+    # Button 3: Analytics
+    if nav_col3.button("📊 Analytics", key="nav_an", use_container_width=True): 
+        st.session_state.active_tab = "analytics"
+        st.rerun()
+        
+    st.markdown('</div>', unsafe_allow_html=True)
