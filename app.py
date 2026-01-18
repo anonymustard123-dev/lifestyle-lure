@@ -22,7 +22,7 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
 
 # ==========================================
-# 2. AIRBNB-STYLE CSS (Final Mobile Fixes)
+# 2. AIRBNB-STYLE CSS (Mobile Horizontal Force)
 # ==========================================
 st.markdown("""
     <style>
@@ -35,90 +35,86 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- MICROPHONE FIX (Rounded Box, Grey Background) --- */
+        /* --- MICROPHONE FIX --- */
         [data-testid="stAudioInput"] {
-            border-radius: 12px !important;
+            border-radius: 16px !important;
             border: 1px solid #e0e0e0 !important;
             background-color: #f7f7f7 !important;
             padding: 10px !important;
             box-shadow: none !important;
             color: #222 !important;
         }
-        /* Nuke internal black backgrounds */
         [data-testid="stAudioInput"] * {
             background-color: transparent !important;
             color: #222 !important;
         }
-        /* Icon Color */
         [data-testid="stAudioInput"] svg {
             fill: #FF385C !important;
         }
 
-        /* --- FIXED BOTTOM NAV BAR (FULL WIDTH FOOTER) --- */
+        /* --- FIXED BOTTOM NAV BAR (THE CRITICAL FIX) --- */
         .nav-fixed-container {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
             background: #ffffff;
-            border-top: 1px solid #ebebeb;
+            border-top: 1px solid #f2f2f2;
             z-index: 999999;
-            padding: 10px 0 25px 0; /* Extra padding for iOS Home Bar */
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
+            padding: 10px 0 20px 0; /* iOS Home bar spacing */
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
         }
 
-        /* --- BUTTON STYLING STRATEGY --- */
-        
-        /* 1. DEFAULT BUTTONS (Used for Nav) -> Force Transparent/Grey */
-        button[kind="secondary"] {
+        /* --- MOBILE COLUMN OVERRIDE --- 
+           This explicitly targets the columns inside our footer and forces them 
+           to stay horizontal (row) even on small screens. 
+        */
+        @media (max-width: 640px) {
+            /* Force the container of the buttons to be a horizontal row */
+            .nav-fixed-container [data-testid="stHorizontalBlock"] {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 5px !important;
+            }
+            
+            /* Force the columns themselves to share width equally */
+            .nav-fixed-container [data-testid="column"] {
+                width: 33.33% !important;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
+        }
+
+        /* --- NAV BUTTON STYLING (Pill Look) --- */
+        .nav-btn button {
             background-color: transparent !important;
             color: #b0b0b0 !important;
             border: none !important;
-            box-shadow: none !important;
-            font-size: 11px !important;
+            border-radius: 0 !important;
+            font-size: 10px !important;
             font-weight: 600 !important;
             text-transform: uppercase !important;
-        }
-        button[kind="secondary"]:hover {
-            color: #FF385C !important;
-            background-color: transparent !important;
-            border: none !important;
-        }
-        button[kind="secondary"]:focus, button[kind="secondary"]:active {
-            color: #FF385C !important;
-            background-color: transparent !important;
-            outline: none !important;
-            border: none !important;
+            letter-spacing: 0.5px !important;
+            padding: 10px 0 !important;
+            box-shadow: none !important;
+            height: auto !important;
         }
         
-        /* 2. PRIMARY BUTTONS (Used for Actions) -> Salmon */
-        button[kind="primary"] {
-            background-color: #FF385C !important;
-            color: white !important;
-            border-radius: 8px !important;
-            padding: 12px 24px !important;
-            font-weight: 600 !important;
-            border: none !important;
-            height: 48px !important;
-            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important;
-        }
-        button[kind="primary"]:hover {
-            background-color: #d90b3e !important;
-        }
-
-        /* 3. ACTIVE NAV STATE (Hack via CSS class injection) */
+        /* Active State - Adds the Salmon Color */
         .nav-active button {
             color: #FF385C !important;
-            font-weight: 700 !important;
+            background-color: #FFF0F3 !important; /* Very light pink background pill */
+            border-radius: 20px !important;
+        }
+        
+        .nav-btn button:hover {
+            color: #FF385C !important;
         }
 
         /* --- CARDS & UI --- */
         .airbnb-card {
             background: white;
-            border-radius: 16px;
+            border-radius: 20px;
             box-shadow: 0 6px 20px rgba(0,0,0,0.06);
             padding: 24px;
             margin-bottom: 24px;
@@ -127,15 +123,27 @@ st.markdown("""
         
         .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
         .card-subtitle { font-size: 13px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
-
-        /* Force Mobile Horizontal Layout for Columns */
-        @media (max-width: 640px) {
-            [data-testid="stHorizontalBlock"] {
-                gap: 0px !important;
-            }
-            [data-testid="column"] {
-                min-width: 0 !important;
-            }
+        
+        /* --- PRIMARY ACTION BUTTONS --- */
+        .primary-btn button {
+            background-color: #FF385C !important;
+            color: white !important;
+            border-radius: 12px !important;
+            padding: 12px 24px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            height: 50px !important;
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important;
+        }
+        
+        /* --- SECONDARY BUTTONS --- */
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #222 !important;
+            border: 1px solid #e0e0e0 !important;
+            box-shadow: none !important;
+            border-radius: 12px !important;
+            height: 50px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -211,7 +219,6 @@ def view_generate():
             </div>
         """, unsafe_allow_html=True)
         
-        # Audio Input
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         
         st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:10px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
@@ -247,13 +254,13 @@ def view_generate():
 
         c1, c2 = st.columns(2)
         with c1:
-            # Use Primary for Save
+            st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
             vcf = create_vcard(lead)
             safe_name = lead.get('name').strip().replace(" ", "_")
-            st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
+            st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         with c2:
-            # New Lead (Standard/Secondary button which is outlined/transparent by our CSS, we add a border via Markdown or just leave minimal)
-            if st.button("New Lead", use_container_width=True): # Default type is secondary
+            if st.button("New Lead", type="secondary", use_container_width=True):
                 st.session_state.generated_lead = None
                 st.rerun()
 
@@ -285,7 +292,7 @@ def view_analytics():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 5. MAIN ROUTER
+# 5. MAIN ROUTER & NAV
 # ==========================================
 if not api_key: st.error("⚠️ API Key Missing."); st.stop()
 
@@ -295,15 +302,17 @@ elif st.session_state.active_tab == "analytics": view_analytics()
 
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# --- NAVIGATION BAR (Full Width Footer) ---
+# --- NAVIGATION BAR (Mobile Optimized) ---
 with st.container():
+    # We wrap the columns in a styling div that our CSS targets to FORCE horizontal layout
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
+    
     c1, c2, c3 = st.columns(3)
     
     def nav_btn(col, label, target):
         with col:
             is_active = st.session_state.active_tab == target
-            cls = "nav-active" if is_active else ""
+            cls = "nav-active" if is_active else "nav-btn"
             st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
             if st.button(label, key=f"nav_{target}", use_container_width=True):
                 st.session_state.active_tab = target
