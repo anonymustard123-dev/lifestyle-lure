@@ -22,7 +22,7 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
 
 # ==========================================
-# 2. AIRBNB-STYLE CSS (Mobile Forced Horizontal)
+# 2. AIRBNB-STYLE CSS (The "Nuclear" Fixes)
 # ==========================================
 st.markdown("""
     <style>
@@ -35,63 +35,71 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- AUDIO RECORDER (ROUNDED BOX STYLE) --- */
+        /* --- MICROPHONE FIX (ROUNDED BOX + NO BLACK SHADING) --- */
         [data-testid="stAudioInput"] {
-            border-radius: 12px !important; /* Rounded Box, not Pill */
+            border-radius: 16px !important;
             border: 1px solid #e0e0e0 !important;
-            background-color: #f7f7f7 !important; /* Light Grey Background */
+            background-color: #f7f7f7 !important; /* Light Grey */
             padding: 10px !important;
             box-shadow: none !important;
-        }
-        
-        /* Fix the ugly black audio player inside */
-        [data-testid="stAudioInput"] > div > div {
-            background-color: #f7f7f7 !important; /* Match container */
             color: #222 !important;
         }
-        audio {
-            background-color: #f7f7f7 !important;
+        
+        /* This targets EVERY internal element of the audio recorder to remove black backgrounds */
+        [data-testid="stAudioInput"] * {
+            background-color: transparent !important;
+            color: #222 !important;
+        }
+        
+        /* Specific fix for the start/stop icon colors */
+        [data-testid="stAudioInput"] svg {
+            fill: #FF385C !important;
         }
 
         /* --- FIXED BOTTOM NAV BAR (FORCED HORIZONTAL) --- */
-        .nav-container {
+        /* The container for the nav */
+        .nav-fixed-container {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            max-width: 400px;
             background: #ffffff;
-            border-top: 1px solid #ebebeb;
+            border: 1px solid #ebebeb;
+            border-radius: 30px; /* Pill Shape Container */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             z-index: 999999;
-            padding: 10px 0 25px 0; /* Extra padding at bottom for iPhone home bar */
-            display: flex;
-            justify-content: space-around; /* Distribute evenly */
-            align-items: center;
+            padding: 5px;
         }
 
-        /* The buttons themselves */
-        .nav-btn {
-            background: transparent !important;
-            border: none !important;
-            color: #b0b0b0 !important;
-            font-size: 11px !important;
-            font-weight: 600 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.5px !important;
-            padding: 8px 0 !important;
-            cursor: pointer;
-            text-align: center;
-            flex: 1; /* Grow to fill space */
+        /* CRITICAL MOBILE FIX: Force Columns to stay in a row */
+        @media (max-width: 640px) {
+            /* Target the specific horizontal block inside our nav container */
+            [data-testid="stHorizontalBlock"] {
+                flex-direction: row !important; /* Force Horizontal */
+                flex-wrap: nowrap !important;
+                gap: 5px !important;
+            }
+            
+            /* Force columns to split width equally and NOT stack */
+            [data-testid="column"] {
+                width: 33.33% !important;
+                flex: 1 1 auto !important;
+                min-width: 50px !important;
+            }
         }
-        
-        .nav-btn:hover { color: #FF385C !important; }
-        
-        /* Active State */
-        .nav-active { color: #FF385C !important; }
+
+        /* Nav Buttons Styling */
+        div.stButton > button {
+            box-shadow: none;
+            transition: 0.2s;
+        }
 
         /* --- CARDS & UI --- */
         .airbnb-card {
             background: white;
-            border-radius: 16px;
+            border-radius: 20px;
             box-shadow: 0 6px 20px rgba(0,0,0,0.06);
             padding: 24px;
             margin-bottom: 24px;
@@ -99,28 +107,44 @@ st.markdown("""
         }
         
         .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
-        .card-subtitle { font-size: 14px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
+        .card-subtitle { font-size: 13px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
         
-        /* --- PRIMARY BUTTONS (Salmon) --- */
-        div.stButton > button {
-            background-color: #FF385C;
-            color: white;
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-weight: 600;
-            border: none;
-            width: 100%;
-            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2);
+        /* --- PRIMARY ACTION BUTTONS (Salmon) --- */
+        .primary-btn button {
+            background-color: #FF385C !important;
+            color: white !important;
+            border-radius: 12px !important;
+            padding: 12px 24px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            height: 50px !important;
         }
-        div.stButton > button:hover { background-color: #d90b3e; color: white; }
         
-        /* --- SECONDARY BUTTONS (Outline) --- */
-        button[kind="secondary"] {
+        /* --- NAV BUTTONS (Ghost/Outline style inside the nav) --- */
+        /* We target buttons inside the nav container specifically */
+        .nav-btn button {
             background-color: transparent !important;
-            color: #222 !important;
-            border: 1px solid #222 !important;
-            box-shadow: none !important;
+            color: #717171 !important;
+            border: none !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            height: 40px !important;
+            padding: 0 !important;
         }
+        .nav-btn button:hover {
+            color: #FF385C !important;
+            background-color: #fff0f3 !important;
+            border-radius: 20px !important;
+        }
+        
+        /* Active Nav State Style */
+        .nav-active button {
+            color: #FF385C !important;
+            background-color: #fff0f3 !important;
+            border-radius: 20px !important;
+            font-weight: 700 !important;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -190,16 +214,16 @@ def view_generate():
     if not st.session_state.generated_lead:
         # Empty State
         st.markdown("""
-            <div style="text-align: center; padding: 40px 20px;">
+            <div style="text-align: center; padding: 60px 20px;">
                 <h2 style="font-size: 32px; margin-bottom: 8px;">New Lead</h2>
                 <p style="font-size: 16px;">Capture intelligence instantly.</p>
             </div>
         """, unsafe_allow_html=True)
         
-        # Audio Input (Standard Box Style)
+        # Audio Input
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         
-        st.markdown("<p style='text-align:center; font-size:12px; color:#aaa; margin-top:10px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:15px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
 
         if audio_val:
             with st.spinner("Processing..."):
@@ -241,12 +265,22 @@ def view_generate():
             </div>
         """, unsafe_allow_html=True)
 
+        # Primary Buttons using the custom class hack via container wrapper is hard in streamlit
+        # So we use standard calls but target them via the .primary-btn class applied to a parent div if possible
+        # Streamlit doesn't allow wrapping buttons in divs easily. We rely on the global CSS override for div.stButton > button
+        # which is currently set to the primary salmon color.
+        
         c1, c2 = st.columns(2)
         with c1:
+            # We wrap this in a unique container if we wanted specific styling, but global primary is fine here
+            st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
             vcf = create_vcard(lead)
             safe_name = lead.get('name').strip().replace(" ", "_")
             st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         with c2:
+            # For the secondary button (New Lead), we need a way to override the Global Salmon color.
+            # We can use the 'type="secondary"' attribute which we styled in CSS to be outlined.
             if st.button("New Lead", type="secondary", use_container_width=True):
                 st.session_state.generated_lead = None
                 st.rerun()
@@ -286,13 +320,13 @@ def view_analytics():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 5. MAIN ROUTER & CUSTOM NAV
+# 5. MAIN ROUTER
 # ==========================================
 if not api_key:
     st.error("⚠️ API Key Missing.")
     st.stop()
 
-# Content Area
+# Content
 if st.session_state.active_tab == "generate": view_generate()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
@@ -300,29 +334,28 @@ elif st.session_state.active_tab == "analytics": view_analytics()
 # Spacer for nav
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# --- CUSTOM HTML NAVIGATION ---
-# This uses Streamlit columns but relies on the CSS 'nav-container' class to force fixed positioning
-# We use Python buttons to trigger state changes, but CSS positions them horizontally.
+# --- NAVIGATION BAR (Mobile Optimized) ---
+# We inject a fixed container at the bottom
 with st.container():
-    st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
+    st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
     
-    # Generate Button
-    with c1:
-        if st.button("Generate", key="nav_gen", use_container_width=True): 
-            st.session_state.active_tab = "generate"
-            st.rerun()
-            
-    # Leads Button
-    with c2:
-        if st.button("Leads", key="nav_leads", use_container_width=True): 
-            st.session_state.active_tab = "pipeline"
-            st.rerun()
+    # We use Streamlit columns inside this container
+    # The CSS @media query above forces these to be horizontal on mobile
+    nav_c1, nav_c2, nav_c3 = st.columns(3)
+    
+    # Helper to create nav buttons with active state styling
+    def nav_button(col, label, key, target_tab):
+        with col:
+            # Apply 'nav-active' class if this is the current tab
+            active_class = "nav-active" if st.session_state.active_tab == target_tab else "nav-btn"
+            st.markdown(f'<div class="{active_class}">', unsafe_allow_html=True)
+            if st.button(label, key=key, use_container_width=True):
+                st.session_state.active_tab = target_tab
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    # Analytics Button
-    with c3:
-        if st.button("Analytics", key="nav_an", use_container_width=True): 
-            st.session_state.active_tab = "analytics"
-            st.rerun()
+    nav_button(nav_c1, "Generate", "nav_gen", "generate")
+    nav_button(nav_c2, "Leads", "nav_pipe", "pipeline")
+    nav_button(nav_c3, "Analytics", "nav_an", "analytics")
             
     st.markdown('</div>', unsafe_allow_html=True)
