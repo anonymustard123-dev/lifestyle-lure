@@ -22,7 +22,7 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
 
 # ==========================================
-# 2. AIRBNB-STYLE CSS (Mobile Overflow Fix)
+# 2. AIRBNB-STYLE CSS (Fixes for Overflow & Colors)
 # ==========================================
 st.markdown("""
     <style>
@@ -58,18 +58,18 @@ st.markdown("""
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 85%; /* Reduced from 95% to prevent edge touching */
-            max-width: 380px; /* Cap width for cleaner look */
+            width: 90vw; /* Use Viewport Width to prevent overflow */
+            max-width: 380px;
             background: #ffffff;
             border: 1px solid #f0f0f0;
             border-radius: 30px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* Lighter shadow */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             z-index: 999999;
-            padding: 5px 10px; /* Add internal padding */
+            padding: 8px 5px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-sizing: border-box; /* Crucial for preventing overflow */
+            box-sizing: border-box;
         }
 
         /* FORCE HORIZONTAL LAYOUT ON MOBILE */
@@ -83,18 +83,19 @@ st.markdown("""
             
             [data-testid="column"] {
                 width: 33.33% !important;
-                flex: 1 1 0px !important; /* Allow shrinking */
-                min-width: 0 !important; /* Allow shrinking */
+                flex: 1 1 0px !important;
+                min-width: 0 !important;
                 padding: 0 !important;
             }
         }
 
-        /* --- NAV BUTTONS (CLEANER, NO BLACK SHADING) --- */
+        /* --- NAV BUTTONS (COLOR FIX) --- */
+        /* Target the button element explicitly to override dark mode defaults */
         .nav-btn button {
-            background-color: transparent !important;
-            color: #b0b0b0 !important; /* Light Grey Text */
+            background-color: #ffffff !important; /* Force White Background */
+            color: #717171 !important; /* Light Grey Text */
             border: none !important;
-            font-size: 10px !important; /* Smaller font */
+            font-size: 11px !important;
             font-weight: 600 !important;
             height: auto !important;
             padding: 8px 0 !important;
@@ -105,21 +106,22 @@ st.markdown("""
         
         .nav-btn button:hover {
             color: #FF385C !important;
-            background-color: transparent !important; /* No background on hover */
+            background-color: #ffffff !important;
         }
         
-        .nav-btn button:active, .nav-btn button:focus {
+        /* Remove focus outline */
+        .nav-btn button:focus, .nav-btn button:active {
             color: #FF385C !important;
-            background-color: transparent !important;
-            outline: none !important;
+            background-color: #ffffff !important;
             border: none !important;
+            outline: none !important;
             box-shadow: none !important;
         }
         
         /* Active Nav State */
         .nav-active button {
             color: #FF385C !important;
-            background-color: transparent !important;
+            background-color: #ffffff !important;
         }
         
         /* --- CARDS & UI --- */
@@ -144,6 +146,14 @@ st.markdown("""
             font-weight: 600 !important;
             border: none !important;
             height: 50px !important;
+        }
+        
+        /* --- SECONDARY BUTTONS --- */
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #222 !important;
+            border: 1px solid #222 !important;
+            box-shadow: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -302,7 +312,7 @@ elif st.session_state.active_tab == "analytics": view_analytics()
 
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# --- NAVIGATION BAR (Mobile Optimized) ---
+# --- NAVIGATION BAR ---
 with st.container():
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
