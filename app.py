@@ -5,10 +5,9 @@ import os
 import json
 import pandas as pd
 from datetime import datetime
-import re
 
 # ==========================================
-# 1. CONFIG & CSS
+# 1. CONFIG & STATE MANAGEMENT
 # ==========================================
 st.set_page_config(
     page_title="The Closer", 
@@ -17,175 +16,169 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Styling: Minimalist Luxury
+# Initialize Session State
+if 'active_tab' not in st.session_state: st.session_state.active_tab = "generate"
+if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
+if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
+
+# ==========================================
+# 2. AIRBNB-STYLE CSS (The "Secret Sauce")
+# ==========================================
 st.markdown("""
     <style>
-        /* --- GLOBAL THEME --- */
-        .stApp { background-color: #000000; color: #e0e0e0; font-family: 'Helvetica Neue', sans-serif; }
+        /* --- RESET & BASICS --- */
+        .stApp { background-color: #ffffff; color: #222222; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif; }
         [data-testid="stHeader"] { display: none; }
         
-        /* --- NAVIGATION TABS --- */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 20px;
-            justify-content: center;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-        }
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            white-space: pre-wrap;
-            background-color: transparent;
-            border-radius: 4px;
-            color: #666;
-            font-size: 14px;
-            font-weight: 600;
-            border: none;
-        }
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {
-            color: #d4af37;
-            border-bottom: 2px solid #d4af37;
-        }
-
         /* --- TYPOGRAPHY --- */
-        h1, h2, h3 { color: #ffffff !important; font-weight: 300; letter-spacing: 1px; }
-        p, label, span { color: #cccccc; }
-        div[data-testid="stMarkdownContainer"] p { font-size: 1rem; line-height: 1.5; }
-
-        /* --- CARD COMPONENTS --- */
-        .dossier-container {
-            background: linear-gradient(180deg, #111 0%, #0a0a0a 100%);
-            border: 1px solid #333;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-            margin-top: 20px;
+        h1, h2, h3 { color: #222222 !important; font-weight: 600 !important; }
+        p, label, span, div { color: #717171; }
+        
+        /* --- HIDE DEFAULT STREAMLIT ELEMENTS --- */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        
+        /* --- BOTTOM NAVIGATION BAR --- */
+        .nav-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background-color: white;
+            border-top: 1px solid #ebebeb;
+            z-index: 9999;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: 10px; /* Safe area for mobile */
         }
         
-        .section-header {
-            color: #d4af37;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
-            margin-top: 20px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
+        /* Style the Streamlit buttons inside the columns to look like Nav Icons */
+        div[data-testid="column"] button {
+            background-color: transparent !important;
+            border: none !important;
+            color: #717171 !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            padding: 0px !important;
+            margin-top: 5px !important;
+        }
+        
+        div[data-testid="column"] button:hover {
+            color: #FF385C !important; /* Airbnb Red */
+        }
+        
+        div[data-testid="column"] button:focus {
+            color: #FF385C !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
 
-        .hero-text {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-            margin: 0;
-            padding: 0;
-            line-height: 1.1;
+        /* --- CARDS (DOSSIER STYLE) --- */
+        .airbnb-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid #dddddd;
         }
-
-        .strategy-text {
-            font-style: italic;
-            color: #aaa;
-            margin-bottom: 20px;
+        
+        .card-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 4px;
         }
-
-        /* --- MIC SECTION --- */
-        .mic-container {
+        
+        .card-subtitle {
+            font-size: 16px;
+            color: #717171;
+            margin-bottom: 16px;
+        }
+        
+        .info-row {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 100px 0;
+            justify-content: space-between;
+            border-bottom: 1px solid #ebebeb;
+            padding: 12px 0;
+            font-size: 14px;
+        }
+        
+        .highlight-box {
+            background-color: #F7F7F7;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            font-weight: 600;
+            color: #222;
             text-align: center;
         }
-        .mic-label {
-            margin-top: 20px;
-            font-size: 1.2rem;
-            color: #666;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-        }
 
-        /* --- LEAD LIST ITEM --- */
-        .lead-item {
-            background-color: #111;
-            border: 1px solid #222;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
+        /* --- LIST VIEW --- */
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #ebebeb;
             cursor: pointer;
-            transition: all 0.2s;
         }
-        .lead-item:hover {
-            border-color: #d4af37;
-        }
-
-        /* --- ANALYTICS METRICS --- */
-        div[data-testid="stMetricValue"] {
-            color: #d4af37 !important;
-        }
-        div[data-testid="stMetricLabel"] {
-            color: #888 !important;
+        .list-item:hover {
+            background-color: #f7f7f7;
         }
 
         /* --- BUTTONS --- */
-        /* Primary Button (Save Contact) */
         div.stButton > button {
-            background: #d4af37;
-            color: black;
-            border: none;
-            font-weight: bold;
+            background-color: #FF385C; /* Airbnb Red */
+            color: white;
             border-radius: 8px;
-            padding: 10px 20px;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
             width: 100%;
         }
+        div.stButton > button:hover {
+            background-color: #D50027;
+            color: white;
+        }
         
-        /* Secondary Button Hack */
+        /* Secondary Button (Wireframe style) */
         button[kind="secondary"] {
-            background-color: #111 !important;
-            color: #d4af37 !important;
-            border: 1px solid #d4af37 !important;
+            background-color: white !important;
+            color: #222 !important;
+            border: 1px solid #222 !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. DATA MANAGER (LOCAL JSON DB)
+# 3. BACKEND LOGIC (AI & DATA)
 # ==========================================
 DB_FILE = "leads_db.json"
+api_key = os.getenv("GOOGLE_API_KEY")
+client = genai.Client(api_key=api_key) if api_key else None
+TEXT_MODEL_ID = "gemini-2.0-flash"
 
 def load_leads():
-    if not os.path.exists(DB_FILE):
-        return []
+    if not os.path.exists(DB_FILE): return []
     try:
-        with open(DB_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
+        with open(DB_FILE, "r") as f: return json.load(f)
+    except: return []
 
 def save_lead(lead_data):
     leads = load_leads()
     lead_data['date'] = datetime.now().strftime("%Y-%m-%d %H:%M")
     leads.insert(0, lead_data)
-    with open(DB_FILE, "w") as f:
-        json.dump(leads, f)
-
-# ==========================================
-# 3. AI LOGIC
-# ==========================================
-api_key = os.getenv("GOOGLE_API_KEY")
-client = None
-if api_key:
-    client = genai.Client(api_key=api_key)
-
-TEXT_MODEL_ID = "gemini-2.0-flash"
+    with open(DB_FILE, "w") as f: json.dump(leads, f)
 
 def clean_json_string(json_str):
     json_str = json_str.strip()
-    if json_str.startswith("```json"):
-        json_str = json_str[7:]
-    if json_str.startswith("```"):
-        json_str = json_str[3:]
-    if json_str.endswith("```"):
-        json_str = json_str[:-3]
+    if json_str.startswith("```json"): json_str = json_str[7:]
+    if json_str.startswith("```"): json_str = json_str[3:]
+    if json_str.endswith("```"): json_str = json_str[:-3]
     return json_str
 
 def process_voice_contact(audio_bytes):
@@ -207,144 +200,158 @@ def process_voice_contact(audio_bytes):
             contents=[types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"), prompt],
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
-        clean_text = clean_json_string(response.text)
-        data = json.loads(clean_text)
-        if isinstance(data, list):
-            if len(data) > 0: data = data[0]
-            else: return {"error": "AI returned an empty list."}
+        data = json.loads(clean_json_string(response.text))
+        if isinstance(data, list): data = data[0] if len(data) > 0 else {"error": "Empty list"}
         return data
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as e: return {"error": str(e)}
 
 def create_vcard(data):
     notes = f"STRATEGY: {data.get('sales_angle','')}\\n\\nPRODUCT: {data.get('product_pitch','')}\\n\\nBG: {data.get('background','')}"
-    vcard = [
-        "BEGIN:VCARD", "VERSION:3.0",
-        f"FN:{data.get('name', 'Lead')}",
-        f"TEL;TYPE=CELL:{data.get('contact_info', '')}",
-        f"NOTE:{notes}", "END:VCARD"
-    ]
+    vcard = ["BEGIN:VCARD", "VERSION:3.0", f"FN:{data.get('name', 'Lead')}", f"TEL;TYPE=CELL:{data.get('contact_info', '')}", f"NOTE:{notes}", "END:VCARD"]
     return "\n".join(vcard)
 
 # ==========================================
-# 4. APP INTERFACE
+# 4. VIEW CONTROLLERS
 # ==========================================
-if not api_key:
-    st.error("⚠️ API Key Missing. Check Railway Variables.")
-    st.stop()
 
-tab_create, tab_leads, tab_analytics = st.tabs(["🎙️ GENERATE LEAD", "📂 PIPELINE", "📊 ANALYTICS"])
-
-# --- TAB 1: GENERATE LEAD ---
-with tab_create:
-    if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
-    
-    if not st.session_state.generated_lead:
-        st.markdown('<div class="mic-container">', unsafe_allow_html=True)
-        audio_val = st.audio_input("Record", label_visibility="collapsed")
-        st.markdown('<div class="mic-label">Generate Lead</div>', unsafe_allow_html=True)
+def render_bottom_nav():
+    # Fixed container at bottom
+    with st.container():
+        st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("🎙️ Generate", key="nav_gen"): st.session_state.active_tab = "generate"
+        with c2:
+            if st.button("📂 Leads", key="nav_pipe"): st.session_state.active_tab = "pipeline"
+        with c3:
+            if st.button("📊 Analytics", key="nav_an"): st.session_state.active_tab = "analytics"
         st.markdown('</div>', unsafe_allow_html=True)
 
+def view_generate():
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 1. EMPTY STATE (Recording)
+    if not st.session_state.generated_lead:
+        st.markdown("""
+            <div style="text-align: center; padding-top: 50px;">
+                <h2 style="font-size: 28px; margin-bottom: 10px;">New Lead</h2>
+                <p>Record your interaction details.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Centered Mic Interface
+        st.markdown("<div style='margin: 40px auto; max-width: 400px;'>", unsafe_allow_html=True)
+        audio_val = st.audio_input("Record", label_visibility="collapsed")
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        st.markdown("<p style='text-align:center; font-size:14px; color:#ccc; text-transform:uppercase; letter-spacing:1px;'>Tap to Record</p>", unsafe_allow_html=True)
+
         if audio_val:
-            with st.spinner("Decrypting signal..."):
+            with st.spinner("Processing Intelligence..."):
                 data = process_voice_contact(audio_val.read())
                 if isinstance(data, dict) and "error" not in data:
                     save_lead(data)
                     st.session_state.generated_lead = data
                     st.rerun()
                 else:
-                    error_msg = data.get('error', 'Unknown Error') if isinstance(data, dict) else "Invalid Data Format"
-                    st.error(f"Analysis Failed: {error_msg}")
+                    st.error(f"Error: {data.get('error')}")
 
+    # 2. RESULT STATE (Dossier Card)
     else:
         lead = st.session_state.generated_lead
         
-        # NOTE: I have removed extra indentation in the HTML string below to prevent Markdown code blocks
         st.markdown(f"""
-<div class="dossier-container">
-<div class="section-header">TARGET IDENTITY</div>
-<h1 class="hero-text">{lead.get('name', 'Unknown').upper()}</h1>
-<p class="strategy-text">{lead.get('sales_angle')}</p>
-<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top:30px;">
-<div>
-<div class="section-header">CONTACT</div>
-<p>{lead.get('contact_info')}</p>
-</div>
-<div>
-<div class="section-header">TIMING</div>
-<p>{lead.get('follow_up')}</p>
-</div>
-</div>
-<div class="section-header">INTELLIGENCE</div>
-<p>{lead.get('background')}</p>
-<div style="background: rgba(212, 175, 55, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; border: 1px solid #d4af37;">
-<span style="color: #d4af37; font-weight: bold; font-size: 0.9rem;">RECOMMENDED: {lead.get('product_pitch').upper()}</span>
-</div>
-</div>
-""", unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
+            <div class="airbnb-card">
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <div>
+                        <div class="card-title">{lead.get('name', 'Unknown Lead')}</div>
+                        <div class="card-subtitle">{lead.get('sales_angle')}</div>
+                    </div>
+                </div>
+                
+                <div class="info-row">
+                    <span>Contact</span>
+                    <span style="color:#222; font-weight:500;">{lead.get('contact_info')}</span>
+                </div>
+                <div class="info-row">
+                    <span>Follow Up</span>
+                    <span style="color:#222; font-weight:500;">{lead.get('follow_up')}</span>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <span style="font-size:12px; font-weight:700; text-transform:uppercase;">Background</span>
+                    <p style="margin-top:5px; font-size:15px; color:#222; line-height:1.4;">{lead.get('background')}</p>
+                </div>
+
+                <div class="highlight-box">
+                    Recommended: {lead.get('product_pitch')}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        c1, c2 = st.columns(2)
+        with c1:
             vcf = create_vcard(lead)
             safe_name = lead.get('name').strip().replace(" ", "_")
-            st.download_button(
-                "SAVE CONTACT", 
-                data=vcf, 
-                file_name=f"{safe_name}.vcf", 
-                mime="text/vcard", 
-                use_container_width=True,
-                type="primary"
-            )
-        with col2:
-            if st.button("NEW LEAD", use_container_width=True, type="secondary"):
+            st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True)
+        with c2:
+            if st.button("New Lead", type="secondary", use_container_width=True):
                 st.session_state.generated_lead = None
                 st.rerun()
 
-# --- TAB 2: PIPELINE ---
-with tab_leads:
-    st.markdown("<br>", unsafe_allow_html=True)
+def view_pipeline():
+    st.markdown("<h2>Pipeline</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
     
     if not all_leads:
-        st.info("Pipeline empty. Record a lead to begin.")
-    
-    for i, lead in enumerate(all_leads):
-        with st.expander(f"{lead.get('name', 'Unknown')}  |  {lead.get('date')}"):
-            # Removed indentation in HTML string here too
+        st.info("No leads recorded yet.")
+        
+    for lead in all_leads:
+        with st.expander(f"{lead.get('name')} - {lead.get('product_pitch')}"):
             st.markdown(f"""
-<div style="padding: 10px; border-left: 3px solid #d4af37; background: #111;">
-<p><strong>Strategy:</strong> {lead.get('sales_angle')}</p>
-<p><strong>Product:</strong> {lead.get('product_pitch')}</p>
-<p><strong>Next Step:</strong> {lead.get('follow_up')}</p>
-<p style="font-size: 0.8rem; color: #666;">{lead.get('contact_info')}</p>
-</div>
-""", unsafe_allow_html=True)
+                <div style="padding: 10px;">
+                    <p><strong>Strategy:</strong> {lead.get('sales_angle')}</p>
+                    <p><strong>Next Step:</strong> {lead.get('follow_up')}</p>
+                    <p style="font-size: 12px; color: #888;">{lead.get('contact_info')}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
-# --- TAB 3: ANALYTICS ---
-with tab_analytics:
-    st.markdown("<br>", unsafe_allow_html=True)
+def view_analytics():
+    st.markdown("<h2>Analytics</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
-    
     if not all_leads:
-        st.info("Record data to generate analytics.")
-    else:
-        df = pd.DataFrame(all_leads)
+        st.warning("Not enough data.")
+        return
         
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total Leads", len(all_leads))
-        
-        try:
-            top_prod = df['product_pitch'].mode()[0]
-        except:
-            top_prod = "N/A"
-        c2.metric("Top Product", top_prod)
-        
-        st.markdown("### Product Demand")
-        if 'product_pitch' in df.columns:
-            chart_data = df['product_pitch'].value_counts()
-            st.bar_chart(chart_data, color="#d4af37")
-        
-        st.markdown("### Pipeline Health")
-        st.progress(min(len(all_leads) * 10, 100), text="Weekly Goal Progress")
+    df = pd.DataFrame(all_leads)
+    
+    st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    c1.metric("Total Leads", len(all_leads))
+    try:
+        top = df['product_pitch'].mode()[0]
+    except: top = "N/A"
+    c2.metric("Top Product", top)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.caption("Product Distribution")
+    if 'product_pitch' in df.columns:
+        st.bar_chart(df['product_pitch'].value_counts(), color="#FF385C")
+
+# ==========================================
+# 5. MAIN ROUTER
+# ==========================================
+if not api_key:
+    st.error("⚠️ API Key Missing.")
+    st.stop()
+
+# Router
+if st.session_state.active_tab == "generate":
+    view_generate()
+elif st.session_state.active_tab == "pipeline":
+    view_pipeline()
+elif st.session_state.active_tab == "analytics":
+    view_analytics()
+
+# Render Floating Nav (Always Last)
+render_bottom_nav()
