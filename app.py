@@ -1,14 +1,14 @@
 import streamlit as st
 from google import genai
 from google.genai import types
-from supabase import create_client, Client
 import os
 import json
 import pandas as pd
 from datetime import datetime
+from supabase import create_client, Client
 
 # ==========================================
-# 1. CONFIG & CSS
+# 1. CONFIG & STATE
 # ==========================================
 st.set_page_config(
     page_title="The Closer", 
@@ -21,29 +21,72 @@ st.set_page_config(
 if 'user' not in st.session_state: st.session_state.user = None
 if 'active_tab' not in st.session_state: st.session_state.active_tab = "generate"
 if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
-if 'auth_mode' not in st.session_state: st.session_state.auth_mode = "login" # login vs signup
 
-# --- AIRBNB STYLE CSS ---
+# ==========================================
+# 2. SUPABASE CONNECTION
+# ==========================================
+# Uses Railway/Env variables. If missing, it safely handles the error.
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        st.error(f"Supabase Connection Error: {e}")
+
+# ==========================================
+# 3. AIRBNB-STYLE CSS (Global + Login Fixes)
+# ==========================================
 st.markdown("""
     <style>
-        /* BASE & TYPOGRAPHY */
-        .stApp { background-color: #ffffff; color: #222222; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+        /* --- RESET & BASICS --- */
+        .stApp { background-color: #ffffff; color: #222222; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif; }
         [data-testid="stHeader"] { display: none; }
         footer {visibility: hidden;}
-        h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         
-        /* MICROPHONE */
+        /* --- TYPOGRAPHY --- */
+        h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
+        p, label, span, div { color: #717171; }
+        
+        /* --- INPUT FIELDS (Global Light Mode Force) --- */
+        /* Forces inputs to be white with grey borders, fixing the "Blacked Out" issue */
+        div[data-baseweb="input"] {
+            background-color: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
+            border-radius: 12px !important;
+            color: #222222 !important;
+        }
+        input {
+            color: #222222 !important;
+            caret-color: #FF385C !important;
+        }
+        /* Fix label colors */
+        .stTextInput label {
+            color: #222222 !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+        }
+
+        /* --- MICROPHONE FIX --- */
         [data-testid="stAudioInput"] {
             border-radius: 16px !important;
             border: 1px solid #e0e0e0 !important;
             background-color: #f7f7f7 !important;
             padding: 10px !important;
             box-shadow: none !important;
+            color: #222 !important;
         }
-        [data-testid="stAudioInput"] * { background-color: transparent !important; }
-        [data-testid="stAudioInput"] svg { fill: #FF385C !important; }
+        [data-testid="stAudioInput"] * {
+            background-color: transparent !important;
+            color: #222 !important;
+        }
+        [data-testid="stAudioInput"] svg {
+            fill: #FF385C !important;
+        }
 
-        /* FIXED NAV BAR */
+        /* --- FIXED BOTTOM NAV BAR --- */
         .nav-fixed-container {
             position: fixed;
             bottom: 0;
@@ -55,13 +98,22 @@ st.markdown("""
             padding: 10px 0 20px 0;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
         }
-        
+
+        /* Force Mobile Horizontal Layout */
         @media (max-width: 640px) {
-            .nav-fixed-container [data-testid="stHorizontalBlock"] { flex-direction: row !important; gap: 5px !important; }
-            .nav-fixed-container [data-testid="column"] { width: 33.33% !important; min-width: 0 !important; }
+            .nav-fixed-container [data-testid="stHorizontalBlock"] {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 5px !important;
+            }
+            .nav-fixed-container [data-testid="column"] {
+                width: 33.33% !important;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
         }
 
-        /* BUTTONS */
+        /* --- NAV BUTTONS --- */
         .nav-btn button {
             background-color: transparent !important;
             color: #b0b0b0 !important;
@@ -69,155 +121,89 @@ st.markdown("""
             font-size: 10px !important;
             font-weight: 600 !important;
             text-transform: uppercase !important;
-            height: auto !important;
+            letter-spacing: 0.5px !important;
             padding: 10px 0 !important;
+            box-shadow: none !important;
+            height: auto !important;
         }
         .nav-active button {
             color: #FF385C !important;
             background-color: #FFF0F3 !important;
             border-radius: 20px !important;
         }
-        .primary-btn button {
+
+        /* --- PRIMARY BUTTONS (Login & Actions) --- */
+        /* Targets buttons that are 'primary' type */
+        button[kind="primary"] {
             background-color: #FF385C !important;
             color: white !important;
             border-radius: 12px !important;
+            padding: 12px 24px !important;
             font-weight: 600 !important;
             border: none !important;
             height: 50px !important;
+            width: 100% !important;
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important;
         }
-        
-        /* AUTH CARDS */
-        .auth-card {
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 40px;
-            border: 1px solid #e0e0e0;
-            border-radius: 24px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-            text-align: center;
+        button[kind="primary"]:hover {
+            background-color: #d90b3e !important;
         }
-        
-        /* INPUT FIELDS */
-        .stTextInput input {
+
+        /* --- SECONDARY BUTTONS --- */
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #222 !important;
+            border: 1px solid #e0e0e0 !important;
+            box-shadow: none !important;
             border-radius: 12px !important;
-            padding: 12px !important;
-            border: 1px solid #b0b0b0 !important;
+            height: 50px !important;
         }
-        
-        /* DOSSIER CARD */
+
+        /* --- CARDS --- */
         .airbnb-card {
             background: white;
             border-radius: 20px;
             box-shadow: 0 6px 20px rgba(0,0,0,0.06);
             padding: 24px;
+            margin-bottom: 24px;
             border: 1px solid #f2f2f2;
-            margin-bottom: 20px;
         }
+        
         .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
         .card-subtitle { font-size: 13px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
+        
+        /* --- TAB STYLING (Login Toggle) --- */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px;
+            background-color: #f7f7f7;
+            padding: 5px;
+            border-radius: 12px;
+            border: none;
+        }
+        .stTabs [data-baseweb="tab"] {
+            background-color: transparent;
+            border-radius: 8px;
+            color: #717171;
+            font-weight: 600;
+            border: none;
+            flex: 1;
+            text-align: center;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background-color: white;
+            color: #222;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. SUPABASE CONNECTION
+# 4. BACKEND LOGIC (AI & DATA)
 # ==========================================
-# Get these from Railway Variables or .env file
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("⚠️ Supabase Credentials Missing. Check Environment Variables.")
-    st.stop()
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
+api_key = os.getenv("GOOGLE_API_KEY")
+client = genai.Client(api_key=api_key) if api_key else None
 TEXT_MODEL_ID = "gemini-2.0-flash"
 
-# ==========================================
-# 3. AUTHENTICATION LOGIC
-# ==========================================
-def render_auth():
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    # Toggle Login/Signup
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Log In", type="primary" if st.session_state.auth_mode == "login" else "secondary", use_container_width=True):
-            st.session_state.auth_mode = "login"
-            st.rerun()
-    with col2:
-        if st.button("Sign Up", type="primary" if st.session_state.auth_mode == "signup" else "secondary", use_container_width=True):
-            st.session_state.auth_mode = "signup"
-            st.rerun()
-
-    st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-    st.markdown(f"<h2>{'Welcome Back' if st.session_state.auth_mode == 'login' else 'Join the Empire'}</h2>", unsafe_allow_html=True)
-    
-    email = st.text_input("Email", key="auth_email")
-    password = st.text_input("Password", type="password", key="auth_pass")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    if st.session_state.auth_mode == "login":
-        if st.button("Log In", use_container_width=True):
-            try:
-                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                st.session_state.user = res.user
-                st.rerun()
-            except Exception as e:
-                st.error(f"Login Failed: {str(e)}")
-    else:
-        if st.button("Create Account", use_container_width=True):
-            try:
-                res = supabase.auth.sign_up({"email": email, "password": password})
-                st.success("Account created! Please check your email to confirm, then log in.")
-                st.session_state.auth_mode = "login"
-            except Exception as e:
-                st.error(f"Signup Failed: {str(e)}")
-                
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# IF NOT LOGGED IN, STOP HERE
-if not st.session_state.user:
-    render_auth()
-    st.stop()
-
-# ==========================================
-# 4. DATA FUNCTIONS (Now Cloud-Native)
-# ==========================================
-def load_leads():
-    """Fetches leads belonging to the logged-in user."""
-    try:
-        user_id = st.session_state.user.id
-        response = supabase.table("leads").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
-        return response.data
-    except Exception as e:
-        st.error(f"Sync Error: {e}")
-        return []
-
-def save_lead(lead_data):
-    """Saves lead to Supabase with User ID."""
-    try:
-        user_id = st.session_state.user.id
-        payload = {
-            "user_id": user_id,
-            "name": lead_data.get('name'),
-            "contact_info": lead_data.get('contact_info'),
-            "background": lead_data.get('background'),
-            "sales_angle": lead_data.get('sales_angle'),
-            "product_pitch": lead_data.get('product_pitch'),
-            "follow_up": lead_data.get('follow_up')
-        }
-        supabase.table("leads").insert(payload).execute()
-        return True
-    except Exception as e:
-        st.error(f"Save Failed: {e}")
-        return False
-
-# ==========================================
-# 5. AI FUNCTIONS
-# ==========================================
 def clean_json_string(json_str):
     json_str = json_str.strip()
     if json_str.startswith("```json"): json_str = json_str[7:]
@@ -255,12 +241,102 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 # ==========================================
-# 6. APP VIEWS
+# 5. DATA MANAGER (SUPABASE HYBRID)
 # ==========================================
-def view_generate():
-    st.markdown(f"<div style='text-align:right; font-size:12px; color:#ccc;'>Logged in as {st.session_state.user.email}</div>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+# If Supabase is connected, we use it. If not, we use local session state for demo.
+def save_lead(lead_data):
+    if not st.session_state.user: return # Should not happen
     
+    lead_data['user_id'] = st.session_state.user.id
+    lead_data['created_at'] = datetime.now().isoformat()
+    
+    if supabase:
+        try:
+            supabase.table("leads").insert(lead_data).execute()
+        except Exception as e:
+            st.error(f"Save Error: {e}")
+    else:
+        # Fallback to local file for demo if supabase isn't set up yet
+        DB_FILE = "leads_db.json"
+        leads = []
+        if os.path.exists(DB_FILE):
+            with open(DB_FILE, "r") as f: leads = json.load(f)
+        leads.insert(0, lead_data)
+        with open(DB_FILE, "w") as f: json.dump(leads, f)
+
+def load_leads():
+    if not st.session_state.user: return []
+    
+    if supabase:
+        try:
+            response = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute()
+            return response.data
+        except: return []
+    else:
+        # Fallback
+        DB_FILE = "leads_db.json"
+        if os.path.exists(DB_FILE):
+            with open(DB_FILE, "r") as f: return json.load(f)
+        return []
+
+# ==========================================
+# 6. LOGIN SCREEN
+# ==========================================
+def login_screen():
+    # Title at the very top
+    st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>The Closer</h1>", unsafe_allow_html=True)
+    
+    # Styled Tabs for Toggle
+    tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
+    
+    with tab_login:
+        st.markdown("<br>", unsafe_allow_html=True)
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_pass")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        if st.button("Log In", type="primary", use_container_width=True):
+            if not supabase:
+                # Mock Login for Demo if no DB
+                st.session_state.user = type('obj', (object,), {'id': 'demo_user', 'email': email})
+                st.rerun()
+            else:
+                try:
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user = res.user
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Login failed: {e}")
+
+    with tab_signup:
+        st.markdown("<br>", unsafe_allow_html=True)
+        email = st.text_input("Email", key="signup_email")
+        password = st.text_input("Password", type="password", key="signup_pass")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        if st.button("Create Account", type="primary", use_container_width=True):
+            if supabase:
+                try:
+                    res = supabase.auth.sign_up({"email": email, "password": password})
+                    st.success("Account created! Check your email or log in.")
+                except Exception as e:
+                    st.error(f"Signup failed: {e}")
+            else:
+                st.warning("Database not connected.")
+
+# ==========================================
+# 7. MAIN APP ROUTER
+# ==========================================
+
+# Check Auth
+if not st.session_state.user:
+    login_screen()
+    st.stop()
+
+# --- APP VIEWS (Only accessible if logged in) ---
+
+def view_generate():
+    st.markdown("<br>", unsafe_allow_html=True)
     if not st.session_state.generated_lead:
         st.markdown("""
             <div style="text-align: center; padding: 40px 20px;">
@@ -268,15 +344,13 @@ def view_generate():
                 <p style="font-size: 16px;">Capture intelligence instantly.</p>
             </div>
         """, unsafe_allow_html=True)
-        
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:10px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
-
         if audio_val:
             with st.spinner("Processing..."):
                 data = process_voice_contact(audio_val.read())
                 if isinstance(data, dict) and "error" not in data:
-                    save_lead(data) # Saves to cloud now
+                    save_lead(data)
                     st.session_state.generated_lead = data
                     st.rerun()
                 else:
@@ -299,16 +373,13 @@ def view_generate():
                 </div>
             </div>
         """, unsafe_allow_html=True)
-
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
             vcf = create_vcard(lead)
             safe_name = lead.get('name').strip().replace(" ", "_")
-            st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
         with c2:
-            if st.button("New Lead", use_container_width=True):
+            if st.button("New Lead", type="secondary", use_container_width=True):
                 st.session_state.generated_lead = None
                 st.rerun()
 
@@ -329,13 +400,6 @@ def view_pipeline():
 def view_analytics():
     st.markdown("<h2 style='padding:20px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
-    
-    # Logout Button (Top Right of Analytics)
-    if st.button("Log Out", key="logout_btn"):
-        supabase.auth.sign_out()
-        st.session_state.user = None
-        st.rerun()
-        
     if not all_leads: st.warning("No data."); return
     df = pd.DataFrame(all_leads)
     st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
@@ -346,23 +410,20 @@ def view_analytics():
     c2.metric("Top Product", top)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ==========================================
-# 7. MAIN ROUTER
-# ==========================================
+# Render View based on Tab
 if st.session_state.active_tab == "generate": view_generate()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# --- NAVIGATION BAR ---
+# --- NAVIGATION BAR (Mobile Optimized) ---
 with st.container():
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     def nav_btn(col, label, target):
         with col:
-            is_active = st.session_state.active_tab == target
-            cls = "nav-active" if is_active else "nav-btn"
+            cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
             st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
             if st.button(label, key=f"nav_{target}", use_container_width=True):
                 st.session_state.active_tab = target
