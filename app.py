@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime
 
 # ==========================================
-# 1. CONFIG & STATE MANAGEMENT
+# 1. CONFIG & STATE
 # ==========================================
 st.set_page_config(
     page_title="The Closer", 
@@ -22,140 +22,126 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
 
 # ==========================================
-# 2. AIRBNB-STYLE CSS (The "Secret Sauce")
+# 2. AIRBNB-STYLE CSS (Mobile Optimized)
 # ==========================================
 st.markdown("""
     <style>
         /* --- RESET & BASICS --- */
-        .stApp { background-color: #ffffff; color: #222222; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif; }
+        .stApp { background-color: #ffffff; color: #222222; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         [data-testid="stHeader"] { display: none; }
         
         /* --- TYPOGRAPHY --- */
-        h1, h2, h3 { color: #222222 !important; font-weight: 600 !important; }
+        h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- HIDE DEFAULT STREAMLIT ELEMENTS --- */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
+        /* --- SLEEK MICROPHONE (Pill Shape) --- */
+        [data-testid="stAudioInput"] {
+            max-width: 400px !important;
+            margin: 0 auto !important; /* Center it */
+            border-radius: 50px !important;
+            border: 1px solid #e0e0e0 !important;
+            background-color: #f7f7f7 !important;
+            overflow: hidden !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        }
+        [data-testid="stAudioInput"] > div {
+            border: none !important;
+            background: transparent !important;
+        }
         
-        /* --- BOTTOM NAVIGATION BAR --- */
-        .nav-container {
+        /* --- FIXED BOTTOM NAV (The "App" Feel) --- */
+        /* This targets the LAST container in the app to force it to the bottom */
+        div[data-testid="stVerticalBlock"] > div:last-child {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 80px;
-            background-color: white;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             border-top: 1px solid #ebebeb;
-            z-index: 9999;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding-bottom: 10px; /* Safe area for mobile */
+            z-index: 99999;
+            padding-bottom: 20px; /* Safe area for iPhone home bar */
+            padding-top: 10px;
+        }
+
+        /* FORCE HORIZONTAL ROW ON MOBILE */
+        div[data-testid="stVerticalBlock"] > div:last-child [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important; /* Forces side-by-side */
+            gap: 0px !important;
+        }
+
+        /* FORCE COLUMNS TO SHARE WIDTH EQUALLY */
+        div[data-testid="stVerticalBlock"] > div:last-child [data-testid="column"] {
+            width: 33.33% !important;
+            flex: 1 !important;
+            min-width: 0 !important;
         }
         
-        /* Style the Streamlit buttons inside the columns to look like Nav Icons */
-        div[data-testid="column"] button {
+        /* STYLE THE NAV BUTTONS */
+        div[data-testid="stVerticalBlock"] > div:last-child button {
             background-color: transparent !important;
             border: none !important;
-            color: #717171 !important;
-            font-size: 12px !important;
+            color: #b0b0b0 !important;
+            font-size: 11px !important;
             font-weight: 600 !important;
-            padding: 0px !important;
-            margin-top: 5px !important;
-        }
-        
-        div[data-testid="column"] button:hover {
-            color: #FF385C !important; /* Airbnb Red */
-        }
-        
-        div[data-testid="column"] button:focus {
-            color: #FF385C !important;
-            outline: none !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 10px 0 !important;
+            margin: 0 !important;
+            width: 100%;
             box-shadow: none !important;
         }
+        
+        div[data-testid="stVerticalBlock"] > div:last-child button:hover {
+            color: #FF385C !important;
+        }
+        
+        div[data-testid="stVerticalBlock"] > div:last-child button:focus {
+            color: #FF385C !important;
+        }
 
-        /* --- CARDS (DOSSIER STYLE) --- */
+        /* --- CARDS & UI --- */
         .airbnb-card {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            border-radius: 16px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
             padding: 24px;
             margin-bottom: 24px;
-            border: 1px solid #dddddd;
+            border: 1px solid #f0f0f0;
         }
         
-        .card-title {
-            font-size: 22px;
-            font-weight: 600;
-            color: #222;
-            margin-bottom: 4px;
-        }
+        .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
+        .card-subtitle { font-size: 16px; color: #FF385C; font-weight: 600; margin-bottom: 20px; }
         
-        .card-subtitle {
-            font-size: 16px;
-            color: #717171;
-            margin-bottom: 16px;
-        }
-        
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #ebebeb;
-            padding: 12px 0;
-            font-size: 14px;
-        }
-        
-        .highlight-box {
-            background-color: #F7F7F7;
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 16px;
-            font-weight: 600;
-            color: #222;
-            text-align: center;
-        }
-
-        /* --- LIST VIEW --- */
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 0;
-            border-bottom: 1px solid #ebebeb;
-            cursor: pointer;
-        }
-        .list-item:hover {
-            background-color: #f7f7f7;
-        }
-
-        /* --- BUTTONS --- */
+        /* --- PRIMARY BUTTONS (Airbnb Red) --- */
         div.stButton > button {
-            background-color: #FF385C; /* Airbnb Red */
+            background-color: #FF385C;
             color: white;
             border-radius: 8px;
-            padding: 14px 24px;
-            font-size: 16px;
+            padding: 12px 24px;
             font-weight: 600;
             border: none;
             width: 100%;
+            box-shadow: 0 2px 10px rgba(255, 56, 92, 0.2);
         }
         div.stButton > button:hover {
-            background-color: #D50027;
+            background-color: #d90b3e;
             color: white;
         }
         
-        /* Secondary Button (Wireframe style) */
+        /* --- SECONDARY BUTTONS (Outline) --- */
         button[kind="secondary"] {
-            background-color: white !important;
+            background-color: transparent !important;
             color: #222 !important;
-            border: 1px solid #222 !important;
+            border: 2px solid #222 !important;
+            box-shadow: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. BACKEND LOGIC (AI & DATA)
+# 3. BACKEND LOGIC
 # ==========================================
 DB_FILE = "leads_db.json"
 api_key = os.getenv("GOOGLE_API_KEY")
@@ -184,7 +170,7 @@ def clean_json_string(json_str):
 def process_voice_contact(audio_bytes):
     prompt = """
     Listen to this sales voice memo. Extract these fields.
-    Return ONLY raw JSON (no markdown formatting):
+    Return ONLY raw JSON:
     {
         "name": "Full Name",
         "contact_info": "Phone/Email",
@@ -211,43 +197,28 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 # ==========================================
-# 4. VIEW CONTROLLERS
+# 4. VIEWS
 # ==========================================
-
-def render_bottom_nav():
-    # Fixed container at bottom
-    with st.container():
-        st.markdown('<div class="nav-container">', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button("🎙️ Generate", key="nav_gen"): st.session_state.active_tab = "generate"
-        with c2:
-            if st.button("📂 Leads", key="nav_pipe"): st.session_state.active_tab = "pipeline"
-        with c3:
-            if st.button("📊 Analytics", key="nav_an"): st.session_state.active_tab = "analytics"
-        st.markdown('</div>', unsafe_allow_html=True)
 
 def view_generate():
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 1. EMPTY STATE (Recording)
     if not st.session_state.generated_lead:
+        # Initial State
         st.markdown("""
-            <div style="text-align: center; padding-top: 50px;">
-                <h2 style="font-size: 28px; margin-bottom: 10px;">New Lead</h2>
-                <p>Record your interaction details.</p>
+            <div style="text-align: center; padding: 40px 20px;">
+                <h2 style="font-size: 32px; margin-bottom: 10px;">New Lead</h2>
+                <p style="font-size: 16px;">Capture intelligence instantly.</p>
             </div>
         """, unsafe_allow_html=True)
         
-        # Centered Mic Interface
-        st.markdown("<div style='margin: 40px auto; max-width: 400px;'>", unsafe_allow_html=True)
+        # Audio Input (Styled by CSS above to be sleek/pill)
         audio_val = st.audio_input("Record", label_visibility="collapsed")
-        st.markdown("</div>", unsafe_allow_html=True)
         
-        st.markdown("<p style='text-align:center; font-size:14px; color:#ccc; text-transform:uppercase; letter-spacing:1px;'>Tap to Record</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-size:12px; color:#aaa; margin-top:10px;'>TAP TO RECORD</p>", unsafe_allow_html=True)
 
         if audio_val:
-            with st.spinner("Processing Intelligence..."):
+            with st.spinner("Processing..."):
                 data = process_voice_contact(audio_val.read())
                 if isinstance(data, dict) and "error" not in data:
                     save_lead(data)
@@ -256,35 +227,32 @@ def view_generate():
                 else:
                     st.error(f"Error: {data.get('error')}")
 
-    # 2. RESULT STATE (Dossier Card)
     else:
+        # Result State
         lead = st.session_state.generated_lead
         
         st.markdown(f"""
             <div class="airbnb-card">
-                <div style="display:flex; justify-content:space-between; align-items:start;">
+                <div class="card-subtitle">SUCCESSFULLY CAPTURED</div>
+                <div class="card-title">{lead.get('name', 'Unknown Lead')}</div>
+                <p style="color:#222; font-size:18px; margin-bottom:20px;">{lead.get('sales_angle')}</p>
+                
+                <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
                     <div>
-                        <div class="card-title">{lead.get('name', 'Unknown Lead')}</div>
-                        <div class="card-subtitle">{lead.get('sales_angle')}</div>
+                        <span style="font-size:12px; font-weight:700;">CONTACT</span>
+                        <div style="color:#222;">{lead.get('contact_info')}</div>
+                    </div>
+                    <div>
+                        <span style="font-size:12px; font-weight:700;">NEXT STEP</span>
+                        <div style="color:#222;">{lead.get('follow_up')}</div>
                     </div>
                 </div>
                 
-                <div class="info-row">
-                    <span>Contact</span>
-                    <span style="color:#222; font-weight:500;">{lead.get('contact_info')}</span>
-                </div>
-                <div class="info-row">
-                    <span>Follow Up</span>
-                    <span style="color:#222; font-weight:500;">{lead.get('follow_up')}</span>
-                </div>
-                
-                <div style="margin-top: 20px;">
-                    <span style="font-size:12px; font-weight:700; text-transform:uppercase;">Background</span>
-                    <p style="margin-top:5px; font-size:15px; color:#222; line-height:1.4;">{lead.get('background')}</p>
-                </div>
-
-                <div class="highlight-box">
-                    Recommended: {lead.get('product_pitch')}
+                <div style="background:#f7f7f7; padding:15px; border-radius:10px;">
+                    <span style="font-size:12px; font-weight:700;">RECOMMENDATION</span>
+                    <div style="color:#222; font-weight:600;">{lead.get('product_pitch')}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -300,52 +268,43 @@ def view_generate():
                 st.rerun()
 
 def view_pipeline():
-    st.markdown("<h2>Pipeline</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:20px;'>Pipeline</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
     
     if not all_leads:
-        st.info("No leads recorded yet.")
+        st.info("No leads yet.")
         
     for lead in all_leads:
-        with st.expander(f"{lead.get('name')} - {lead.get('product_pitch')}"):
-            st.markdown(f"""
-                <div style="padding: 10px;">
-                    <p><strong>Strategy:</strong> {lead.get('sales_angle')}</p>
-                    <p><strong>Next Step:</strong> {lead.get('follow_up')}</p>
-                    <p style="font-size: 12px; color: #888;">{lead.get('contact_info')}</p>
-                </div>
-            """, unsafe_allow_html=True)
+        with st.expander(f"{lead.get('name')}"):
+            st.write(f"**Strategy:** {lead.get('sales_angle')}")
+            st.write(f"**Product:** {lead.get('product_pitch')}")
+            st.caption(f"Contact: {lead.get('contact_info')}")
 
 def view_analytics():
-    st.markdown("<h2>Analytics</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:20px;'>Analytics</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
     if not all_leads:
-        st.warning("Not enough data.")
+        st.warning("No data.")
         return
-        
+    
     df = pd.DataFrame(all_leads)
     
     st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    c1.metric("Total Leads", len(all_leads))
-    try:
-        top = df['product_pitch'].mode()[0]
-    except: top = "N/A"
+    c1.metric("Leads", len(all_leads))
+    try: top = df['product_pitch'].mode()[0]
+    except: top = "-"
     c2.metric("Top Product", top)
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.caption("Product Distribution")
-    if 'product_pitch' in df.columns:
-        st.bar_chart(df['product_pitch'].value_counts(), color="#FF385C")
 
 # ==========================================
-# 5. MAIN ROUTER
+# 5. MAIN ROUTER & NAV
 # ==========================================
 if not api_key:
     st.error("⚠️ API Key Missing.")
     st.stop()
 
-# Router
+# Content Area
 if st.session_state.active_tab == "generate":
     view_generate()
 elif st.session_state.active_tab == "pipeline":
@@ -353,5 +312,16 @@ elif st.session_state.active_tab == "pipeline":
 elif st.session_state.active_tab == "analytics":
     view_analytics()
 
-# Render Floating Nav (Always Last)
-render_bottom_nav()
+# Spacer to prevent content being hidden behind nav
+st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
+
+# NAVIGATION BAR (MUST BE LAST)
+# We use a container to group the buttons, and CSS forces them horizontal
+with st.container():
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("Generate", key="nav_gen"): st.session_state.active_tab = "generate"; st.rerun()
+    with c2:
+        if st.button("Leads", key="nav_pipe"): st.session_state.active_tab = "pipeline"; st.rerun()
+    with c3:
+        if st.button("Analytics", key="nav_an"): st.session_state.active_tab = "analytics"; st.rerun()
