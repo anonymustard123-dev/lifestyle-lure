@@ -22,7 +22,7 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
 
 # ==========================================
-# 2. AIRBNB-STYLE CSS (The "Nuclear" Fixes)
+# 2. AIRBNB-STYLE CSS (Mobile Overflow Fix)
 # ==========================================
 st.markdown("""
     <style>
@@ -35,67 +35,93 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- MICROPHONE FIX (ROUNDED BOX + NO BLACK SHADING) --- */
+        /* --- MICROPHONE FIX --- */
         [data-testid="stAudioInput"] {
             border-radius: 16px !important;
             border: 1px solid #e0e0e0 !important;
-            background-color: #f7f7f7 !important; /* Light Grey */
+            background-color: #f7f7f7 !important;
             padding: 10px !important;
             box-shadow: none !important;
             color: #222 !important;
         }
-        
-        /* This targets EVERY internal element of the audio recorder to remove black backgrounds */
         [data-testid="stAudioInput"] * {
             background-color: transparent !important;
             color: #222 !important;
         }
-        
-        /* Specific fix for the start/stop icon colors */
         [data-testid="stAudioInput"] svg {
             fill: #FF385C !important;
         }
 
-        /* --- FIXED BOTTOM NAV BAR (FORCED HORIZONTAL) --- */
-        /* The container for the nav */
+        /* --- FIXED BOTTOM NAV BAR (OVERFLOW FIX) --- */
         .nav-fixed-container {
             position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 95%;
-            max-width: 400px;
+            width: 85%; /* Reduced from 95% to prevent edge touching */
+            max-width: 380px; /* Cap width for cleaner look */
             background: #ffffff;
-            border: 1px solid #ebebeb;
-            border-radius: 30px; /* Pill Shape Container */
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border: 1px solid #f0f0f0;
+            border-radius: 30px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* Lighter shadow */
             z-index: 999999;
-            padding: 5px;
+            padding: 5px 10px; /* Add internal padding */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box; /* Crucial for preventing overflow */
         }
 
-        /* CRITICAL MOBILE FIX: Force Columns to stay in a row */
+        /* FORCE HORIZONTAL LAYOUT ON MOBILE */
         @media (max-width: 640px) {
-            /* Target the specific horizontal block inside our nav container */
             [data-testid="stHorizontalBlock"] {
-                flex-direction: row !important; /* Force Horizontal */
+                flex-direction: row !important;
                 flex-wrap: nowrap !important;
-                gap: 5px !important;
+                width: 100% !important;
+                gap: 0px !important;
             }
             
-            /* Force columns to split width equally and NOT stack */
             [data-testid="column"] {
                 width: 33.33% !important;
-                flex: 1 1 auto !important;
-                min-width: 50px !important;
+                flex: 1 1 0px !important; /* Allow shrinking */
+                min-width: 0 !important; /* Allow shrinking */
+                padding: 0 !important;
             }
         }
 
-        /* Nav Buttons Styling */
-        div.stButton > button {
-            box-shadow: none;
-            transition: 0.2s;
+        /* --- NAV BUTTONS (CLEANER, NO BLACK SHADING) --- */
+        .nav-btn button {
+            background-color: transparent !important;
+            color: #b0b0b0 !important; /* Light Grey Text */
+            border: none !important;
+            font-size: 10px !important; /* Smaller font */
+            font-weight: 600 !important;
+            height: auto !important;
+            padding: 8px 0 !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+            box-shadow: none !important;
         }
-
+        
+        .nav-btn button:hover {
+            color: #FF385C !important;
+            background-color: transparent !important; /* No background on hover */
+        }
+        
+        .nav-btn button:active, .nav-btn button:focus {
+            color: #FF385C !important;
+            background-color: transparent !important;
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Active Nav State */
+        .nav-active button {
+            color: #FF385C !important;
+            background-color: transparent !important;
+        }
+        
         /* --- CARDS & UI --- */
         .airbnb-card {
             background: white;
@@ -109,7 +135,7 @@ st.markdown("""
         .card-title { font-size: 24px; font-weight: 800; color: #222; margin-bottom: 5px; }
         .card-subtitle { font-size: 13px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
         
-        /* --- PRIMARY ACTION BUTTONS (Salmon) --- */
+        /* --- PRIMARY BUTTONS --- */
         .primary-btn button {
             background-color: #FF385C !important;
             color: white !important;
@@ -119,32 +145,6 @@ st.markdown("""
             border: none !important;
             height: 50px !important;
         }
-        
-        /* --- NAV BUTTONS (Ghost/Outline style inside the nav) --- */
-        /* We target buttons inside the nav container specifically */
-        .nav-btn button {
-            background-color: transparent !important;
-            color: #717171 !important;
-            border: none !important;
-            font-size: 13px !important;
-            font-weight: 500 !important;
-            height: 40px !important;
-            padding: 0 !important;
-        }
-        .nav-btn button:hover {
-            color: #FF385C !important;
-            background-color: #fff0f3 !important;
-            border-radius: 20px !important;
-        }
-        
-        /* Active Nav State Style */
-        .nav-active button {
-            color: #FF385C !important;
-            background-color: #fff0f3 !important;
-            border-radius: 20px !important;
-            font-weight: 700 !important;
-        }
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -212,18 +212,16 @@ def view_generate():
     st.markdown("<br>", unsafe_allow_html=True)
     
     if not st.session_state.generated_lead:
-        # Empty State
         st.markdown("""
-            <div style="text-align: center; padding: 60px 20px;">
+            <div style="text-align: center; padding: 40px 20px;">
                 <h2 style="font-size: 32px; margin-bottom: 8px;">New Lead</h2>
                 <p style="font-size: 16px;">Capture intelligence instantly.</p>
             </div>
         """, unsafe_allow_html=True)
         
-        # Audio Input
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         
-        st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:15px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:10px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
 
         if audio_val:
             with st.spinner("Processing..."):
@@ -236,28 +234,17 @@ def view_generate():
                     st.error(f"Error: {data.get('error')}")
 
     else:
-        # Result Card
         lead = st.session_state.generated_lead
-        
         st.markdown(f"""
             <div class="airbnb-card">
                 <div class="card-subtitle">Intel Captured</div>
                 <div class="card-title">{lead.get('name', 'Unknown Lead')}</div>
                 <p style="color:#222; font-size:18px; margin-bottom:20px;">{lead.get('sales_angle')}</p>
-                
                 <div style="border-top:1px solid #f0f0f0; margin:20px 0;"></div>
-                
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
-                    <div>
-                        <span style="font-size:11px; font-weight:700; text-transform:uppercase;">Contact</span>
-                        <div style="color:#222; font-size:15px; font-weight:500;">{lead.get('contact_info')}</div>
-                    </div>
-                    <div>
-                        <span style="font-size:11px; font-weight:700; text-transform:uppercase;">Follow Up</span>
-                        <div style="color:#222; font-size:15px; font-weight:500;">{lead.get('follow_up')}</div>
-                    </div>
+                    <div><span style="font-size:11px; font-weight:700; text-transform:uppercase;">Contact</span><div style="color:#222; font-size:15px; font-weight:500;">{lead.get('contact_info')}</div></div>
+                    <div><span style="font-size:11px; font-weight:700; text-transform:uppercase;">Follow Up</span><div style="color:#222; font-size:15px; font-weight:500;">{lead.get('follow_up')}</div></div>
                 </div>
-                
                 <div style="background:#f7f7f7; padding:20px; border-radius:12px; margin-top:10px;">
                     <span style="font-size:11px; font-weight:700; text-transform:uppercase;">Recommendation</span>
                     <div style="color:#222; font-weight:600; font-size:16px; margin-top:4px;">{lead.get('product_pitch')}</div>
@@ -265,22 +252,14 @@ def view_generate():
             </div>
         """, unsafe_allow_html=True)
 
-        # Primary Buttons using the custom class hack via container wrapper is hard in streamlit
-        # So we use standard calls but target them via the .primary-btn class applied to a parent div if possible
-        # Streamlit doesn't allow wrapping buttons in divs easily. We rely on the global CSS override for div.stButton > button
-        # which is currently set to the primary salmon color.
-        
         c1, c2 = st.columns(2)
         with c1:
-            # We wrap this in a unique container if we wanted specific styling, but global primary is fine here
             st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
             vcf = create_vcard(lead)
             safe_name = lead.get('name').strip().replace(" ", "_")
             st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
         with c2:
-            # For the secondary button (New Lead), we need a way to override the Global Salmon color.
-            # We can use the 'type="secondary"' attribute which we styled in CSS to be outlined.
             if st.button("New Lead", type="secondary", use_container_width=True):
                 st.session_state.generated_lead = None
                 st.rerun()
@@ -288,10 +267,7 @@ def view_generate():
 def view_pipeline():
     st.markdown("<h2 style='padding:20px 0 10px 0;'>Pipeline</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
-    
-    if not all_leads:
-        st.info("No leads recorded yet.")
-        
+    if not all_leads: st.info("No leads recorded yet.")
     for lead in all_leads:
         with st.expander(f"{lead.get('name')}"):
             st.markdown(f"""
@@ -305,12 +281,8 @@ def view_pipeline():
 def view_analytics():
     st.markdown("<h2 style='padding:20px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
-    if not all_leads:
-        st.warning("No data.")
-        return
-    
+    if not all_leads: st.warning("No data."); return
     df = pd.DataFrame(all_leads)
-    
     st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     c1.metric("Total Leads", len(all_leads))
@@ -322,40 +294,44 @@ def view_analytics():
 # ==========================================
 # 5. MAIN ROUTER
 # ==========================================
-if not api_key:
-    st.error("⚠️ API Key Missing.")
-    st.stop()
+if not api_key: st.error("⚠️ API Key Missing."); st.stop()
 
-# Content
 if st.session_state.active_tab == "generate": view_generate()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
-# Spacer for nav
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
 # --- NAVIGATION BAR (Mobile Optimized) ---
-# We inject a fixed container at the bottom
 with st.container():
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
     
-    # We use Streamlit columns inside this container
-    # The CSS @media query above forces these to be horizontal on mobile
-    nav_c1, nav_c2, nav_c3 = st.columns(3)
-    
-    # Helper to create nav buttons with active state styling
-    def nav_button(col, label, key, target_tab):
-        with col:
-            # Apply 'nav-active' class if this is the current tab
-            active_class = "nav-active" if st.session_state.active_tab == target_tab else "nav-btn"
-            st.markdown(f'<div class="{active_class}">', unsafe_allow_html=True)
-            if st.button(label, key=key, use_container_width=True):
-                st.session_state.active_tab = target_tab
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+    # Generate Button
+    with c1:
+        is_active = st.session_state.active_tab == "generate"
+        st.markdown(f'<div class="nav-btn {"nav-active" if is_active else ""}">', unsafe_allow_html=True)
+        if st.button("Generate", key="nav_gen", use_container_width=True): 
+            st.session_state.active_tab = "generate"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+            
+    # Leads Button
+    with c2:
+        is_active = st.session_state.active_tab == "pipeline"
+        st.markdown(f'<div class="nav-btn {"nav-active" if is_active else ""}">', unsafe_allow_html=True)
+        if st.button("Leads", key="nav_leads", use_container_width=True): 
+            st.session_state.active_tab = "pipeline"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    nav_button(nav_c1, "Generate", "nav_gen", "generate")
-    nav_button(nav_c2, "Leads", "nav_pipe", "pipeline")
-    nav_button(nav_c3, "Analytics", "nav_an", "analytics")
+    # Analytics Button
+    with c3:
+        is_active = st.session_state.active_tab == "analytics"
+        st.markdown(f'<div class="nav-btn {"nav-active" if is_active else ""}">', unsafe_allow_html=True)
+        if st.button("Analytics", key="nav_an", use_container_width=True): 
+            st.session_state.active_tab = "analytics"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
             
     st.markdown('</div>', unsafe_allow_html=True)
