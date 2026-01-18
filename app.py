@@ -122,6 +122,22 @@ st.markdown("""
             font-weight: 400;
         }
 
+        /* --- EARNINGS BALANCE CARD --- */
+        .balance-card {
+            background-color: #f7f7f7;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 15px;
+            border: 1px solid #e0e0e0;
+        }
+        .balance-amount {
+            font-size: 24px;
+            font-weight: 800;
+            color: #222;
+            margin-top: 5px;
+        }
+
         /* --- MICROPHONE FIX --- */
         [data-testid="stAudioInput"] {
             border-radius: 16px !important;
@@ -256,6 +272,38 @@ def fetch_user_profile(user_id):
     except Exception as e:
         print(f"Profile Fetch Error: {e}")
     return None
+
+def calculate_commissions(profile):
+    """
+    Calculates 20% commission by finding all users referred by this profile
+    and summing their successful Stripe payments.
+    """
+    if not STRIPE_SECRET_KEY or not profile or not profile.get('referral_code'):
+        return 0.0
+    
+    try:
+        my_code = profile.get('referral_code')
+        
+        # 1. Find all users I referred
+        referred_users = supabase.table("profiles").select("email").eq("referred_by", my_code).execute()
+        if not referred_users.data:
+            return 0.0
+            
+        referrals_emails = [u['email'] for u in referred_users.data]
+        total_revenue = 0.0
+        
+        # 2. Query Stripe for charges from these emails
+        # Note: We iterate manually to keep it simple for now
+        for email in referrals_emails:
+            charges = stripe.Charge.list(email=email, limit=100) 
+            for charge in charges.data:
+                if charge.paid and not charge.refunded:
+                    total_revenue += (charge.amount / 100) # Convert cents to dollars
+        
+        return round(total_revenue * 0.20, 2) # 20% Commission
+    except Exception as e:
+        print(f"Commission Calc Error: {e}")
+        return 0.0
 
 def check_subscription_status(email):
     if not STRIPE_SECRET_KEY: return True 
@@ -432,8 +480,41 @@ def render_header():
             st.markdown(f"<div style='font-size:12px; color:#888; text-align:center;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
             st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
             
-            # --- REFERRAL SECTION ---
+            # --- REFERRAL & EARNINGS SECTION ---
             if st.session_state.user_profile:
+                # Calculate Earnings
+                earnings = calculate_commissions(st.session_state.user_profile)
+                payout_requested_at = st.session_state.user_profile.get('payout_requested_at')
+
+                # Display Balance
+                st.markdown(f"""
+                    <div class="balance-card">
+                        <div style="font-size:12px; text-transform:uppercase; font-weight:700; color:#888;">Lifetime Earnings</div>
+                        <div class="balance-amount">${earnings:.2f}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                # Payout Request Logic
+                if earnings > 0:
+                    if payout_requested_at:
+                        st.info("Payout Pending review.")
+                    else:
+                        if st.button("Request Payout (PayPal)", use_container_width=True):
+                            # Mark as requested in DB
+                            try:
+                                supabase.table("profiles").update({
+                                    "payout_requested_at": datetime.now().isoformat()
+                                }).eq("id", st.session_state.user.id).execute()
+                                # Update local state immediately for UI feedback
+                                st.session_state.user_profile['payout_requested_at'] = datetime.now().isoformat()
+                                st.success("Request sent!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+                else:
+                    st.caption("Share your link to start earning.")
+
+                # Invite Link
                 my_code = st.session_state.user_profile.get('referral_code', 'N/A')
                 st.markdown(f"**My Invite Link:**")
                 st.code(f"{APP_BASE_URL}?ref={my_code}", language="text")
