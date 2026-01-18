@@ -22,7 +22,7 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'last_audio_bytes' not in st.session_state: st.session_state.last_audio_bytes = None
 
 # ==========================================
-# 2. AIRBNB-STYLE CSS (Mobile Optimized)
+# 2. AIRBNB-STYLE CSS (Refined for Mobile)
 # ==========================================
 st.markdown("""
     <style>
@@ -34,27 +34,27 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- FLOATING CAPSULE RECORDER --- */
+        /* --- FLOATING CAPSULE RECORDER (FIXED BLACK BAR) --- */
         [data-testid="stAudioInput"] {
             max-width: 400px !important;
             margin: 0 auto !important;
             border-radius: 50px !important; /* Pill Shape */
             border: 1px solid #ebebeb !important;
             background-color: #ffffff !important;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
             padding: 5px !important;
         }
         
-        /* Remove the ugly black background on the internal audio player */
-        audio {
+        /* Target the internal audio element to remove default styling and black background */
+        [data-testid="stAudioInput"] audio {
             width: 100% !important;
             height: 40px !important;
             border-radius: 25px !important;
             background-color: #f7f7f7 !important; /* Light grey instead of black */
+            outline: none !important;
         }
 
-        /* --- FIXED BOTTOM NAV BAR --- */
-        /* This forces the nav to stay at the bottom and maintain row layout on mobile */
+        /* --- FIXED BOTTOM NAV BAR (REFINED) --- */
         .nav-container {
             position: fixed;
             bottom: 20px;
@@ -62,40 +62,35 @@ st.markdown("""
             transform: translateX(-50%);
             width: 90%;
             max-width: 400px;
-            background: #ffffff;
+            background: #fafafa !important; /* Subtle off-white background */
             border-radius: 30px; /* Floating Pill Container */
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border: 1px solid #ebebeb;
             z-index: 99999;
-            display: flex;
-            justify-content: space-between; /* Space buttons evenly */
-            padding: 8px 15px;
+            padding: 5px;
         }
 
-        /* Hide the default Streamlit container usually wrapping these buttons */
-        div[data-testid="column"] {
-            flex: 1; /* Force equal width */
+        /* Style for the columns holding the buttons */
+        .nav-button-col {
             text-align: center;
         }
 
-        /* Style the Nav Buttons */
-        .nav-btn {
+        /* Style the Streamlit buttons inside the nav */
+        .nav-button-col button {
             background: transparent !important;
             border: none !important;
-            color: #717171 !important;
-            font-size: 11px !important;
+            color: #888 !important; /* Default non-active color */
+            font-size: 12px !important;
             font-weight: 600 !important;
             text-transform: uppercase !important;
-            padding: 8px 0 !important;
+            letter-spacing: 1px !important;
+            padding: 10px 0 !important;
             width: 100% !important;
         }
         
-        .nav-btn:hover { color: #FF385C !important; }
-        .nav-btn:active { color: #FF385C !important; }
-        
-        /* Active State Indicator */
-        .nav-active {
-            color: #FF385C !important;
+        /* Style for the active tab's button */
+        .nav-button-active button {
+            color: #FF6B6B !important; /* Nice light salmon color for active state */
         }
 
         /* --- CARDS & UI --- */
@@ -109,22 +104,22 @@ st.markdown("""
         }
         
         .card-title { font-size: 26px; font-weight: 800; color: #222; margin-bottom: 5px; }
-        .card-subtitle { font-size: 14px; color: #FF385C; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
+        .card-subtitle { font-size: 14px; color: #FF6B6B; font-weight: 700; text-transform:uppercase; letter-spacing:1px; margin-bottom: 20px; }
         
-        /* --- PRIMARY BUTTONS (Airbnb Red) --- */
+        /* --- PRIMARY BUTTONS (Salmon/Red) --- */
         div.stButton > button {
-            background-color: #FF385C;
+            background-color: #FF6B6B; /* Changed to match salmon theme */
             color: white;
             border-radius: 24px; /* Pill Shape */
             padding: 14px 24px;
             font-weight: 600;
             border: none;
             width: 100%;
-            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.25);
-            transition: transform 0.1s;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.25);
+            transition: transform 0.1s, background-color 0.2s;
         }
         div.stButton > button:active { transform: scale(0.98); }
-        div.stButton > button:hover { background-color: #d90b3e; color: white; }
+        div.stButton > button:hover { background-color: #e65a5a; color: white; }
         
         /* --- SECONDARY BUTTONS (Outline) --- */
         button[kind="secondary"] {
@@ -133,6 +128,9 @@ st.markdown("""
             border: 2px solid #e0e0e0 !important;
             box-shadow: none !important;
         }
+        
+        /* Hide default streamlit footer */
+        footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -292,7 +290,7 @@ def view_analytics():
     
     st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    c1.metric("Total Leads", len(all_leads))
+    c1.metric("Leads", len(all_leads))
     try: top = df['product_pitch'].mode()[0]
     except: top = "-"
     c2.metric("Top Product", top)
@@ -314,28 +312,30 @@ elif st.session_state.active_tab == "analytics": view_analytics()
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
 # --- NAVIGATION BAR (The "Floating Pill") ---
-# We use a container and columns, but the CSS .nav-container class handles the layout
-nav_col1, nav_col2, nav_col3 = st.columns(3)
 with st.container():
     st.markdown('<div class="nav-container">', unsafe_allow_html=True)
     
-    # We create 3 columns inside the nav container logic
-    # Note: Streamlit buttons must be created in Python, but we use CSS to position them
-    # We use a unique key for each button to track state
+    # Create 3 columns *inside* the styled container
+    c1, c2, c3 = st.columns(3)
     
-    # Button 1: Generate
-    if nav_col1.button("🎙️ Generate", key="nav_gen", use_container_width=True): 
-        st.session_state.active_tab = "generate"
-        st.rerun()
+    # Define tabs and their labels (no emojis)
+    tabs = [("Generate", "generate"), ("Leads", "pipeline"), ("Analytics", "analytics")]
+    
+    cols = [c1, c2, c3]
+    for i, (label, tab_name) in enumerate(tabs):
+        col = cols[i]
+        # Determine if this tab is active
+        is_active = st.session_state.active_tab == tab_name
         
-    # Button 2: Leads
-    if nav_col2.button("📂 Leads", key="nav_leads", use_container_width=True): 
-        st.session_state.active_tab = "pipeline"
-        st.rerun()
-
-    # Button 3: Analytics
-    if nav_col3.button("📊 Analytics", key="nav_an", use_container_width=True): 
-        st.session_state.active_tab = "analytics"
-        st.rerun()
+        # Apply active class if needed
+        active_class = "nav-button-active" if is_active else ""
         
+        with col:
+            # Wrap button in a div to apply column & active styles
+            st.markdown(f'<div class="nav-button-col {active_class}">', unsafe_allow_html=True)
+            if st.button(label, key=f"nav_{tab_name}", use_container_width=True):
+                st.session_state.active_tab = tab_name
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+            
     st.markdown('</div>', unsafe_allow_html=True)
