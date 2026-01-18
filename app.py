@@ -36,7 +36,7 @@ if SUPABASE_URL and SUPABASE_KEY:
         st.error(f"Supabase Connection Error: {e}")
 
 # ==========================================
-# 3. AIRBNB-STYLE CSS (Input Visibility Fixes)
+# 3. AIRBNB-STYLE CSS
 # ==========================================
 st.markdown("""
     <style>
@@ -49,36 +49,39 @@ st.markdown("""
         h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* --- INPUT FIELD FIX (THE "INVISIBLE TEXT" FIX) --- */
-        /* 1. Target the container to ensure white background */
+        /* --- INPUT FIELD FIX --- */
         div[data-baseweb="input"], div[data-baseweb="base-input"] {
             background-color: #ffffff !important;
             border: 1px solid #e0e0e0 !important;
             border-radius: 12px !important;
         }
-
-        /* 2. Target the actual input element to force text color */
         input.st-bd, input.st-bc, input {
             background-color: #ffffff !important;
-            color: #222222 !important; /* Force Dark Text */
-            -webkit-text-fill-color: #222222 !important; /* Safari/iOS Force */
-            caret-color: #FF385C !important; /* Cursor Color */
-        }
-
-        /* 3. Fix Browser Autofill (Often turns yellow/blue) */
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
-        input:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 30px white inset !important;
-            -webkit-text-fill-color: #222222 !important;
-        }
-
-        /* 4. Fix Labels */
-        .stTextInput label {
             color: #222222 !important;
-            font-weight: 600 !important;
-            font-size: 13px !important;
+            -webkit-text-fill-color: #222222 !important;
+            caret-color: #FF385C !important;
+        }
+        
+        /* --- HEADER (LOGOUT BUTTON) --- */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5px;
+            margin-bottom: 20px;
+        }
+        .logout-btn button {
+            background-color: transparent !important;
+            color: #717171 !important;
+            border: 1px solid #e0e0e0 !important;
+            padding: 5px 15px !important;
+            font-size: 12px !important;
+            border-radius: 20px !important;
+            height: auto !important;
+        }
+        .logout-btn button:hover {
+            border-color: #FF385C !important;
+            color: #FF385C !important;
         }
 
         /* --- MICROPHONE FIX --- */
@@ -111,7 +114,6 @@ st.markdown("""
             box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
         }
 
-        /* Force Mobile Horizontal Layout */
         @media (max-width: 640px) {
             .nav-fixed-container [data-testid="stHorizontalBlock"] {
                 flex-direction: row !important;
@@ -208,7 +210,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. BACKEND LOGIC
+# 4. BACKEND LOGIC (AI & DATA)
 # ==========================================
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
@@ -251,22 +253,32 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 # ==========================================
-# 5. DATA MANAGER
+# 5. DATA MANAGER (SUPABASE HYBRID)
 # ==========================================
 def save_lead(lead_data):
-    if not st.session_state.user: return
+    if not st.session_state.user: return "Not logged in"
+    
     lead_data['user_id'] = st.session_state.user.id
+    # Ensure current timestamp format compatible with timestamptz
     lead_data['created_at'] = datetime.now().isoformat()
+    
     if supabase:
-        try: supabase.table("leads").insert(lead_data).execute()
-        except Exception as e: st.error(f"Save Error: {e}")
+        try:
+            # We assume user has created correct columns in supabase.
+            # If not, this throws an error which we now return to the UI.
+            supabase.table("leads").insert(lead_data).execute()
+            return None # Success
+        except Exception as e:
+            return str(e) # Return the specific error message
     else:
+        # Fallback to local file for demo
         DB_FILE = "leads_db.json"
         leads = []
         if os.path.exists(DB_FILE):
             with open(DB_FILE, "r") as f: leads = json.load(f)
         leads.insert(0, lead_data)
         with open(DB_FILE, "w") as f: json.dump(leads, f)
+        return None
 
 def load_leads():
     if not st.session_state.user: return []
@@ -293,8 +305,10 @@ def login_screen():
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Password", type="password", key="login_pass")
         st.markdown("<br>", unsafe_allow_html=True)
+        
         if st.button("Log In", type="primary", use_container_width=True):
             if not supabase:
+                # Mock Login for Demo if no DB key
                 st.session_state.user = type('obj', (object,), {'id': 'demo_user', 'email': email})
                 st.rerun()
             else:
@@ -302,20 +316,24 @@ def login_screen():
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     st.rerun()
-                except Exception as e: st.error(f"Login failed: {e}")
+                except Exception as e:
+                    st.error(f"Login failed: {e}")
 
     with tab_signup:
         st.markdown("<br>", unsafe_allow_html=True)
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_pass")
         st.markdown("<br>", unsafe_allow_html=True)
+        
         if st.button("Create Account", type="primary", use_container_width=True):
             if supabase:
                 try:
                     res = supabase.auth.sign_up({"email": email, "password": password})
                     st.success("Account created! Check your email.")
-                except Exception as e: st.error(f"Signup failed: {e}")
-            else: st.warning("Database not connected.")
+                except Exception as e:
+                    st.error(f"Signup failed: {e}")
+            else:
+                st.warning("Database not connected.")
 
 # ==========================================
 # 7. MAIN APP ROUTER
@@ -324,9 +342,23 @@ if not st.session_state.user:
     login_screen()
     st.stop()
 
+# --- HEADER (LOGOUT) ---
+def render_header():
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        st.caption(f"Logged in: {st.session_state.user.email}")
+    with c2:
+        st.markdown('<div class="logout-btn">', unsafe_allow_html=True)
+        if st.button("Sign Out"):
+            if supabase: supabase.auth.sign_out()
+            st.session_state.user = None
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
 # --- APP VIEWS ---
 def view_generate():
-    st.markdown("<br>", unsafe_allow_html=True)
+    render_header()
+    
     if not st.session_state.generated_lead:
         st.markdown("""
             <div style="text-align: center; padding: 40px 20px;">
@@ -336,14 +368,21 @@ def view_generate():
         """, unsafe_allow_html=True)
         audio_val = st.audio_input("Record", label_visibility="collapsed")
         st.markdown("<p style='text-align:center; font-size:11px; color:#bbb; margin-top:10px; letter-spacing:1px;'>TAP MICROPHONE TO RECORD</p>", unsafe_allow_html=True)
+        
         if audio_val:
             with st.spinner("Processing..."):
                 data = process_voice_contact(audio_val.read())
                 if isinstance(data, dict) and "error" not in data:
-                    save_lead(data)
-                    st.session_state.generated_lead = data
-                    st.rerun()
-                else: st.error(f"Error: {data.get('error')}")
+                    # Try to save and capture error if any
+                    err = save_lead(data)
+                    if err:
+                        st.error(f"Database Error: {err}")
+                        st.error("Tip: Check if columns (contact_info, background, etc.) exist in Supabase.")
+                    else:
+                        st.session_state.generated_lead = data
+                        st.rerun()
+                else:
+                    st.error(f"AI Error: {data.get('error')}")
     else:
         lead = st.session_state.generated_lead
         st.markdown(f"""
@@ -373,7 +412,8 @@ def view_generate():
                 st.rerun()
 
 def view_pipeline():
-    st.markdown("<h2 style='padding:20px 0 10px 0;'>Pipeline</h2>", unsafe_allow_html=True)
+    render_header()
+    st.markdown("<h2 style='padding:0 0 10px 0;'>Pipeline</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
     if not all_leads: st.info("No leads recorded yet.")
     for lead in all_leads:
@@ -387,7 +427,8 @@ def view_pipeline():
             """, unsafe_allow_html=True)
 
 def view_analytics():
-    st.markdown("<h2 style='padding:20px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
+    render_header()
+    st.markdown("<h2 style='padding:0 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
     all_leads = load_leads()
     if not all_leads: st.warning("No data."); return
     df = pd.DataFrame(all_leads)
@@ -405,7 +446,7 @@ elif st.session_state.active_tab == "analytics": view_analytics()
 
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# --- NAVIGATION BAR (Mobile Optimized) ---
+# --- NAVIGATION BAR ---
 with st.container():
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
