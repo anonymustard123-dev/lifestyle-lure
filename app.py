@@ -23,6 +23,17 @@ if 'user' not in st.session_state: st.session_state.user = None
 if 'is_subscribed' not in st.session_state: st.session_state.is_subscribed = False
 if 'active_tab' not in st.session_state: st.session_state.active_tab = "generate"
 if 'generated_lead' not in st.session_state: st.session_state.generated_lead = None
+if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
+if 'user_profile' not in st.session_state: st.session_state.user_profile = None
+
+# --- CAPTURE REFERRAL CODE FROM URL ---
+# This runs immediately when the app loads
+try:
+    query_params = st.query_params
+    if "ref" in query_params:
+        st.session_state.referral_captured = query_params["ref"]
+except:
+    pass
 
 # ==========================================
 # 2. CONNECTIONS (SUPABASE & STRIPE)
@@ -31,12 +42,15 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501") # Fallback for local testing
+APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
 
-supabase: Client = None
-if SUPABASE_URL and SUPABASE_KEY:
-    try: supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception as e: st.error(f"Supabase Error: {e}")
+@st.cache_resource
+def init_supabase():
+    if SUPABASE_URL and SUPABASE_KEY:
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    return None
+
+supabase = init_supabase()
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
@@ -231,38 +245,32 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. SUBSCRIPTION LOGIC (STRIPE)
+# 4. SUBSCRIPTION & REFERRAL LOGIC
 # ==========================================
-def check_subscription_status(email):
-    """
-    Checks if the user has an active Stripe subscription.
-    Returns True if subscribed, False otherwise.
-    """
-    if not STRIPE_SECRET_KEY: return True # Bypass if no key set (for dev)
-    
+def fetch_user_profile(user_id):
+    """Fetches the profile (ref code, payout info) from Supabase"""
     try:
-        # 1. Find customer by email
-        customers = stripe.Customer.list(email=email).data
-        if not customers:
-            return False
-        
-        customer = customers[0]
-        
-        # 2. Check for active subscriptions
-        subscriptions = stripe.Subscription.list(customer=customer.id, status='active').data
-        if subscriptions:
-            return True
-        return False
+        response = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
     except Exception as e:
-        print(f"Stripe Error: {e}")
+        print(f"Profile Fetch Error: {e}")
+    return None
+
+def check_subscription_status(email):
+    if not STRIPE_SECRET_KEY: return True 
+    try:
+        customers = stripe.Customer.list(email=email).data
+        if not customers: return False
+        subscriptions = stripe.Subscription.list(customer=customers[0].id, status='active').data
+        return True if subscriptions else False
+    except:
         return False
 
-def create_checkout_session(email):
-    """
-    Creates a Stripe Checkout Session and returns the URL.
-    """
+def create_checkout_session(email, user_id):
+    """Creates a session AND attaches the referral code if one exists"""
     try:
-        # 1. Get or Create Customer
+        # Get Customer
         customers = stripe.Customer.list(email=email).data
         if customers:
             customer_id = customers[0].id
@@ -270,17 +278,21 @@ def create_checkout_session(email):
             customer = stripe.Customer.create(email=email)
             customer_id = customer.id
             
-        # 2. Create Session
+        # Check if this user was referred by someone (stored in their profile)
+        profile = fetch_user_profile(user_id)
+        metadata = {}
+        if profile and profile.get('referred_by'):
+            metadata['referred_by'] = profile.get('referred_by')
+
+        # Create Session
         session = stripe.checkout.Session.create(
             customer=customer_id,
             payment_method_types=['card'],
-            line_items=[{
-                'price': STRIPE_PRICE_ID,
-                'quantity': 1,
-            }],
+            line_items=[{'price': STRIPE_PRICE_ID, 'quantity': 1}],
             mode='subscription',
             success_url=f"{APP_BASE_URL}?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{APP_BASE_URL}",
+            metadata=metadata # This is where the magic happens
         )
         return session.url
     except Exception as e:
@@ -352,6 +364,11 @@ def load_leads():
 # ==========================================
 def login_screen():
     st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>The Closer</h1>", unsafe_allow_html=True)
+    
+    # If a referral code was captured, show a friendly message
+    if st.session_state.referral_captured:
+        st.info(f"🎉 You've been invited! Promo code applied: {st.session_state.referral_captured}")
+
     tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
     
     with tab_login:
@@ -364,8 +381,8 @@ def login_screen():
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
-                    # Check Sub Status on Login
                     st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                    st.session_state.user_profile = fetch_user_profile(res.user.id)
                     st.rerun()
                 except Exception as e: st.error(f"Login failed: {e}")
 
@@ -378,8 +395,22 @@ def login_screen():
             if supabase:
                 try:
                     res = supabase.auth.sign_up({"email": email, "password": password})
+                    
+                    # --- REFERRAL LOGIC START ---
+                    # If we have a referral code, update the profile immediately
+                    if st.session_state.referral_captured and res.user:
+                        try:
+                            # The 'profiles' row is created by trigger, we just update the column
+                            supabase.table("profiles").update({
+                                "referred_by": st.session_state.referral_captured
+                            }).eq("id", res.user.id).execute()
+                        except:
+                            pass # Fail silently on referral if DB issue
+                    # --- REFERRAL LOGIC END ---
+                    
                     st.success("Account created! Check your email.")
                 except Exception as e: st.error(f"Signup failed: {e}")
+            else: st.warning("Database not connected.")
 
 # ==========================================
 # 7. MAIN APP ROUTER
@@ -388,31 +419,56 @@ if not st.session_state.user:
     login_screen()
     st.stop()
 
-# --- HEADER (PROFILE & MENU) ---
+# --- HEADER (PROFILE & PAYOUTS) ---
 def render_header():
+    # If profile not loaded, try fetching it
+    if not st.session_state.user_profile:
+        st.session_state.user_profile = fetch_user_profile(st.session_state.user.id)
+        
     c1, c2 = st.columns([8, 1]) 
     with c2:
         with st.popover("👤", help="Menu"):
-            st.markdown(f"<div style='font-size:12px; color:#888; text-align:center; margin-bottom:10px;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
+            # Email Display
+            st.markdown(f"<div style='font-size:12px; color:#888; text-align:center;'>{st.session_state.user.email}</div>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+            
+            # --- REFERRAL SECTION ---
+            if st.session_state.user_profile:
+                my_code = st.session_state.user_profile.get('referral_code', 'N/A')
+                st.markdown(f"**My Invite Link:**")
+                st.code(f"{APP_BASE_URL}?ref={my_code}", language="text")
+                st.caption("Share this to earn 20% commission.")
+                
+                # PayPal Input
+                st.markdown("**Payout Info:**")
+                current_paypal = st.session_state.user_profile.get('payout_info', '')
+                paypal_email = st.text_input("PayPal Email", value=current_paypal if current_paypal else "", placeholder="you@paypal.com")
+                if st.button("Save PayPal"):
+                    try:
+                        supabase.table("profiles").update({"payout_info": paypal_email}).eq("id", st.session_state.user.id).execute()
+                        st.session_state.user_profile['payout_info'] = paypal_email # Update local
+                        st.toast("Payout info saved!", icon="✅")
+                    except:
+                        st.error("Error saving.")
+            
+            st.markdown("<hr style='margin:10px 0;'>", unsafe_allow_html=True)
+            
             if st.button("Sign Out", type="primary", use_container_width=True):
                 if supabase: supabase.auth.sign_out()
                 st.session_state.user = None
                 st.session_state.is_subscribed = False
+                st.session_state.user_profile = None
                 st.rerun()
 
 # --- CHECK SUBSCRIPTION GATE ---
-# If user is logged in but not subscribed, show paywall
 if not st.session_state.is_subscribed:
-    # Check if they just returned from Stripe
     query_params = st.query_params
     if "session_id" in query_params:
-        # Re-check status if they have a session_id
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed:
             st.toast("Welcome to Premium!", icon="🎉")
             st.rerun()
     
-    # Render Paywall
     render_header()
     st.markdown("""
         <div class="paywall-container">
@@ -423,14 +479,15 @@ if not st.session_state.is_subscribed:
     """, unsafe_allow_html=True)
     
     if st.button("Subscribe via Stripe", type="primary", use_container_width=True):
-        checkout_url = create_checkout_session(st.session_state.user.email)
+        # We pass user_id so we can look up their referrer inside the helper function
+        checkout_url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
         if checkout_url:
             st.link_button("Proceed to Checkout 👉", checkout_url, type="primary", use_container_width=True)
         else:
-            st.error("Error creating checkout. Check Stripe keys.")
-    st.stop() # HALT APP HERE
+            st.error("Error creating checkout.")
+    st.stop()
 
-# --- APP VIEWS (Only reaches here if paid) ---
+# --- APP VIEWS ---
 def view_generate():
     render_header()
     st.markdown("<br>", unsafe_allow_html=True)
