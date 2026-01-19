@@ -24,7 +24,7 @@ if 'user' not in st.session_state: st.session_state.user = None
 if 'is_subscribed' not in st.session_state: st.session_state.is_subscribed = False
 if 'active_tab' not in st.session_state: st.session_state.active_tab = "omni" 
 if 'omni_result' not in st.session_state: st.session_state.omni_result = None
-# NEW: Track selected lead for Rolodex navigation
+# TRACK SELECTED LEAD
 if 'selected_lead' not in st.session_state: st.session_state.selected_lead = None
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'user_profile' not in st.session_state: st.session_state.user_profile = None
@@ -113,7 +113,7 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
 
-        /* --- 3. AIRBNB CARDS --- */
+        /* --- 3. AIRBNB CARDS & BUBBLES --- */
         .airbnb-card {
             background-color: #FFFFFF;
             border-radius: 16px;
@@ -148,56 +148,53 @@ st.markdown("""
             margin: 10px 0 5px 0;
         }
         
-        /* List Item Card Style */
-        .list-card {
-            background-color: #FFFFFF;
-            border-radius: 16px;
-            border: 1px solid #EBEBEB;
-            padding: 16px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            transition: transform 0.1s ease;
-        }
-        .list-card:active {
-            transform: scale(0.98);
+        /* Large Report Bubble (Background/Notes) */
+        .report-bubble {
             background-color: #F7F7F7;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 16px;
+            border: 1px solid #EBEBEB;
         }
 
-        /* --- 4. BUTTONS --- */
-        /* Primary (Rausch Pink) */
+        /* --- 4. ROLODEX LIST STYLING --- */
+        /* Target standard buttons to look like cards in the Rolodex list */
+        .stButton > button {
+            background-color: #FFFFFF !important;
+            border: 1px solid #EBEBEB !important;
+            border-radius: 12px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+            color: #222222 !important;
+            padding: 16px 20px !important;
+            text-align: left !important;
+            transition: transform 0.1s ease;
+            height: auto !important;
+            min-height: 60px !important;
+        }
+        
+        .stButton > button:active {
+            transform: scale(0.98);
+            background-color: #F7F7F7 !important;
+        }
+        
+        /* Revert styling for Primary Actions so they look like buttons, not cards */
         button[kind="primary"] {
             background-color: #FF385C !important;
             color: white !important;
             border: none !important;
-            border-radius: 12px !important;
-            padding: 14px 24px !important;
-            font-weight: 600 !important;
-            font-size: 16px !important;
-            height: auto !important;
             box-shadow: none !important;
-            transition: transform 0.1s ease;
-        }
-        button[kind="primary"]:active {
-            transform: scale(0.98);
-        }
-
-        /* Secondary (Outline) */
-        button[kind="secondary"] {
-            background-color: transparent !important;
-            color: #222222 !important;
-            border: 1px solid #222222 !important;
-            border-radius: 12px !important;
+            text-align: center !important;
             font-weight: 600 !important;
-            height: auto !important;
         }
         
-        /* Back Button Style */
-        .back-btn-container {
-            margin-bottom: 16px;
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            border: 1px solid #222222 !important;
+            box-shadow: none !important;
+            text-align: center !important;
         }
 
         /* --- 5. INPUTS --- */
-        /* Text Inputs */
         div[data-baseweb="input"] {
             background-color: #F7F7F7 !important;
             border: 1px solid transparent !important;
@@ -252,6 +249,7 @@ st.markdown("""
             padding: 0 !important;
         }
         
+        /* Override generic button styles for Navigation to be transparent/flat */
         .nav-btn button, .nav-active button {
             width: 100% !important;
             height: 100% !important;
@@ -259,6 +257,7 @@ st.markdown("""
             background: transparent !important;
             box-shadow: none !important;
             padding: 10px 0 !important;
+            min-height: auto !important;
         }
         
         .nav-btn button p { color: #b0b0b0 !important; font-weight: 500 !important; font-size: 11px !important; }
@@ -270,12 +269,6 @@ st.markdown("""
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
-        .briefing-section {
-            background-color: #F7F7F7;
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 16px;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -344,12 +337,18 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     You are 'The Closer', an expert Executive Assistant. 
     Here is the user's Rolodex (Existing Leads): {leads_json}
     User Audio Provided. Listen carefully.
+    
     YOUR TASK:
     1. MATCHING: Is the user talking about a person in the Rolodex? (Use fuzzy matching on name/context).
     2. INTENT: 
        - If they are describing a NEW person not in the list -> Action: "CREATE"
        - If they are adding info about an EXISTING person -> Action: "UPDATE"
        - If they are asking a question about a person or the list -> Action: "QUERY"
+    
+    DATA EXTRACTION GUIDELINES:
+    - **Product Fit**: Listen for what specific product/service the *user* believes the lead is interested in. Do NOT invent a pitch; extract the specific interest mentioned.
+    - **Background**: Write a brief yet formal executive report summarizing the lead's status and key details.
+    
     RETURN ONLY RAW JSON:
     {{
         "action": "CREATE" | "UPDATE" | "QUERY",
@@ -357,12 +356,9 @@ def process_omni_voice(audio_bytes, existing_leads_context):
         "lead_data": {{
             "name": "Full Name",
             "contact_info": "Phone/Email",
-            "background": "The full context/history (If UPDATE, append new info to old)",
-            "sales_angle": "Current Strategy",
-            "product_pitch": "Recommended Product",
-            "follow_up": "Next Step Timeframe"
+            "background": "Formal executive report...",
+            "product_pitch": "Specific product interest extracted from audio"
         }},
-        "executive_brief": "A 2-sentence briefing for the user.",
         "confidence": "High/Low"
     }}
     """
@@ -387,9 +383,7 @@ def save_new_lead(lead_data):
 def update_existing_lead(lead_id, new_data, old_background=""):
     if not st.session_state.user: return "Not logged in"
     final_data = {
-        "sales_angle": new_data.get('sales_angle'),
         "product_pitch": new_data.get('product_pitch'),
-        "follow_up": new_data.get('follow_up'),
         "contact_info": new_data.get('contact_info'),
         "background": new_data.get('background') 
     }
@@ -401,13 +395,12 @@ def update_existing_lead(lead_id, new_data, old_background=""):
 def create_vcard(data):
     # Ensure we get the name correctly whether 'data' is the wrapper or the lead itself
     lead_info = data.get('lead_data', data)
-    brief = data.get('executive_brief', '')
     
     vcard = [
         "BEGIN:VCARD", "VERSION:3.0", 
         f"FN:{lead_info.get('name', 'Lead')}", 
         f"TEL;TYPE=CELL:{lead_info.get('contact_info', '')}", 
-        f"NOTE:{brief}", 
+        f"NOTE:{lead_info.get('background', '')}", 
         "END:VCARD"
     ]
     return "\n".join(vcard)
@@ -420,7 +413,7 @@ def render_executive_card(data, show_close=True):
     """Display the sleek Omni-Tool Output"""
     lead = data.get('lead_data', {})
     action = data.get('action', 'QUERY')
-    brief = data.get('executive_brief', 'No briefing available.')
+    
     badge_text = "INTELLIGENCE REPORT"
     if action == "CREATE": badge_text = "NEW ASSET"
     elif action == "UPDATE": badge_text = "UPDATED"
@@ -434,23 +427,10 @@ def render_executive_card(data, show_close=True):
                 </div>
             </div>
             
-            <div class="briefing-section">
-                <div class="stat-label" style="color:#FF385C;">Morning Briefing</div>
-                <div style="font-size:16px; font-weight:500; color:#222; margin-top:4px; line-height:1.5;">{brief}</div>
-            </div>
-
             <div class="stat-grid">
                 <div class="stat-item">
-                    <div class="stat-label">Strategy</div>
-                    <div class="stat-value">{lead.get('sales_angle') or '-'}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Next Step</div>
-                    <div class="stat-value">{lead.get('follow_up') or '-'}</div>
-                </div>
-                <div class="stat-item">
                     <div class="stat-label">Product Fit</div>
-                    <div class="stat-value">{lead.get('product_pitch') or '-'}</div>
+                    <div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Contact</div>
@@ -458,9 +438,9 @@ def render_executive_card(data, show_close=True):
                 </div>
             </div>
             
-            <div style="margin-top:24px;">
-                <div class="stat-label">Background / Notes</div>
-                <p style="font-size:14px; margin-top:8px; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
+            <div class="report-bubble">
+                <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
+                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
             </div>
         </div>
     """.replace("\n", " ")
@@ -533,11 +513,9 @@ def view_pipeline():
             st.rerun()
         
         # Render the full card using the existing renderer
-        # We wrap the data to match the expected format
         wrapped_data = {
             'lead_data': st.session_state.selected_lead,
             'action': 'QUERY',
-            'executive_brief': "Viewing full file from Rolodex."
         }
         render_executive_card(wrapped_data, show_close=False)
         
@@ -551,11 +529,10 @@ def view_pipeline():
             st.info("Rolodex is empty.")
             return
             
-        # Render List as Clickable Buttons
+        # Render List as Clickable Buttons (Styled as Cards via CSS)
         for lead in leads:
             # We create a button that looks like a card item
-            # The label contains the Name and the Strategy
-            label = f"{lead.get('name', 'Unknown')} | {lead.get('sales_angle', '')[:30]}..."
+            label = f"{lead.get('name', 'Unknown')}\n{lead.get('product_pitch', '')}"
             
             if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
                 st.session_state.selected_lead = lead
