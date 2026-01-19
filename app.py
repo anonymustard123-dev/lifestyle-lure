@@ -61,102 +61,146 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. CSS (Native App Feel + Horizontal Mobile Fix)
+# 3. CSS (NATIVE APP FEEL)
 # ==========================================
 st.markdown("""
     <style>
-        /* --- 1. LOCK VIEWPORT (Native App Feel) --- */
-        html, body, .stApp {
-            height: 100vh;
+        /* --- LOCK SCREEN (Native App Feel) --- */
+        /* Prevent the whole page from bouncing or scrolling */
+        .stApp {
+            background-color: #ffffff;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100vw;
-            overflow: hidden !important; /* Disable global scrolling */
-            overscroll-behavior: none;   /* Disable bounce effect */
+            height: 100vh;
+            overflow: hidden;
+            overscroll-behavior: none;
         }
         
-        /* --- 2. INTERNAL SCROLLING --- */
-        /* This targets the specific container where Streamlit puts content */
+        /* Allow only the main content area to scroll */
         .main .block-container {
-            height: calc(100vh - 70px) !important; /* Leave room for bottom nav */
-            overflow-y: auto !important;          /* Enable internal scrolling */
-            padding-top: 1rem !important;
-            padding-bottom: 2rem !important;
-            max-width: 100% !important;
-        }
-        /* Hide Scrollbars for cleaner look */
-        ::-webkit-scrollbar { display: none; }
-        
-        /* --- 3. FORCE HORIZONTAL COLUMNS ON MOBILE --- */
-        /* This is the critical fix. It stops Streamlit from stacking columns vertically on mobile. */
-        @media (max-width: 640px) {
-            div[data-testid="stHorizontalBlock"] {
-                flex-direction: row !important; /* Force side-by-side */
-                flex-wrap: nowrap !important;   /* Prevent wrapping */
-                gap: 5px !important;
-            }
-            div[data-testid="column"] {
-                flex: 1 !important;             /* Make them equal width */
-                min-width: 0 !important;        /* Allow shrinking below content size */
-                width: auto !important;
-            }
+            height: calc(100vh - 80px); /* Leave room for nav bar */
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 100px !important; /* Extra padding so content isn't hidden behind nav */
+            padding-top: 2rem !important;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
         }
 
-        /* --- 4. HIDE STREAMLIT UI --- */
-        [data-testid="stHeader"] { display: none; }
-        footer {visibility: hidden;}
+        /* Hide Streamlit Header/Footer */
+        [data-testid="stHeader"], footer { display: none !important; }
         
-        /* --- 5. FIXED BOTTOM NAV BAR --- */
+        /* --- TYPOGRAPHY --- */
+        h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
+        p, label, span, div { color: #717171; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
+        
+        /* --- INPUTS --- */
+        div[data-baseweb="input"], div[data-baseweb="base-input"] {
+            background-color: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
+            border-radius: 12px !important;
+        }
+        input { color: #222222 !important; caret-color: #FF385C !important; }
+
+        /* --- EXECUTIVE CARD STYLES --- */
+        .exec-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .exec-header { background: #222; color: white; padding: 20px 24px; }
+        .exec-title { font-size: 24px; font-weight: 700; color: white !important; margin: 0; }
+        .exec-badge { 
+            background: #FF385C; color: white; font-size: 10px; font-weight: 800; 
+            padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px;
+            display: inline-block; margin-bottom: 8px;
+        }
+        .exec-body { padding: 24px; }
+        .briefing-box {
+            background-color: #F7F7F7; border-left: 4px solid #FF385C;
+            padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;
+        }
+        .briefing-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #FF385C; margin-bottom: 4px; }
+        .briefing-text { font-size: 16px; font-weight: 500; color: #222; line-height: 1.5; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; }
+        .stat-value { font-size: 15px; font-weight: 600; color: #222 !important; margin-top: 4px; }
+
+        /* --- FIXED BOTTOM NAV BAR FIXES --- */
         .nav-fixed-container {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 70px;
             background: #ffffff;
             border-top: 1px solid #f2f2f2;
             z-index: 999999;
-            padding: 10px 0;
+            padding: 8px 5px 20px 5px; /* Reduced padding */
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
             display: flex;
-            align-items: center;
+            justify-content: center;
         }
 
-        /* --- STYLES --- */
-        button[kind="primary"] {
-            background-color: #FF385C !important;
-            color: white !important;
-            border-radius: 12px !important;
-            border: none !important;
-            height: 50px !important;
+        /* FORCE COLUMNS TO STAY ON ONE LINE */
+        .nav-fixed-container [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 2px !important;
             width: 100% !important;
+            min-width: 0 !important;
         }
         
-        /* Nav Button Styles */
+        .nav-fixed-container [data-testid="column"] {
+            min-width: 0 !important;
+            flex: 1 1 0 !important; /* Force equal width */
+            padding: 0 2px !important;
+        }
+
+        /* Nav Buttons Styling */
+        .nav-btn button, .nav-active button {
+            width: 100% !important;
+            padding: 8px 0 !important; /* Smaller padding */
+            font-size: 12px !important; /* Smaller text for mobile */
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        
         .nav-btn button {
             background-color: transparent !important;
             color: #b0b0b0 !important;
             border: none !important;
-            font-size: 11px !important;
-            font-weight: 600 !important;
-            text-transform: uppercase !important;
-            box-shadow: none !important;
-            height: 100% !important;
-            padding: 0 !important;
-        }
-        .nav-active button {
-            color: #FF385C !important;
-            background-color: transparent !important; /* Removed pink bg for cleaner look */
         }
         
-        /* Executive Card & Typography */
-        h1, h2, h3 { color: #222 !important; font-weight: 800 !important; }
-        .exec-card { background: white; border: 1px solid #e0e0e0; border-radius: 16px; margin-bottom: 24px; overflow: hidden; }
-        .exec-header { background: #222; color: white; padding: 20px; }
-        .exec-title { font-size: 22px; font-weight: 700; color: white !important; margin: 0; }
-        .exec-badge { background: #FF385C; color: white; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; margin-bottom: 8px; display:inline-block; }
-        .exec-body { padding: 20px; }
-        .briefing-box { background-color: #F7F7F7; border-left: 4px solid #FF385C; padding: 15px; border-radius: 0 8px 8px 0; margin-bottom: 20px; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #888; }
-        .stat-value { font-size: 14px; font-weight: 600; color: #222 !important; margin-top: 2px; }
+        .nav-active button {
+            color: #FF385C !important;
+            background-color: #FFF0F3 !important;
+            border-radius: 12px !important;
+            border: none !important;
+        }
+
+        /* --- GENERAL BUTTONS --- */
+        button[kind="primary"] {
+            background-color: #FF385C !important;
+            color: white !important;
+            border-radius: 12px !important;
+            padding: 12px 24px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            height: 50px !important;
+            width: 100% !important;
+        }
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #222 !important;
+            border: 1px solid #e0e0e0 !important;
+            box-shadow: none !important;
+            border-radius: 12px !important;
+            height: 50px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -199,7 +243,7 @@ def create_checkout_session(email, user_id):
     except: return None
 
 # ==========================================
-# 5. OMNI-TOOL BACKEND
+# 5. OMNI-TOOL BACKEND (AI CORE)
 # ==========================================
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
@@ -224,24 +268,21 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     prompt = f"""
     You are 'The Closer', an expert Executive Assistant. 
     Here is the user's Rolodex (Existing Leads): {leads_json}
-
     User Audio Provided. Listen carefully.
-    
     YOUR TASK:
-    1. MATCHING: Is the user talking about a person in the Rolodex?
+    1. MATCHING: Is the user talking about a person in the Rolodex? (Use fuzzy matching on name/context).
     2. INTENT: 
-       - describing a NEW person -> "CREATE"
-       - adding info about EXISTING person -> "UPDATE"
-       - asking a question -> "QUERY"
-
+       - If they are describing a NEW person not in the list -> Action: "CREATE"
+       - If they are adding info about an EXISTING person -> Action: "UPDATE"
+       - If they are asking a question about a person or the list -> Action: "QUERY"
     RETURN ONLY RAW JSON:
     {{
         "action": "CREATE" | "UPDATE" | "QUERY",
-        "match_id": (Integer ID if matches a lead, else null),
+        "match_id": (Integer ID if UPDATE/QUERY matches a specific lead, else null),
         "lead_data": {{
             "name": "Full Name",
             "contact_info": "Phone/Email",
-            "background": "The full context/history",
+            "background": "The full context/history (If UPDATE, append new info to old)",
             "sales_angle": "Current Strategy",
             "product_pitch": "Recommended Product",
             "follow_up": "Next Step Timeframe"
@@ -257,15 +298,14 @@ def process_omni_voice(audio_bytes, existing_leads_context):
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
         return json.loads(clean_json_string(response.text))
-    except Exception as e: 
-        return {"error": str(e)}
+    except Exception as e: return {"error": str(e)}
 
 def save_new_lead(lead_data):
     if not st.session_state.user: return "Not logged in"
     lead_data['user_id'] = st.session_state.user.id
     lead_data['created_at'] = datetime.now().isoformat()
     try: 
-        supabase.table("leads").insert(lead_data).execute()
+        res = supabase.table("leads").insert(lead_data).execute()
         return None
     except Exception as e: return str(e)
 
@@ -299,15 +339,15 @@ def create_vcard(data):
 # ==========================================
 
 def render_executive_card(data):
+    """Display the sleek Omni-Tool Output"""
     lead = data.get('lead_data', {})
     action = data.get('action', 'QUERY')
     brief = data.get('executive_brief', 'No briefing available.')
-    
     badge_text = "INTELLIGENCE REPORT"
-    if action == "CREATE": badge_text = "NEW ASSET"
+    if action == "CREATE": badge_text = "NEW ASSET ACQUIRED"
     elif action == "UPDATE": badge_text = "FILE UPDATED"
     
-    # We strip newlines to prevent markdown code block issues
+    # Flatten HTML to avoid indentation bugs
     html_content = f"""
         <div class="exec-card">
             <div class="exec-header">
@@ -316,10 +356,9 @@ def render_executive_card(data):
             </div>
             <div class="exec-body">
                 <div class="briefing-box">
-                    <div style="font-size:10px; font-weight:700; color:#FF385C; margin-bottom:4px;">MORNING BRIEFING</div>
-                    <div style="font-size:15px; font-weight:500; color:#222; line-height:1.4;">{brief}</div>
+                    <div class="briefing-label">Morning Briefing</div>
+                    <div class="briefing-text">{brief}</div>
                 </div>
-                
                 <div class="stat-grid">
                     <div>
                         <div class="stat-label">Strategy</div>
@@ -338,10 +377,9 @@ def render_executive_card(data):
                         <div class="stat-value">{lead.get('contact_info') or '-'}</div>
                     </div>
                 </div>
-                
-                <div style="margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
+                <div style="margin-top:20px;">
                     <div class="stat-label">Background / Notes</div>
-                    <p style="font-size:13px; margin-top:5px; line-height:1.5; color:#555;">{lead.get('background') or '-'}</p>
+                    <p style="font-size:14px; margin-top:5px; line-height:1.6;">{lead.get('background') or '-'}</p>
                 </div>
             </div>
         </div>
@@ -349,46 +387,40 @@ def render_executive_card(data):
     
     st.markdown(html_content, unsafe_allow_html=True)
     
+    # Action Buttons
     c1, c2 = st.columns(2)
     with c1:
         if lead.get('name'):
             vcf = create_vcard(data)
             safe_name = lead.get('name').strip().replace(" ", "_")
-            st.download_button("Export Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
+            st.download_button("Export to Contacts", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
     with c2:
         if st.button("Close File", type="secondary", use_container_width=True):
             st.session_state.omni_result = None
             st.rerun()
 
 def view_omni():
-    # Header
     c1, c2 = st.columns([8, 1]) 
-    with c1: st.markdown("<h2 style='margin-top:0;'>Omni-Assistant</h2>", unsafe_allow_html=True)
+    with c1: st.markdown("<h2 style='margin-top:10px;'>Omni-Assistant</h2>", unsafe_allow_html=True)
     with c2:
         with st.popover("👤"):
             if st.button("Sign Out"):
-                supabase.auth.sign_out()
-                st.session_state.user = None
-                st.rerun()
+                supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
 
     if not st.session_state.omni_result:
         st.markdown("""
-            <div style="text-align: center; padding: 60px 20px;">
+            <div style="text-align: center; padding: 40px 20px;">
                 <div style="font-size: 60px; margin-bottom: 10px;">🎙️</div>
                 <p style="font-size: 18px; color: #222; font-weight:600;">Tap to Speak</p>
-                <p style="font-size: 14px; color: #888;">"Create a lead for John..."<br>"Update Sarah..."</p>
+                <p style="font-size: 14px; color: #888;">"Create a lead for John..."<br>"Update Sarah's file..."</p>
             </div>
         """, unsafe_allow_html=True)
-        
         audio_val = st.audio_input("OmniInput", label_visibility="collapsed")
-        
         if audio_val:
-            with st.spinner("Processing..."):
+            with st.spinner("Analyzing Rolodex..."):
                 existing_leads = load_leads_summary()
                 result = process_omni_voice(audio_val.read(), existing_leads)
-                
-                if "error" in result:
-                    st.error(result['error'])
+                if "error" in result: st.error(result['error'])
                 else:
                     action = result.get('action')
                     lead_data = result.get('lead_data', {})
@@ -400,17 +432,17 @@ def view_omni():
         render_executive_card(st.session_state.omni_result)
 
 def view_pipeline():
-    st.markdown("<h2>Rolodex</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:20px 0 10px 0;'>Pipeline</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
     if not leads: st.info("Rolodex is empty.")
     for lead in leads:
-        with st.expander(f"{lead.get('name', 'Unknown')}"):
-            st.caption(f"Strategy: {lead.get('sales_angle', '-')}")
+        with st.expander(f"{lead.get('name', 'Unknown')} - {lead.get('sales_angle', '')}"):
             st.write(lead.get('background'))
+            st.caption(f"Last updated: {lead.get('created_at')[:10]}")
 
 def view_analytics():
-    st.markdown("<h2>Analytics</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:20px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).execute().data
     if not leads: st.warning("No data."); return
@@ -422,7 +454,7 @@ def view_analytics():
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>The Closer</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>The Closer</h1>", unsafe_allow_html=True)
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
     c1, c2 = st.columns(2)
@@ -445,32 +477,30 @@ if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed: st.rerun()
-    st.markdown("<br><h2 style='text-align:center'>Subscribe</h2>", unsafe_allow_html=True)
+    st.markdown("<br><br><h1 style='text-align:center'>Premium Access Required</h1>", unsafe_allow_html=True)
     if st.button("Subscribe ($15/mo)", type="primary"):
         url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
         if url: st.link_button("Go to Checkout", url, type="primary")
     st.stop()
 
-# --- CONTENT ---
 if st.session_state.active_tab == "omni": view_omni()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
-st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
-
-# --- NAVIGATION ---
+# --- NAVIGATION BAR (FIXED) ---
 with st.container():
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    def nav_btn(col, label, target):
+    def nav_btn(col, label, target, icon):
         with col:
             cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
             st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
-            if st.button(label, key=f"nav_{target}", use_container_width=True):
+            if st.button(f"{icon} {label}", key=f"nav_{target}", use_container_width=True):
                 st.session_state.active_tab = target
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-    nav_btn(c1, "Assistant", "omni")
-    nav_btn(c2, "Rolodex", "pipeline")
-    nav_btn(c3, "Analytics", "analytics")
+    
+    nav_btn(c1, "Assistant", "omni", "🎙️")
+    nav_btn(c2, "Rolodex", "pipeline", "📇")
+    nav_btn(c3, "Analytics", "analytics", "📈")
     st.markdown('</div>', unsafe_allow_html=True)
