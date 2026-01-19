@@ -115,6 +115,7 @@ st.markdown("""
         [data-testid="stRadio"] > div[role="radiogroup"] {
             display: flex;
             flex-direction: row;
+            justify-content: center; /* CENTERED NAV */
             overflow-x: auto;
             white-space: nowrap;
             gap: 24px;
@@ -201,11 +202,12 @@ st.markdown("""
         /* --- 5. ROLODEX LIST STYLING (THE BUBBLE BUTTONS) --- */
         /* These target the buttons in the list to look like cards */
         .stButton > button {
-            background-color: #FFFFFF !important;
-            border: 1px solid #EBEBEB !important;
+            background-color: #FFE5E5 !important; /* LIGHT RED BACKFILL */
+            border: 1px solid #000000 !important; /* BLACK OUTLINE */
             border-radius: 12px !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
-            color: #222222 !important;
+            color: #000000 !important; /* BLACK TEXT */
+            font-weight: 700 !important; /* BOLD TEXT */
             padding: 16px 20px !important;
             text-align: left !important;
             transition: transform 0.1s ease;
@@ -216,7 +218,7 @@ st.markdown("""
         
         .stButton > button:active {
             transform: scale(0.98);
-            background-color: #F7F7F7 !important;
+            background-color: #FFD1D1 !important;
         }
         
         /* Revert styling for Primary Actions */
@@ -473,11 +475,8 @@ def view_omni():
 
     # --- Minimal Omni Layout ---
     
-    # 1. Centered Header
-    st.markdown("<h3 style='text-align: center; margin-top: 10px; margin-bottom: 5px; color: #b0b0b0 !important;'>Listening Mode</h3>", unsafe_allow_html=True)
-    
     # Spacer for vertical centering
-    st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
     
     # 2. Central Mic Button
     # We use narrow columns to constrain the audio widget width
@@ -529,7 +528,8 @@ def view_pipeline():
         # Render List as Clickable Buttons (Styled as Cards via CSS)
         for lead in leads:
             # We create a button that looks like a card item
-            label = f"{lead.get('name', 'Unknown')}\n{lead.get('product_pitch', '')}"
+            # Only showing Name (Bold via CSS)
+            label = lead.get('name', 'Unknown')
             
             if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
                 st.session_state.selected_lead = lead
@@ -628,9 +628,13 @@ elif st.session_state.active_tab == "pipeline":
 elif st.session_state.active_tab == "analytics": 
     view_analytics()
 
-# Sign Out Footer (Small)
+# Sign Out / Profile Footer
 st.markdown("---")
-if st.button("Sign Out", type="secondary"):
-    supabase.auth.sign_out()
-    st.session_state.user = None
-    st.rerun()
+# Profile Popover Button
+with st.popover("👤", use_container_width=True):
+    if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
+        supabase.auth.sign_out()
+        st.session_state.user = None
+        st.rerun()
+    if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
+        pass
