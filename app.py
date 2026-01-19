@@ -296,16 +296,24 @@ def calculate_commissions(profile):
         if not referred_users.data:
             return 0.0
             
-        referrals_emails = [u['email'] for u in referred_users.data]
         total_revenue = 0.0
         
-        # 2. Query Stripe for charges from these emails
-        for email in referrals_emails:
-            charges = stripe.Charge.list(email=email, limit=100) 
-            for charge in charges.data:
-                if charge.paid and not charge.refunded:
-                    total_revenue += (charge.amount / 100) # Convert cents to dollars
-        
+        # 2. For each referred user, find their Stripe ID then their Money (The Robust Way)
+        for user in referred_users.data:
+            email = user['email']
+            
+            # A. Find the Stripe Customer object for this email
+            customers = stripe.Customer.list(email=email, limit=1).data
+            if customers:
+                customer_id = customers[0].id
+                
+                # B. Sum up all PAID invoices for this Customer ID
+                # (Invoices are the source of truth for Subscriptions)
+                invoices = stripe.Invoice.list(customer=customer_id, status='paid', limit=100)
+                for inv in invoices.data:
+                    # amount_paid is in cents, convert to dollars
+                    total_revenue += (inv.amount_paid / 100)
+                    
         return round(total_revenue * 0.20, 2) # 20% Commission
     except Exception as e:
         print(f"Commission Calc Error: {e}")
