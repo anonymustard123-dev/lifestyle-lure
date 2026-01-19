@@ -112,19 +112,18 @@ st.markdown("""
 
         /* --- 3. CUSTOM CLAIMSCRIBE NAV (STYLING RADIO BUTTONS) --- */
         /* Target the radio group to look like a scrollable bar */
-        /* Updated Selector: Removed '>' to allow for nested divs */
         [data-testid="stRadio"] div[role="radiogroup"] {
             display: flex;
             flex-direction: row;
-            justify-content: center !important; /* FORCE CENTER */
-            width: 100% !important; /* FULL WIDTH TO ALLOW CENTERING */
+            justify-content: center !important; /* CENTERED NAV */
+            width: 100% !important;
             overflow-x: auto;
             white-space: nowrap;
             gap: 24px;
             border-bottom: 1px solid #F2F2F2;
             padding-bottom: 0px;
             margin-bottom: 24px;
-            -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Hide the radio circle/input */
@@ -202,41 +201,51 @@ st.markdown("""
         }
 
         /* --- 5. ROLODEX LIST STYLING (THE BUBBLE BUTTONS) --- */
-        /* These target the buttons in the list to look like cards */
+        /* Target ALL standard buttons to look like Rolodex Cards */
         .stButton > button {
-            background-color: #FFE5E5 !important; /* LIGHT RED BACKFILL */
+            background-color: #FFE5E5 !important; /* LIGHT RED BACKGROUND ALWAYS */
             border: 1px solid #000000 !important; /* BLACK OUTLINE */
             border-radius: 12px !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
             color: #000000 !important; /* BLACK TEXT */
-            font-weight: 700 !important; /* BOLD TEXT */
+            font-weight: 700 !important; /* BOLD */
             padding: 16px 20px !important;
+            
+            /* FORCE LEFT ALIGNMENT */
             text-align: left !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            
             transition: transform 0.1s ease;
             height: auto !important;
             min-height: 60px !important;
             width: 100% !important;
         }
         
-        .stButton > button:active {
+        /* Ensure the text inside (p tag) is also bold and left aligned */
+        .stButton > button p {
+            font-weight: 700 !important;
+            text-align: left !important;
+        }
+
+        .stButton > button:active, .stButton > button:focus:not(:active) {
             transform: scale(0.98);
             background-color: #FFD1D1 !important;
+            color: #000000 !important;
+            border-color: #000000 !important;
         }
         
-        /* Revert styling for Primary Actions */
+        /* OVERRIDE FOR PRIMARY ACTION BUTTONS (Solid Red, Centered) */
         button[kind="primary"] {
             background-color: #FF385C !important;
             color: white !important;
             border: none !important;
-            box-shadow: none !important;
             text-align: center !important;
-            font-weight: 600 !important;
+            justify-content: center !important;
         }
         
-        button[kind="secondary"] {
-            background-color: transparent !important;
-            border: 1px solid #222222 !important;
-            box-shadow: none !important;
+        button[kind="primary"] p {
             text-align: center !important;
         }
 
