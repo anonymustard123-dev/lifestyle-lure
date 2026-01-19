@@ -63,7 +63,7 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. CSS (AIRBNB DESIGN SYSTEM + NATIVE FEEL)
+# 3. CSS (CLAIMSCRIBE STYLE + NATIVE FEEL)
 # ==========================================
 st.markdown("""
     <style>
@@ -80,9 +80,6 @@ st.markdown("""
             padding: 0;
             overflow: hidden !important;
             overscroll-behavior: none;
-            position: fixed;
-            top: 0;
-            left: 0;
             -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
@@ -103,7 +100,7 @@ st.markdown("""
 
         /* --- 2. SCROLLABLE CONTENT AREA --- */
         .main .block-container {
-            height: calc(100vh - 80px); /* Leave room for bottom nav */
+            height: 100vh;
             overflow-y: auto !important;
             overflow-x: hidden;
             padding-top: max(env(safe-area-inset-top), 20px) !important;
@@ -113,7 +110,49 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
 
-        /* --- 3. AIRBNB CARDS & BUBBLES --- */
+        /* --- 3. CLAIMSCRIBE NAV TABS (TOP) --- */
+        /* Container for the tabs */
+        .cs-nav-container {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #EBEBEB;
+            margin-bottom: 24px;
+            padding-bottom: 0px;
+            background: #FFFFFF;
+        }
+
+        /* Styling for the wrapper div around the button */
+        .cs-nav-item, .cs-nav-active {
+            width: 100%;
+        }
+
+        /* Base Button Style for Tabs */
+        .cs-nav-item button, .cs-nav-active button {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #717171 !important;
+            font-weight: 600 !important;
+            font-size: 14px !important;
+            padding: 12px 0 !important;
+            border-radius: 0 !important;
+            border-bottom: 3px solid transparent !important;
+            transition: all 0.2s ease;
+            width: 100% !important;
+        }
+
+        /* Active State (Red Underline) */
+        .cs-nav-active button {
+            color: #222222 !important;
+            border-bottom: 3px solid #FF385C !important; /* The ClaimScribe Red */
+        }
+
+        .cs-nav-item button:hover {
+            color: #222222 !important;
+            background-color: transparent !important;
+        }
+
+        /* --- 4. AIRBNB CARDS & BUBBLES --- */
         .airbnb-card {
             background-color: #FFFFFF;
             border-radius: 16px;
@@ -157,8 +196,7 @@ st.markdown("""
             border: 1px solid #EBEBEB;
         }
 
-        /* --- 4. ROLODEX LIST STYLING --- */
-        /* Target standard buttons to look like cards in the Rolodex list */
+        /* --- 5. ROLODEX LIST STYLING --- */
         .stButton > button {
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important;
@@ -177,7 +215,7 @@ st.markdown("""
             background-color: #F7F7F7 !important;
         }
         
-        /* Revert styling for Primary Actions so they look like buttons, not cards */
+        /* Revert styling for Primary Actions */
         button[kind="primary"] {
             background-color: #FF385C !important;
             color: white !important;
@@ -194,7 +232,7 @@ st.markdown("""
             text-align: center !important;
         }
 
-        /* --- 5. INPUTS --- */
+        /* --- 6. INPUTS --- */
         div[data-baseweb="input"] {
             background-color: #F7F7F7 !important;
             border: 1px solid transparent !important;
@@ -218,50 +256,6 @@ st.markdown("""
             color: #222 !important;
             padding: 5px !important;
         }
-
-        /* --- 6. NAVIGATION (Fixed Bottom) --- */
-        .nav-fixed-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 80px;
-            background-color: #FFFFFF;
-            border-top: 1px solid #f2f2f2;
-            z-index: 999999;
-            padding-bottom: env(safe-area-inset-bottom);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 -4px 10px rgba(0,0,0,0.03);
-        }
-
-        .nav-fixed-container [data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            gap: 0 !important;
-        }
-        
-        .nav-fixed-container [data-testid="column"] {
-            flex: 1 !important;
-            padding: 0 !important;
-        }
-        
-        /* Override generic button styles for Navigation to be transparent/flat */
-        .nav-btn button, .nav-active button {
-            width: 100% !important;
-            height: 100% !important;
-            border: none !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            padding: 10px 0 !important;
-            min-height: auto !important;
-        }
-        
-        .nav-btn button p { color: #b0b0b0 !important; font-weight: 500 !important; font-size: 11px !important; }
-        .nav-active button p { color: #FF385C !important; font-weight: 700 !important; font-size: 11px !important; }
 
         /* --- UTILS --- */
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
@@ -468,7 +462,7 @@ def render_executive_card(data, show_close=True):
             st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
 
 def view_omni():
-    # If a result exists, show the card. Otherwise, show the minimal landing page.
+    # If a result exists, show the card.
     if st.session_state.omni_result:
         render_executive_card(st.session_state.omni_result, show_close=True)
         return
@@ -476,23 +470,13 @@ def view_omni():
     # --- Minimal Omni Layout ---
     
     # 1. Centered Header
-    st.markdown("<h2 style='text-align: center; margin-top: 20px; margin-bottom: 5px;'>Omni-Assistant</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; margin-top: 10px; margin-bottom: 5px; color: #b0b0b0 !important;'>Listening Mode</h3>", unsafe_allow_html=True)
     
-    # 2. Centered Profile Button (Below Header)
-    # We use columns to center the button visually
-    c_prof_1, c_prof_2, c_prof_3 = st.columns([3, 2, 3])
-    with c_prof_2:
-        with st.popover("👤 Account", use_container_width=True):
-            if st.button("Sign Out", type="secondary", use_container_width=True):
-                supabase.auth.sign_out()
-                st.session_state.user = None
-                st.rerun()
-
     # Spacer for vertical centering
-    st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)
     
-    # 3. Small Central Mic Button
-    # We use narrow columns to constrain the audio widget width so it looks like a small button
+    # 2. Central Mic Button
+    # We use narrow columns to constrain the audio widget width
     c_mic_1, c_mic_2, c_mic_3 = st.columns([1, 1, 1])
     with c_mic_2:
         audio_val = st.audio_input("OmniInput", label_visibility="collapsed")
@@ -517,7 +501,7 @@ def view_pipeline():
         # DETAIL VIEW
         
         # Back Button (Top Left)
-        if st.button("← Back", key="back_to_list", type="secondary"):
+        if st.button("← Back to List", key="back_to_list", type="secondary"):
             st.session_state.selected_lead = None
             st.rerun()
         
@@ -530,7 +514,7 @@ def view_pipeline():
         
     else:
         # LIST VIEW
-        st.markdown("<h2 style='padding:20px 0 10px 0;'>Rolodex</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='padding:10px 0 10px 0;'>Rolodex</h2>", unsafe_allow_html=True)
         if not st.session_state.user: return
         leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
         
@@ -548,7 +532,7 @@ def view_pipeline():
                 st.rerun()
 
 def view_analytics():
-    st.markdown("<h2 style='padding:20px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).execute().data
     if not leads: st.warning("No data."); return
@@ -559,6 +543,8 @@ def view_analytics():
 # ==========================================
 # 7. MAIN ROUTER
 # ==========================================
+
+# A. LOGIN SCREEN
 if not st.session_state.user:
     st.markdown("<div style='text-align:center; padding-top:40px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
     
@@ -583,6 +569,7 @@ if not st.session_state.user:
         except Exception as e: st.error(str(e))
     st.stop()
 
+# B. SUBSCRIPTION SCREEN
 if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
@@ -603,26 +590,45 @@ if not st.session_state.is_subscribed:
         if url: st.link_button("Go to Checkout", url, type="primary")
     st.stop()
 
-if st.session_state.active_tab == "omni": view_omni()
-elif st.session_state.active_tab == "pipeline": view_pipeline()
-elif st.session_state.active_tab == "analytics": view_analytics()
+# C. CLAIMSCRIBE NAVIGATION (TOP TABS)
+# We render this BEFORE the view content so it appears at the top
+st.markdown('<div class="cs-nav-container">', unsafe_allow_html=True)
+nav_c1, nav_c2, nav_c3 = st.columns(3)
 
-# --- NAVIGATION BAR (FIXED) ---
-# Logic: Hide Navbar ONLY if in pipeline tab AND a lead is selected (Detail View)
-if not (st.session_state.active_tab == "pipeline" and st.session_state.selected_lead):
-    with st.container():
-        st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        def nav_btn(col, label, target, icon):
-            with col:
-                cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
-                st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
-                if st.button(label, key=f"nav_{target}", use_container_width=True):
-                    st.session_state.active_tab = target
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+def render_nav_tab(col, label, target, icon):
+    with col:
+        # Determine active state for styling
+        is_active = (st.session_state.active_tab == target)
+        cls = "cs-nav-active" if is_active else "cs-nav-item"
         
-        nav_btn(c1, "Assistant", "omni", "")
-        nav_btn(c2, "Rolodex", "pipeline", "")
-        nav_btn(c3, "Analytics", "analytics", "")
+        # Wrap button in custom div to apply the underline style
+        st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
+        if st.button(f"{icon} {label}", key=f"nav_{target}", use_container_width=True):
+            st.session_state.active_tab = target
+            st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
+
+# Icons matched to ClaimScribe visual language (Mic, List/Box, Graph)
+render_nav_tab(nav_c1, "Assistant", "omni", "🎙️")
+render_nav_tab(nav_c2, "Rolodex", "pipeline", "📇") 
+render_nav_tab(nav_c3, "Analytics", "analytics", "📊")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# D. ACTIVE VIEW CONTENT
+# Account / Profile dropdown logic moved inside views or handled generally?
+# We'll put a small sign-out at the very bottom or top-right.
+# For now, keeping it clean as per screenshot.
+
+if st.session_state.active_tab == "omni": 
+    view_omni()
+    # Add Sign Out in Omni view as a footer action if needed, or keeping it clean.
+    st.markdown("---")
+    if st.button("Sign Out", type="secondary"):
+        supabase.auth.sign_out()
+        st.session_state.user = None
+        st.rerun()
+
+elif st.session_state.active_tab == "pipeline": 
+    view_pipeline()
+elif st.session_state.active_tab == "analytics": 
+    view_analytics()
