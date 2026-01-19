@@ -115,15 +115,15 @@ st.markdown("""
         [data-testid="stRadio"] div[role="radiogroup"] {
             display: flex;
             flex-direction: row;
-            justify-content: center !important; /* FORCE CENTER */
-            width: 100% !important; /* FULL WIDTH TO ALLOW CENTERING */
+            justify-content: center !important; /* CENTERED NAV */
+            width: 100% !important;
             overflow-x: auto;
             white-space: nowrap;
             gap: 24px;
             border-bottom: 1px solid #F2F2F2;
             padding-bottom: 0px;
             margin-bottom: 24px;
-            -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Hide the radio circle/input */
@@ -248,13 +248,6 @@ st.markdown("""
         button[kind="primary"] p {
             text-align: center !important;
         }
-        
-        button[kind="secondary"] {
-            background-color: transparent !important;
-            border: 1px solid #222222 !important;
-            box-shadow: none !important;
-            text-align: center !important;
-        }
 
         /* --- 6. INPUTS --- */
         div[data-baseweb="input"] {
@@ -352,7 +345,7 @@ def load_leads_summary():
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
     prompt = f"""
-    You are 'The Closer', an expert Executive Assistant and Sales Coach. 
+    You are 'The Closer', an expert Executive Assistant. 
     Here is the user's Rolodex (Existing Leads): {leads_json}
     User Audio Provided. Listen carefully.
     
@@ -367,11 +360,6 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     - **Product Fit**: Listen for what specific product/service the *user* believes the lead is interested in. Do NOT invent a pitch; extract the specific interest mentioned.
     - **Background**: Write a brief yet formal executive report summarizing the lead's status and key details.
     
-    INTELLIGENCE ADD-ONS (Generate these based on the data):
-    - **Suggested Opener**: Write a specific, short text message draft the user can send to this lead to break the ice or follow up.
-    - **Personality Badge**: ONE word psychological profile (e.g. "Analyst", "Skeptic", "Champion", "Busy Bee", "Gamer").
-    - **Urgency Trigger**: Identify the "Why Now?" (e.g. "Knee Injury Recovery", "Just Moved", "New Job").
-    
     RETURN ONLY RAW JSON:
     {{
         "action": "CREATE" | "UPDATE" | "QUERY",
@@ -380,10 +368,7 @@ def process_omni_voice(audio_bytes, existing_leads_context):
             "name": "Full Name",
             "contact_info": "Phone/Email",
             "background": "Formal executive report...",
-            "product_pitch": "Specific product interest...",
-            "suggested_opener": "Hey [Name], I remember you mentioning...",
-            "personality_badge": "Analyst",
-            "urgency_trigger": "Quarterly Review"
+            "product_pitch": "Specific product interest extracted from audio"
         }},
         "confidence": "High/Low"
     }}
@@ -408,19 +393,11 @@ def save_new_lead(lead_data):
 
 def update_existing_lead(lead_id, new_data, old_background=""):
     if not st.session_state.user: return "Not logged in"
-    # Upsert specific fields if they exist in new_data
     final_data = {
         "product_pitch": new_data.get('product_pitch'),
         "contact_info": new_data.get('contact_info'),
-        "background": new_data.get('background'),
-        "suggested_opener": new_data.get('suggested_opener'),
-        "personality_badge": new_data.get('personality_badge'),
-        "urgency_trigger": new_data.get('urgency_trigger')
+        "background": new_data.get('background') 
     }
-    # Clean None values to avoid overwriting with nulls if not intended, 
-    # though usually we want to update what we have.
-    final_data = {k: v for k, v in final_data.items() if v is not None}
-    
     try:
         supabase.table("leads").update(final_data).eq("id", lead_id).execute()
         return None
@@ -452,7 +429,6 @@ def render_executive_card(data, show_close=True):
     if action == "CREATE": badge_text = "NEW ASSET"
     elif action == "UPDATE": badge_text = "UPDATED"
     
-    # HTML Content Construction
     html_content = f"""
         <div class="airbnb-card">
             <div class="card-header">
@@ -470,24 +446,6 @@ def render_executive_card(data, show_close=True):
                 <div class="stat-item">
                     <div class="stat-label">Contact</div>
                     <div class="stat-value">{lead.get('contact_info') or '-'}</div>
-                </div>
-            </div>
-            
-            <div class="report-bubble">
-                <div class="stat-label" style="color:#222; margin-bottom:8px;">🎯 Recommended Outreach</div>
-                <p style="font-size:16px; font-weight:500; margin:0; line-height:1.4; color:#222222; font-style:italic;">
-                    "{lead.get('suggested_opener') or 'No script generated yet.'}"
-                </p>
-            </div>
-
-            <div class="stat-grid">
-                <div class="stat-item">
-                    <div class="stat-label">🧠 Personality Badge</div>
-                    <div class="stat-value">{lead.get('personality_badge') or 'Unknown'}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">⏰ Urgency Trigger</div>
-                    <div class="stat-value">{lead.get('urgency_trigger') or 'None detected'}</div>
                 </div>
             </div>
             
