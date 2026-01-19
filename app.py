@@ -21,8 +21,8 @@ st.set_page_config(
 # Initialize Session State
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_subscribed' not in st.session_state: st.session_state.is_subscribed = False
-if 'active_tab' not in st.session_state: st.session_state.active_tab = "omni" # Renamed from 'generate'
-if 'omni_result' not in st.session_state: st.session_state.omni_result = None # Stores the current Executive Card data
+if 'active_tab' not in st.session_state: st.session_state.active_tab = "omni" 
+if 'omni_result' not in st.session_state: st.session_state.omni_result = None 
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'user_profile' not in st.session_state: st.session_state.user_profile = None
 
@@ -143,7 +143,8 @@ st.markdown("""
 
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; }
-        .stat-value { font-size: 15px; font-weight: 600; color: #222; margin-top: 4px; }
+        /* ADDED !important to ensure visibility */
+        .stat-value { font-size: 15px; font-weight: 600; color: #222 !important; margin-top: 4px; }
 
         /* --- BUTTONS --- */
         button[kind="primary"] {
@@ -302,18 +303,11 @@ def update_existing_lead(lead_id, new_data, old_background=""):
     timestamp = datetime.now().strftime("%Y-%m-%d")
     new_note = f"\n[{timestamp}] UPDATE: {new_data.get('background', '')}"
     
-    # We don't want to overwrite the whole background if we can help it, just append
-    # But if the AI returns a full merged background, use that. 
-    # For safety, let's trust the AI's "background" field if it seems complete, 
-    # otherwise we append.
-    
     final_data = {
         "sales_angle": new_data.get('sales_angle'),
         "product_pitch": new_data.get('product_pitch'),
         "follow_up": new_data.get('follow_up'),
         "contact_info": new_data.get('contact_info'),
-        # Assuming the AI merges it, if not we could do logic here. 
-        # We'll overwrite with the AI's version which should include the new context.
         "background": new_data.get('background') 
     }
     
@@ -346,11 +340,12 @@ def render_executive_card(data):
     if action == "CREATE": badge_text = "NEW ASSET ACQUIRED"
     elif action == "UPDATE": badge_text = "FILE UPDATED"
     
+    # FIX: Use 'or' to fallback if the string is empty "" or None
     st.markdown(f"""
         <div class="exec-card">
             <div class="exec-header">
                 <div class="exec-badge">{badge_text}</div>
-                <div class="exec-title">{lead.get('name', 'Rolodex Query')}</div>
+                <div class="exec-title">{lead.get('name') or 'Rolodex Query'}</div>
             </div>
             <div class="exec-body">
                 <div class="briefing-box">
@@ -361,25 +356,25 @@ def render_executive_card(data):
                 <div class="stat-grid">
                     <div>
                         <div class="stat-label">Strategy</div>
-                        <div class="stat-value">{lead.get('sales_angle', '-')}</div>
+                        <div class="stat-value">{lead.get('sales_angle') or '-'}</div>
                     </div>
                     <div>
                         <div class="stat-label">Next Step</div>
-                        <div class="stat-value">{lead.get('follow_up', '-')}</div>
+                        <div class="stat-value">{lead.get('follow_up') or '-'}</div>
                     </div>
                     <div>
                         <div class="stat-label">Product Fit</div>
-                        <div class="stat-value">{lead.get('product_pitch', '-')}</div>
+                        <div class="stat-value">{lead.get('product_pitch') or '-'}</div>
                     </div>
                     <div>
                         <div class="stat-label">Contact</div>
-                        <div class="stat-value">{lead.get('contact_info', '-')}</div>
+                        <div class="stat-value">{lead.get('contact_info') or '-'}</div>
                     </div>
                 </div>
                 
                 <div style="margin-top:20px;">
                     <div class="stat-label">Background / Notes</div>
-                    <p style="font-size:14px; margin-top:5px; line-height:1.6;">{lead.get('background', '-')}</p>
+                    <p style="font-size:14px; margin-top:5px; line-height:1.6;">{lead.get('background') or '-'}</p>
                 </div>
             </div>
         </div>
