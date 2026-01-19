@@ -61,47 +61,105 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. CSS (NATIVE APP FEEL)
+# 3. CSS (NATIVE APP FEEL - FIXED)
 # ==========================================
 st.markdown("""
     <style>
-        /* --- LOCK SCREEN (Native App Feel) --- */
-        /* Prevent the whole page from bouncing or scrolling */
-        .stApp {
-            background-color: #ffffff;
+        /* --- 1. LOCK VIEWPORT & DISABLE BOUNCE --- */
+        html, body, .stApp {
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden !important; /* Disable scroll on main container */
+            overscroll-behavior: none;   /* Disable pull-to-refresh/bounce */
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            overscroll-behavior: none;
-        }
-        
-        /* Allow only the main content area to scroll */
-        .main .block-container {
-            height: calc(100vh - 80px); /* Leave room for nav bar */
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-bottom: 100px !important; /* Extra padding so content isn't hidden behind nav */
-            padding-top: 2rem !important;
-            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+            -webkit-user-select: none; /* Disable text selection */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Hide Streamlit Header/Footer */
-        [data-testid="stHeader"], footer { display: none !important; }
-        
-        /* --- TYPOGRAPHY --- */
-        h1, h2, h3 { color: #222222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
-        p, label, span, div { color: #717171; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
-        
-        /* --- INPUTS --- */
-        div[data-baseweb="input"], div[data-baseweb="base-input"] {
-            background-color: #ffffff !important;
-            border: 1px solid #e0e0e0 !important;
-            border-radius: 12px !important;
+        /* --- 2. SCROLLABLE CONTENT AREA --- */
+        /* Only this specific container scrolls */
+        .main .block-container {
+            height: calc(100vh - 70px); /* Leave space for bottom nav */
+            overflow-y: auto !important;
+            overflow-x: hidden;
+            padding-top: env(safe-area-inset-top) !important;
+            padding-bottom: 100px !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            -webkit-overflow-scrolling: touch;
         }
-        input { color: #222222 !important; caret-color: #FF385C !important; }
+
+        /* Hide Default Header/Footer */
+        [data-testid="stHeader"], footer { display: none !important; }
+
+        /* --- 3. FORCE HORIZONTAL NAV BAR --- */
+        .nav-fixed-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 70px; /* Fixed height for nav */
+            background: #ffffff;
+            border-top: 1px solid #f2f2f2;
+            z-index: 999999;
+            padding-bottom: env(safe-area-inset-bottom);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Force Streamlit Columns to stay side-by-side on mobile */
+        .nav-fixed-container [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important; /* Force row direction */
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 0 !important;
+        }
+        
+        /* Force individual columns to share width equally */
+        .nav-fixed-container [data-testid="column"] {
+            flex: 1 !important;
+            width: 33.33% !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Remove default Streamlit gap */
+        .nav-fixed-container [data-testid="column"] > div {
+            width: 100% !important;
+        }
+
+        /* Nav Buttons Styling */
+        .nav-btn button, .nav-active button {
+            width: 100% !important;
+            height: 50px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nav-btn button p, .nav-active button p {
+            font-size: 10px !important;
+            font-weight: 600 !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+        }
+        
+        /* Active State */
+        .nav-active button p { color: #FF385C !important; }
+        .nav-btn button p { color: #b0b0b0 !important; }
 
         /* --- EXECUTIVE CARD STYLES --- */
         .exec-card {
@@ -129,77 +187,25 @@ st.markdown("""
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; }
         .stat-value { font-size: 15px; font-weight: 600; color: #222 !important; margin-top: 4px; }
-
-        /* --- FIXED BOTTOM NAV BAR FIXES --- */
-        .nav-fixed-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: #ffffff;
-            border-top: 1px solid #f2f2f2;
-            z-index: 999999;
-            padding: 8px 5px 20px 5px; /* Reduced padding */
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
-            display: flex;
-            justify-content: center;
-        }
-
-        /* FORCE COLUMNS TO STAY ON ONE LINE */
-        .nav-fixed-container [data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important;
-            gap: 2px !important;
-            width: 100% !important;
-            min-width: 0 !important;
-        }
         
-        .nav-fixed-container [data-testid="column"] {
-            min-width: 0 !important;
-            flex: 1 1 0 !important; /* Force equal width */
-            padding: 0 2px !important;
-        }
-
-        /* Nav Buttons Styling */
-        .nav-btn button, .nav-active button {
-            width: 100% !important;
-            padding: 8px 0 !important; /* Smaller padding */
-            font-size: 12px !important; /* Smaller text for mobile */
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-        }
-        
-        .nav-btn button {
-            background-color: transparent !important;
-            color: #b0b0b0 !important;
-            border: none !important;
-        }
-        
-        .nav-active button {
-            color: #FF385C !important;
-            background-color: #FFF0F3 !important;
+        /* --- GENERAL UI --- */
+        h1, h2, h3 { color: #222 !important; }
+        input { color: #222 !important; caret-color: #FF385C !important; }
+        div[data-baseweb="input"], div[data-baseweb="base-input"] {
+            background-color: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
             border-radius: 12px !important;
-            border: none !important;
         }
-
-        /* --- GENERAL BUTTONS --- */
+        
+        /* Primary Action Button */
         button[kind="primary"] {
             background-color: #FF385C !important;
             color: white !important;
             border-radius: 12px !important;
-            padding: 12px 24px !important;
+            height: 50px !important;
             font-weight: 600 !important;
             border: none !important;
-            height: 50px !important;
-            width: 100% !important;
-        }
-        button[kind="secondary"] {
-            background-color: transparent !important;
-            color: #222 !important;
-            border: 1px solid #e0e0e0 !important;
-            box-shadow: none !important;
-            border-radius: 12px !important;
-            height: 50px !important;
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -395,7 +401,7 @@ def render_executive_card(data):
             safe_name = lead.get('name').strip().replace(" ", "_")
             st.download_button("Export to Contacts", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
     with c2:
-        if st.button("Close File", type="secondary", use_container_width=True):
+        if st.button("Close File", use_container_width=True):
             st.session_state.omni_result = None
             st.rerun()
 
@@ -465,7 +471,7 @@ if not st.session_state.user:
             st.session_state.is_subscribed = check_subscription_status(res.user.email)
             st.rerun()
         except Exception as e: st.error(str(e))
-    if c2.button("Sign Up", type="secondary", use_container_width=True):
+    if c2.button("Sign Up", use_container_width=True):
         try:
             meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
             res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
@@ -495,12 +501,13 @@ with st.container():
         with col:
             cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
             st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
-            if st.button(f"{icon} {label}", key=f"nav_{target}", use_container_width=True):
+            if st.button(label, key=f"nav_{target}", use_container_width=True):
                 st.session_state.active_tab = target
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
     
-    nav_btn(c1, "Assistant", "omni", "🎙️")
-    nav_btn(c2, "Rolodex", "pipeline", "📇")
-    nav_btn(c3, "Analytics", "analytics", "📈")
+    # Removed Emojis as requested
+    nav_btn(c1, "Assistant", "omni", "")
+    nav_btn(c2, "Rolodex", "pipeline", "")
+    nav_btn(c3, "Analytics", "analytics", "")
     st.markdown('</div>', unsafe_allow_html=True)
