@@ -7,6 +7,7 @@ import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
 import stripe
+import textwrap
 
 # ==========================================
 # 1. CONFIG & STATE
@@ -60,12 +61,30 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. CSS (Airbnb + Executive Style)
+# 3. CSS (Native App Feel)
 # ==========================================
 st.markdown("""
     <style>
-        /* --- RESET & BASICS --- */
-        .stApp { background-color: #ffffff; color: #222222; font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif; }
+        /* --- RESET & APP SHELL --- */
+        .stApp { 
+            background-color: #ffffff; 
+            color: #222222; 
+            font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+            /* Lock the viewport to prevent whole-page scrolling */
+            overflow: hidden; 
+            overscroll-behavior: none;
+        }
+        
+        /* Allow internal scrolling for content but hide scrollbars */
+        .main .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 80px !important; /* Space for fixed nav */
+            overflow-y: auto !important;
+            height: 100vh !important;
+            max-width: 100% !important;
+        }
+        ::-webkit-scrollbar { display: none; }
+        
         [data-testid="stHeader"] { display: none; }
         footer {visibility: hidden;}
         
@@ -143,7 +162,6 @@ st.markdown("""
 
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; }
-        /* ADDED !important to ensure visibility */
         .stat-value { font-size: 15px; font-weight: 600; color: #222 !important; margin-top: 4px; }
 
         /* --- BUTTONS --- */
@@ -167,13 +185,44 @@ st.markdown("""
             height: 50px !important;
         }
 
-        /* Nav Buttons */
+        /* --- FIXED BOTTOM NAV BAR --- */
         .nav-fixed-container {
-            position: fixed; bottom: 0; left: 0; width: 100%; background: #ffffff;
-            border-top: 1px solid #f2f2f2; z-index: 999999; padding: 10px 0 20px 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #ffffff;
+            border-top: 1px solid #f2f2f2;
+            z-index: 999999;
+            padding: 10px 0 20px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
         }
-        .nav-btn button { background-color: transparent !important; color: #b0b0b0 !important; border: none !important; }
-        .nav-active button { color: #FF385C !important; background-color: #FFF0F3 !important; border-radius: 20px !important; }
+
+        /* FORCE HORIZONTAL LAYOUT ON MOBILE */
+        @media (max-width: 640px) {
+            .nav-fixed-container [data-testid="column"] {
+                width: 33.33% !important;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
+        }
+
+        /* Nav Buttons */
+        .nav-btn button {
+            background-color: transparent !important;
+            color: #b0b0b0 !important;
+            border: none !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            box-shadow: none !important;
+        }
+        .nav-active button {
+            color: #FF385C !important;
+            background-color: #FFF0F3 !important;
+            border-radius: 20px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -340,8 +389,7 @@ def render_executive_card(data):
     if action == "CREATE": badge_text = "NEW ASSET ACQUIRED"
     elif action == "UPDATE": badge_text = "FILE UPDATED"
     
-    # FIX: We replace newline characters with spaces to flatten the string.
-    # This prevents the Markdown parser from seeing indentation and triggering code blocks.
+    # We replace newline characters to flatten the HTML, ensuring no markdown code-block artifacts.
     html_content = f"""
         <div class="exec-card">
             <div class="exec-header">
@@ -422,16 +470,12 @@ def view_omni():
         
         if audio_val:
             with st.spinner("Analyzing Rolodex..."):
-                # 1. Get Context
                 existing_leads = load_leads_summary()
-                
-                # 2. Process with AI
                 result = process_omni_voice(audio_val.read(), existing_leads)
                 
                 if "error" in result:
                     st.error(result['error'])
                 else:
-                    # 3. Execute Database Actions
                     action = result.get('action')
                     lead_data = result.get('lead_data', {})
                     
@@ -440,7 +484,6 @@ def view_omni():
                     elif action == "UPDATE" and result.get('match_id'):
                         update_existing_lead(result['match_id'], lead_data)
                     
-                    # 4. Show Result
                     st.session_state.omni_result = result
                     st.rerun()
     else:
@@ -476,7 +519,7 @@ def view_analytics():
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    # --- LOGIN SCREEN (Reuse existing logic simplified for brevity) ---
+    # --- LOGIN SCREEN ---
     st.markdown("<h1 style='text-align: center;'>The Closer</h1>", unsafe_allow_html=True)
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
@@ -496,7 +539,7 @@ if not st.session_state.user:
         except Exception as e: st.error(str(e))
     st.stop()
 
-# --- SUBSCRIPTION GATE (Preserved) ---
+# --- SUBSCRIPTION GATE ---
 if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
@@ -515,20 +558,20 @@ elif st.session_state.active_tab == "analytics": view_analytics()
 
 st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-# --- NAVIGATION BAR ---
+# --- NAVIGATION BAR (FIXED & HORIZONTAL) ---
 with st.container():
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    def nav_btn(col, label, target, icon):
+    def nav_btn(col, label, target):
         with col:
             cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
             st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
-            if st.button(f"{icon} {label}", key=f"nav_{target}", use_container_width=True):
+            if st.button(label, key=f"nav_{target}", use_container_width=True):
                 st.session_state.active_tab = target
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
     
-    nav_btn(c1, "Assistant", "omni", "🎙️")
-    nav_btn(c2, "Rolodex", "pipeline", "📇")
-    nav_btn(c3, "Analytics", "analytics", "📈")
+    nav_btn(c1, "Assistant", "omni")
+    nav_btn(c2, "Rolodex", "pipeline")
+    nav_btn(c3, "Analytics", "analytics")
     st.markdown('</div>', unsafe_allow_html=True)
