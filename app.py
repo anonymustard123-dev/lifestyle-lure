@@ -468,9 +468,6 @@ def render_executive_card(data, show_close=True):
     st.markdown(html_content, unsafe_allow_html=True)
     
     # Action Buttons
-    # Logic: If we are in Rolodex view (show_close=False), only show Save Contact. 
-    # If in Omni view (show_close=True), show both.
-    
     if show_close:
         c1, c2 = st.columns(2)
         with c1:
@@ -484,7 +481,7 @@ def render_executive_card(data, show_close=True):
                 st.session_state.selected_lead = None
                 st.rerun()
     else:
-        # Rolodex View: Create Contact Button Only
+        # ROLODEX VIEW: Only Save Contact, no Close button
         if lead.get('name'):
             vcf = create_vcard(data)
             safe_name = lead.get('name').strip().replace(" ", "_")
@@ -542,7 +539,6 @@ def view_pipeline():
             'action': 'QUERY',
             'executive_brief': "Viewing full file from Rolodex."
         }
-        # Pass show_close=False to remove the Close button
         render_executive_card(wrapped_data, show_close=False)
         
     else:
@@ -557,7 +553,10 @@ def view_pipeline():
             
         # Render List as Clickable Buttons
         for lead in leads:
+            # We create a button that looks like a card item
+            # The label contains the Name and the Strategy
             label = f"{lead.get('name', 'Unknown')} | {lead.get('sales_angle', '')[:30]}..."
+            
             if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
                 st.session_state.selected_lead = lead
                 st.rerun()
@@ -623,19 +622,21 @@ elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
 # --- NAVIGATION BAR (FIXED) ---
-with st.container():
-    st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    def nav_btn(col, label, target, icon):
-        with col:
-            cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
-            st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
-            if st.button(label, key=f"nav_{target}", use_container_width=True):
-                st.session_state.active_tab = target
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    nav_btn(c1, "Assistant", "omni", "")
-    nav_btn(c2, "Rolodex", "pipeline", "")
-    nav_btn(c3, "Analytics", "analytics", "")
-    st.markdown('</div>', unsafe_allow_html=True)
+# Logic: Hide Navbar ONLY if in pipeline tab AND a lead is selected (Detail View)
+if not (st.session_state.active_tab == "pipeline" and st.session_state.selected_lead):
+    with st.container():
+        st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        def nav_btn(col, label, target, icon):
+            with col:
+                cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
+                st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
+                if st.button(label, key=f"nav_{target}", use_container_width=True):
+                    st.session_state.active_tab = target
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+        
+        nav_btn(c1, "Assistant", "omni", "")
+        nav_btn(c2, "Rolodex", "pipeline", "")
+        nav_btn(c3, "Analytics", "analytics", "")
+        st.markdown('</div>', unsafe_allow_html=True)
