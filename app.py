@@ -27,13 +27,11 @@ if 'referral_captured' not in st.session_state: st.session_state.referral_captur
 if 'user_profile' not in st.session_state: st.session_state.user_profile = None
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
-# We check if it's already captured so we don't overwrite it with None on a refresh
 if not st.session_state.referral_captured:
     try:
         query_params = st.query_params
         if "ref" in query_params:
             ref_val = query_params["ref"]
-            # Handle potential list return
             if isinstance(ref_val, list):
                 st.session_state.referral_captured = ref_val[0]
             else:
@@ -48,7 +46,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
-# CRITICAL: This must match your Railway URL exactly in production
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
 
 @st.cache_resource
@@ -422,7 +419,7 @@ def load_leads():
     return []
 
 # ==========================================
-# 6. LOGIN SCREEN
+# 6. LOGIN SCREEN (NO VERIFICATION)
 # ==========================================
 def login_screen():
     st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>The Closer</h1>", unsafe_allow_html=True)
@@ -445,19 +442,6 @@ def login_screen():
                     st.session_state.user = res.user
                     st.session_state.is_subscribed = check_subscription_status(res.user.email)
                     st.session_state.user_profile = fetch_user_profile(res.user.id)
-                    
-                    # --- THE FIX: SELF-HEALING REFERRAL ---
-                    # If user arrives via Boomerang link but profile is missing referrer, fix it now
-                    if st.session_state.referral_captured and st.session_state.user_profile:
-                        if not st.session_state.user_profile.get('referred_by'):
-                            try:
-                                supabase.table("profiles").update({
-                                    "referred_by": st.session_state.referral_captured
-                                }).eq("id", res.user.id).execute()
-                                # Update local state
-                                st.session_state.user_profile['referred_by'] = st.session_state.referral_captured
-                            except: pass
-                            
                     st.rerun()
                 except Exception as e: st.error(f"Login failed: {e}")
 
@@ -476,22 +460,37 @@ def login_screen():
             if supabase:
                 try:
                     meta = {}
-                    # 1. Prepare Redirect URL (The Boomerang)
-                    # This tells Supabase: "After they click the email, send them back HERE with the ref code"
-                    redirect_url = APP_BASE_URL
                     if st.session_state.referral_captured:
                         meta["referred_by"] = st.session_state.referral_captured
-                        redirect_url = f"{APP_BASE_URL}?ref={st.session_state.referral_captured}"
                     
+                    # 1. Create the user
                     res = supabase.auth.sign_up({
                         "email": email, 
                         "password": password,
-                        "options": {
-                            "data": meta,
-                            "email_redirect_to": redirect_url # <--- THIS IS THE FIX
-                        } 
+                        "options": {"data": meta} 
                     })
-                    st.success("Account created! Check your email.")
+                    
+                    # 2. AUTO-LOGIN LOGIC
+                    # If Supabase "Confirm Email" is OFF, 'res.user' and 'res.session' will be present.
+                    if res.user:
+                        st.session_state.user = res.user
+                        st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                        st.session_state.user_profile = fetch_user_profile(res.user.id)
+                        
+                        # Double-check: Ensure referral is saved in profile
+                        if st.session_state.referral_captured and st.session_state.user_profile:
+                            if not st.session_state.user_profile.get('referred_by'):
+                                try:
+                                    supabase.table("profiles").update({
+                                        "referred_by": st.session_state.referral_captured
+                                    }).eq("id", res.user.id).execute()
+                                except: pass
+                        
+                        st.success("Account created! Logging you in...")
+                        st.rerun()
+                    else:
+                        st.warning("Account created, but auto-login failed. Please log in manually.")
+                        
                 except Exception as e: st.error(f"Signup failed: {e}")
             else: st.warning("Database not connected.")
 
