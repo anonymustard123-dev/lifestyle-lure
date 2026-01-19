@@ -110,46 +110,48 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
 
-        /* --- 3. CLAIMSCRIBE NAV TABS (TOP) --- */
-        /* Container for the tabs */
-        .cs-nav-container {
+        /* --- 3. CUSTOM CLAIMSCRIBE NAV (STYLING RADIO BUTTONS) --- */
+        /* Target the radio group to look like a scrollable bar */
+        [data-testid="stRadio"] > div[role="radiogroup"] {
             display: flex;
-            align-items: center;
-            border-bottom: 1px solid #EBEBEB;
-            margin-bottom: 24px;
+            flex-direction: row;
+            overflow-x: auto;
+            white-space: nowrap;
+            gap: 24px;
+            border-bottom: 1px solid #F2F2F2;
             padding-bottom: 0px;
-            background: #FFFFFF;
+            margin-bottom: 24px;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
         }
 
-        /* Styling for the wrapper div around the button */
-        .cs-nav-item, .cs-nav-active {
-            width: 100%;
+        /* Hide the radio circle/input */
+        [data-testid="stRadio"] label > div:first-child {
+            display: none !important;
         }
 
-        /* Base Button Style for Tabs */
-        .cs-nav-item button, .cs-nav-active button {
-            background-color: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: #717171 !important;
-            font-weight: 600 !important;
-            font-size: 14px !important;
-            padding: 12px 0 !important;
-            border-radius: 0 !important;
-            border-bottom: 3px solid transparent !important;
+        /* Style the Label Text (The Tab) */
+        [data-testid="stRadio"] label {
+            padding: 12px 0px !important;
+            margin-right: 0px !important;
+            border-bottom: 3px solid transparent;
             transition: all 0.2s ease;
-            width: 100% !important;
+            cursor: pointer;
         }
 
-        /* Active State (Red Underline) */
-        .cs-nav-active button {
-            color: #222222 !important;
-            border-bottom: 3px solid #FF385C !important; /* The ClaimScribe Red */
+        [data-testid="stRadio"] label p {
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            color: #717171 !important;
+            margin: 0 !important;
         }
 
-        .cs-nav-item button:hover {
+        /* Active State (Red Underline) via :has selector */
+        [data-testid="stRadio"] label:has(input:checked) {
+            border-bottom-color: #FF385C !important;
+        }
+        
+        [data-testid="stRadio"] label:has(input:checked) p {
             color: #222222 !important;
-            background-color: transparent !important;
         }
 
         /* --- 4. AIRBNB CARDS & BUBBLES --- */
@@ -196,7 +198,8 @@ st.markdown("""
             border: 1px solid #EBEBEB;
         }
 
-        /* --- 5. ROLODEX LIST STYLING --- */
+        /* --- 5. ROLODEX LIST STYLING (THE BUBBLE BUTTONS) --- */
+        /* These target the buttons in the list to look like cards */
         .stButton > button {
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important;
@@ -208,6 +211,7 @@ st.markdown("""
             transition: transform 0.1s ease;
             height: auto !important;
             min-height: 60px !important;
+            width: 100% !important;
         }
         
         .stButton > button:active {
@@ -590,45 +594,43 @@ if not st.session_state.is_subscribed:
         if url: st.link_button("Go to Checkout", url, type="primary")
     st.stop()
 
-# C. CLAIMSCRIBE NAVIGATION (TOP TABS)
-# We render this BEFORE the view content so it appears at the top
-st.markdown('<div class="cs-nav-container">', unsafe_allow_html=True)
-nav_c1, nav_c2, nav_c3 = st.columns(3)
+# C. CLAIMSCRIBE NAVIGATION (TOP SCROLLABLE TABS)
+# We use st.radio with custom CSS to create a horizontal scrollable bar
+tabs = {
+    "🎙️ Assistant": "omni",
+    "📇 Rolodex": "pipeline",
+    "📊 Analytics": "analytics"
+}
+# Reverse lookup to find label from ID
+rev_tabs = {v: k for k, v in tabs.items()}
+current_label = rev_tabs.get(st.session_state.active_tab, "🎙️ Assistant")
 
-def render_nav_tab(col, label, target, icon):
-    with col:
-        # Determine active state for styling
-        is_active = (st.session_state.active_tab == target)
-        cls = "cs-nav-active" if is_active else "cs-nav-item"
-        
-        # Wrap button in custom div to apply the underline style
-        st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
-        if st.button(f"{icon} {label}", key=f"nav_{target}", use_container_width=True):
-            st.session_state.active_tab = target
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+# Render Radio Button (Styled as Tabs via CSS)
+selected_label = st.radio(
+    "Navigation",
+    options=list(tabs.keys()),
+    index=list(tabs.keys()).index(current_label),
+    label_visibility="collapsed",
+    horizontal=True,
+    key="nav_radio"
+)
 
-# Icons matched to ClaimScribe visual language (Mic, List/Box, Graph)
-render_nav_tab(nav_c1, "Assistant", "omni", "🎙️")
-render_nav_tab(nav_c2, "Rolodex", "pipeline", "📇") 
-render_nav_tab(nav_c3, "Analytics", "analytics", "📊")
-st.markdown('</div>', unsafe_allow_html=True)
+# Sync selection with session state
+if tabs[selected_label] != st.session_state.active_tab:
+    st.session_state.active_tab = tabs[selected_label]
+    st.rerun()
 
 # D. ACTIVE VIEW CONTENT
-# Account / Profile dropdown logic moved inside views or handled generally?
-# We'll put a small sign-out at the very bottom or top-right.
-# For now, keeping it clean as per screenshot.
-
 if st.session_state.active_tab == "omni": 
     view_omni()
-    # Add Sign Out in Omni view as a footer action if needed, or keeping it clean.
-    st.markdown("---")
-    if st.button("Sign Out", type="secondary"):
-        supabase.auth.sign_out()
-        st.session_state.user = None
-        st.rerun()
-
 elif st.session_state.active_tab == "pipeline": 
     view_pipeline()
 elif st.session_state.active_tab == "analytics": 
     view_analytics()
+
+# Sign Out Footer (Small)
+st.markdown("---")
+if st.button("Sign Out", type="secondary"):
+    supabase.auth.sign_out()
+    st.session_state.user = None
+    st.rerun()
