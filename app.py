@@ -112,10 +112,12 @@ st.markdown("""
 
         /* --- 3. CUSTOM CLAIMSCRIBE NAV (STYLING RADIO BUTTONS) --- */
         /* Target the radio group to look like a scrollable bar */
-        [data-testid="stRadio"] > div[role="radiogroup"] {
+        /* Updated Selector: Removed '>' to allow for nested divs */
+        [data-testid="stRadio"] div[role="radiogroup"] {
             display: flex;
             flex-direction: row;
-            justify-content: center; /* CENTERED NAV */
+            justify-content: center !important; /* FORCE CENTER */
+            width: 100% !important; /* FULL WIDTH TO ALLOW CENTERING */
             overflow-x: auto;
             white-space: nowrap;
             gap: 24px;
