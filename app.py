@@ -7,13 +7,14 @@ import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
 import stripe
+import textwrap
 
 # ==========================================
 # 1. CONFIG & STATE
 # ==========================================
 st.set_page_config(
     page_title="The Closer", 
-    page_icon=None,  # Removed emoji
+    page_icon="🎙️", 
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -21,10 +22,12 @@ st.set_page_config(
 # Initialize Session State
 if 'user' not in st.session_state: st.session_state.user = None
 if 'is_subscribed' not in st.session_state: st.session_state.is_subscribed = False
-if 'active_tab' not in st.session_state: st.session_state.active_tab = "command_center"
+if 'active_tab' not in st.session_state: st.session_state.active_tab = "omni" 
+if 'omni_result' not in st.session_state: st.session_state.omni_result = None
+# NEW: Track selected lead for Rolodex navigation
+if 'selected_lead' not in st.session_state: st.session_state.selected_lead = None
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'user_profile' not in st.session_state: st.session_state.user_profile = None
-if 'last_command_result' not in st.session_state: st.session_state.last_command_result = None 
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
 if not st.session_state.referral_captured:
@@ -32,12 +35,15 @@ if not st.session_state.referral_captured:
         query_params = st.query_params
         if "ref" in query_params:
             ref_val = query_params["ref"]
-            if isinstance(ref_val, list): st.session_state.referral_captured = ref_val[0]
-            else: st.session_state.referral_captured = ref_val
-    except: pass
+            if isinstance(ref_val, list):
+                st.session_state.referral_captured = ref_val[0]
+            else:
+                st.session_state.referral_captured = ref_val
+    except:
+        pass
 
 # ==========================================
-# 2. CONNECTIONS
+# 2. CONNECTIONS (SUPABASE & STRIPE)
 # ==========================================
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -47,111 +53,240 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
 
 @st.cache_resource
 def init_supabase():
-    if SUPABASE_URL and SUPABASE_KEY: return create_client(SUPABASE_URL, SUPABASE_KEY)
+    if SUPABASE_URL and SUPABASE_KEY:
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
     return None
 
 supabase = init_supabase()
-if STRIPE_SECRET_KEY: stripe.api_key = STRIPE_SECRET_KEY
+
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. EXECUTIVE CSS (Fixed Login & Mic)
+# 3. CSS (AIRBNB DESIGN SYSTEM + NATIVE FEEL)
 # ==========================================
 st.markdown("""
     <style>
-        /* BASE RESET */
-        .stApp { background-color: #ffffff; color: #222; font-family: 'Helvetica Neue', sans-serif; }
-        [data-testid="stHeader"] { display: none; }
-        footer {visibility: hidden;}
-        
-        h1, h2, h3 { color: #222 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
-        p, label, span, div { color: #555; }
-        
-        /* INPUTS (Fixed Visibility) */
-        /* Forces inputs to have white background and dark text for readability */
-        div[data-baseweb="input"], div[data-baseweb="base-input"] { 
-            background-color: #ffffff !important; 
-            border: 1px solid #e0e0e0 !important; 
-            border-radius: 12px !important; 
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+
+        /* --- 1. GLOBAL RESET & TYPOGRAPHY --- */
+        html, body, .stApp {
+            font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+            background-color: #FFFFFF !important;
+            color: #222222;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden !important;
+            overscroll-behavior: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        input.st-bd, input.st-bc, input { 
-            background-color: #ffffff !important; 
-            color: #000000 !important; 
-            -webkit-text-fill-color: #000000 !important;
+
+        h1, h2, h3 {
+            font-weight: 800 !important;
+            color: #222222 !important;
+            letter-spacing: -0.5px;
+        }
+
+        p, label, span, div {
+            color: #717171;
+        }
+
+        /* Hide Default Streamlit Chrome */
+        [data-testid="stHeader"], footer { display: none !important; }
+
+        /* --- 2. SCROLLABLE CONTENT AREA --- */
+        .main .block-container {
+            height: calc(100vh - 80px); /* Leave room for bottom nav */
+            overflow-y: auto !important;
+            overflow-x: hidden;
+            padding-top: max(env(safe-area-inset-top), 20px) !important;
+            padding-bottom: 100px !important;
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* --- 3. AIRBNB CARDS --- */
+        .airbnb-card {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border: 1px solid #dddddd;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .status-badge {
+            background-color: #FF385C;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 6px 10px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #222222;
+            margin: 10px 0 5px 0;
+        }
+        
+        /* List Item Card Style */
+        .list-card {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            border: 1px solid #EBEBEB;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: transform 0.1s ease;
+        }
+        .list-card:active {
+            transform: scale(0.98);
+            background-color: #F7F7F7;
+        }
+
+        /* --- 4. BUTTONS --- */
+        /* Primary (Rausch Pink) */
+        button[kind="primary"] {
+            background-color: #FF385C !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 14px 24px !important;
+            font-weight: 600 !important;
+            font-size: 16px !important;
+            height: auto !important;
+            box-shadow: none !important;
+            transition: transform 0.1s ease;
+        }
+        button[kind="primary"]:active {
+            transform: scale(0.98);
+        }
+
+        /* Secondary (Outline) */
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #222222 !important;
+            border: 1px solid #222222 !important;
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+            height: auto !important;
+        }
+        
+        /* Back Button Style */
+        .back-btn-container {
+            margin-bottom: 16px;
+        }
+
+        /* --- 5. INPUTS --- */
+        /* Text Inputs */
+        div[data-baseweb="input"] {
+            background-color: #F7F7F7 !important;
+            border: 1px solid transparent !important;
+            border-radius: 12px !important;
+        }
+        div[data-baseweb="input"]:focus-within {
+            border: 1px solid #222222 !important;
+            background-color: #FFFFFF !important;
+        }
+        input {
+            color: #222222 !important;
+            font-weight: 500 !important;
             caret-color: #FF385C !important;
         }
         
-        /* MINIMALIST MICROPHONE */
-        /* Strips the heavy styling to make it a clean pill */
+        /* Audio Input - Pill Shape */
         [data-testid="stAudioInput"] {
+            background-color: #F7F7F7 !important;
             border-radius: 50px !important;
-            border: 1px solid #eee !important;
-            background-color: #fff !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-            padding: 5px 15px !important; /* Smaller padding */
-            width: 100% !important;
-            max-width: 60px !important; /* Forces it small */
-            margin: 0 auto !important;
-            min-height: 50px !important;
+            border: none !important;
+            color: #222 !important;
+            padding: 5px !important;
         }
-        /* Hide the waveform visualization to keep it minimal */
-        [data-testid="stAudioInputCanvas"] { display: none !important; }
-        
-        /* PAYWALL & PROFILE */
-        .paywall-container { text-align: center; padding: 40px 20px; max-width: 500px; margin: 0 auto; }
-        .price-tag { font-size: 32px; font-weight: 800; color: #222; margin: 20px 0; }
-        .balance-card { background-color: #f7f7f7; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 15px; border: 1px solid #e0e0e0; }
-        .balance-amount { font-size: 24px; font-weight: 800; color: #222; margin-top: 5px; }
-        
-        /* BUTTONS */
-        button[kind="primary"] { background-color: #FF385C !important; color: white !important; border-radius: 12px !important; padding: 12px 24px !important; font-weight: 600 !important; border: none !important; height: 50px !important; width: 100% !important; box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important; }
-        button[kind="primary"]:hover { background-color: #d90b3e !important; }
-        button[kind="secondary"] { background-color: transparent !important; color: #222 !important; border: 1px solid #e0e0e0 !important; box-shadow: none !important; border-radius: 12px !important; height: 50px !important; }
 
-        /* EXECUTIVE CARD UI */
-        .airbnb-card { background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 30px; margin-bottom: 10px; border: 1px solid #f0f0f0; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; }
-        .card-title { font-size: 28px; font-weight: 800; color: #222; margin: 0; }
-        .card-badge { background-color: #222; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
-        .strategy-box { background-color: #FFF0F3; border-left: 6px solid #FF385C; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .strategy-title { color: #FF385C; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; display: block; }
-        .strategy-text { color: #222; font-weight: 700; font-size: 18px; line-height: 1.4; }
-        .intel-box { color: #444; font-size: 15px; line-height: 1.8; }
+        /* --- 6. NAVIGATION (Fixed Bottom) --- */
+        .nav-fixed-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background-color: #FFFFFF;
+            border-top: 1px solid #f2f2f2;
+            z-index: 999999;
+            padding-bottom: env(safe-area-inset-bottom);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.03);
+        }
+
+        .nav-fixed-container [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 0 !important;
+        }
         
-        /* NAVIGATION */
-        .nav-fixed-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #ffffff; border-top: 1px solid #f2f2f2; z-index: 999999; padding: 10px 0 20px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.02); }
-        .nav-btn button { background-color: transparent !important; color: #b0b0b0 !important; border: none !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; }
-        .nav-active button { color: #FF385C !important; background-color: #FFF0F3 !important; border-radius: 20px !important; }
+        .nav-fixed-container [data-testid="column"] {
+            flex: 1 !important;
+            padding: 0 !important;
+        }
         
-        /* EXPANDER STYLING (For Rolodex) */
-        .streamlit-expanderHeader { background-color: #fff !important; font-weight: 700 !important; color: #222 !important; border-radius: 12px !important; border: 1px solid #eee !important; }
-        .streamlit-expanderContent { border: none !important; box-shadow: none !important; }
+        .nav-btn button, .nav-active button {
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 10px 0 !important;
+        }
+        
+        .nav-btn button p { color: #b0b0b0 !important; font-weight: 500 !important; font-size: 11px !important; }
+        .nav-active button p { color: #FF385C !important; font-weight: 700 !important; font-size: 11px !important; }
+
+        /* --- UTILS --- */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+        .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
+        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
+        .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
+        
+        .briefing-section {
+            background-color: #F7F7F7;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. SUBSCRIPTION & REFERRAL LOGIC
+# 4. DATA & LOGIC HELPERS
 # ==========================================
 def fetch_user_profile(user_id):
     try:
         response = supabase.table("profiles").select("*").eq("id", user_id).execute()
-        return response.data[0] if response.data else None
+        if response.data: return response.data[0]
     except: return None
-
-def calculate_commissions(profile):
-    if not STRIPE_SECRET_KEY or not profile or not profile.get('referral_code'): return 0.0
-    try:
-        my_code = profile.get('referral_code')
-        referred_users = supabase.table("profiles").select("email").eq("referred_by", my_code).execute()
-        if not referred_users.data: return 0.0
-        total_revenue = 0.0
-        for user in referred_users.data:
-            email = user['email']
-            customers = stripe.Customer.list(email=email, limit=1).data
-            if customers:
-                invoices = stripe.Invoice.list(customer=customers[0].id, status='paid', limit=100)
-                for inv in invoices.data: total_revenue += (inv.amount_paid / 100)
-        return round(total_revenue * 0.20, 2)
-    except: return 0.0
 
 def check_subscription_status(email):
     if not STRIPE_SECRET_KEY: return True 
@@ -159,25 +294,31 @@ def check_subscription_status(email):
         customers = stripe.Customer.list(email=email).data
         if not customers: return False
         subscriptions = stripe.Subscription.list(customer=customers[0].id, status='active').data
-        return True if subscriptions else False
+        return True
     except: return False
 
 def create_checkout_session(email, user_id):
     try:
         customers = stripe.Customer.list(email=email).data
-        if customers: customer_id = customers[0].id
-        else: customer = stripe.Customer.create(email=email).id
+        customer_id = customers[0].id if customers else stripe.Customer.create(email=email).id
+        
         profile = fetch_user_profile(user_id)
         metadata = {'referred_by': profile.get('referred_by')} if profile and profile.get('referred_by') else {}
+
         session = stripe.checkout.Session.create(
-            customer=customer_id, payment_method_types=['card'], line_items=[{'price': STRIPE_PRICE_ID, 'quantity': 1}],
-            mode='subscription', success_url=f"{APP_BASE_URL}?session_id={{CHECKOUT_SESSION_ID}}", cancel_url=f"{APP_BASE_URL}", metadata=metadata
+            customer=customer_id,
+            payment_method_types=['card'],
+            line_items=[{'price': STRIPE_PRICE_ID, 'quantity': 1}],
+            mode='subscription',
+            success_url=f"{APP_BASE_URL}?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{APP_BASE_URL}",
+            metadata=metadata
         )
         return session.url
     except: return None
 
 # ==========================================
-# 5. BACKEND LOGIC (THE OMNI-TOOL ENGINE)
+# 5. OMNI-TOOL BACKEND (AI CORE)
 # ==========================================
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
@@ -190,307 +331,301 @@ def clean_json_string(json_str):
     if json_str.endswith("```"): json_str = json_str[:-3]
     return json_str
 
-def process_voice_command(audio_bytes):
-    prompt = """
-    You are an Executive Assistant. Listen to the user's voice command.
-    Classify the intent into one of two categories:
-    
-    1. 'UPDATE': The user is providing new information about a lead (e.g., "I just met Ryan", "Update Sarah's file").
-    2. 'RETRIEVE': The user is asking to see a file (e.g., "Pull up Ryan", "Who is Sarah?", "Show me the plumber").
+def load_leads_summary():
+    if not st.session_state.user or not supabase: return []
+    try:
+        response = supabase.table("leads").select("id, name, background, contact_info").eq("user_id", st.session_state.user.id).execute()
+        return response.data
+    except: return []
 
-    Return JSON:
-    {
-        "intent": "UPDATE" or "RETRIEVE",
-        "name_query": "The name or keyword to search for (e.g., 'Ryan Sherman'). IF NEW, extract the full name carefully.",
-        "context_payload": "If UPDATE, extract the raw notes provided. If RETRIEVE, leave null."
-    }
+def process_omni_voice(audio_bytes, existing_leads_context):
+    leads_json = json.dumps(existing_leads_context)
+    prompt = f"""
+    You are 'The Closer', an expert Executive Assistant. 
+    Here is the user's Rolodex (Existing Leads): {leads_json}
+    User Audio Provided. Listen carefully.
+    YOUR TASK:
+    1. MATCHING: Is the user talking about a person in the Rolodex? (Use fuzzy matching on name/context).
+    2. INTENT: 
+       - If they are describing a NEW person not in the list -> Action: "CREATE"
+       - If they are adding info about an EXISTING person -> Action: "UPDATE"
+       - If they are asking a question about a person or the list -> Action: "QUERY"
+    RETURN ONLY RAW JSON:
+    {{
+        "action": "CREATE" | "UPDATE" | "QUERY",
+        "match_id": (Integer ID if UPDATE/QUERY matches a specific lead, else null),
+        "lead_data": {{
+            "name": "Full Name",
+            "contact_info": "Phone/Email",
+            "background": "The full context/history (If UPDATE, append new info to old)",
+            "sales_angle": "Current Strategy",
+            "product_pitch": "Recommended Product",
+            "follow_up": "Next Step Timeframe"
+        }},
+        "executive_brief": "A 2-sentence briefing for the user.",
+        "confidence": "High/Low"
+    }}
     """
     try:
         response = client.models.generate_content(
-            model=TEXT_MODEL_ID, contents=[types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"), prompt],
+            model=TEXT_MODEL_ID,
+            contents=[types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"), prompt],
             config=types.GenerateContentConfig(response_mime_type="application/json")
         )
         return json.loads(clean_json_string(response.text))
     except Exception as e: return {"error": str(e)}
 
-def synthesize_dossier(existing_lead, new_input):
-    prompt = f"""
-    You are a Chief of Staff. Rewrite this client dossier.
-    - Merge new info into existing bullet points.
-    - Remove outdated info.
-    - Keep it high-level and executive.
-    
-    OLD: {existing_lead.get('background')} | Strategy: {existing_lead.get('sales_angle')}
-    NEW INPUT: {new_input}
-    
-    RETURN JSON:
-    {{ "sales_angle": "Updated Strategy", "background": "• Point 1\\n• Point 2...", "follow_up": "Next Step" }}
-    """
-    try:
-        response = client.models.generate_content(
-            model=TEXT_MODEL_ID, contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json")
-        )
-        return json.loads(clean_json_string(response.text))
-    except: return None
-
-def execute_command(command_data):
+def save_new_lead(lead_data):
     if not st.session_state.user: return "Not logged in"
-    user_id = st.session_state.user.id
-    intent = command_data.get('intent')
-    query = command_data.get('name_query')
-    
-    if not query: return {"status": "error", "msg": "Could not identify who you are talking about."}
+    lead_data['user_id'] = st.session_state.user.id
+    lead_data['created_at'] = datetime.now().isoformat()
+    try: 
+        res = supabase.table("leads").insert(lead_data).execute()
+        return None
+    except Exception as e: return str(e)
 
-    # 1. Search DB for the person
-    existing = None
+def update_existing_lead(lead_id, new_data, old_background=""):
+    if not st.session_state.user: return "Not logged in"
+    timestamp = datetime.now().strftime("%Y-%m-%d")
+    final_data = {
+        "sales_angle": new_data.get('sales_angle'),
+        "product_pitch": new_data.get('product_pitch'),
+        "follow_up": new_data.get('follow_up'),
+        "contact_info": new_data.get('contact_info'),
+        "background": new_data.get('background') 
+    }
     try:
-        res = supabase.table("leads").select("*").eq("user_id", user_id).ilike("name", f"%{query}%").execute()
-        if res.data: existing = res.data[0]
-    except: pass
+        supabase.table("leads").update(final_data).eq("id", lead_id).execute()
+        return None
+    except Exception as e: return str(e)
 
-    # --- PATH A: RETRIEVE ---
-    if intent == "RETRIEVE":
-        if existing:
-            return {"status": "success", "type": "card", "data": existing}
-        else:
-            return {"status": "error", "msg": f"No dossier found for '{query}'."}
-
-    # --- PATH B: UPDATE (or CREATE) ---
-    elif intent == "UPDATE":
-        context = command_data.get('context_payload', '')
-        
-        if existing:
-            # Update Existing
-            new_dossier = synthesize_dossier(existing, context)
-            if new_dossier:
-                supabase.table("leads").update({
-                    "background": new_dossier.get('background'),
-                    "sales_angle": new_dossier.get('sales_angle'),
-                    "follow_up": new_dossier.get('follow_up')
-                }).eq("id", existing['id']).execute()
-                updated_row = supabase.table("leads").select("*").eq("id", existing['id']).execute().data[0]
-                return {"status": "success", "type": "card", "data": updated_row, "msg": "Dossier Updated."}
-        else:
-            # Create New - NAME FIX APPLIED HERE
-            # We explicitly use the 'query' (which is the extracted name from the Router)
-            # as the name for the new file.
-            init_dossier = synthesize_dossier({"background": "", "sales_angle": ""}, context)
-            if init_dossier:
-                # Format name nicely (e.g. "ryan sherman" -> "Ryan Sherman")
-                clean_name = query.title() 
-                new_lead = {
-                    "user_id": user_id,
-                    "name": clean_name, # <--- Fix 1: Use extracted name
-                    "created_at": datetime.now().isoformat(),
-                    "background": init_dossier.get('background'),
-                    "sales_angle": init_dossier.get('sales_angle'),
-                    "follow_up": init_dossier.get('follow_up')
-                }
-                data = supabase.table("leads").insert(new_lead).execute()
-                if data.data:
-                    return {"status": "success", "type": "card", "data": data.data[0], "msg": f"New Dossier: {clean_name}"}
-            
-    return {"status": "error", "msg": "Could not process command."}
-
-def load_leads():
-    if not st.session_state.user: return []
-    try: return supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
-    except: return []
+def create_vcard(data):
+    vcard = [
+        "BEGIN:VCARD", "VERSION:3.0", 
+        f"FN:{data.get('name', 'Lead')}", 
+        f"TEL;TYPE=CELL:{data.get('contact_info', '')}", 
+        f"NOTE:{data.get('executive_brief','')}", 
+        "END:VCARD"
+    ]
+    return "\n".join(vcard)
 
 # ==========================================
-# 6. LOGIN SCREEN
+# 6. APP VIEWS
 # ==========================================
-def login_screen():
-    st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>The Closer</h1>", unsafe_allow_html=True)
-    if st.session_state.referral_captured: st.info(f"🎉 Invite Applied: {st.session_state.referral_captured}")
 
-    tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
+def render_executive_card(data):
+    """Display the sleek Omni-Tool Output"""
+    lead = data.get('lead_data', {})
+    action = data.get('action', 'QUERY')
+    brief = data.get('executive_brief', 'No briefing available.')
+    badge_text = "INTELLIGENCE REPORT"
+    if action == "CREATE": badge_text = "NEW ASSET"
+    elif action == "UPDATE": badge_text = "UPDATED"
     
-    with tab_login:
-        st.markdown("<br>", unsafe_allow_html=True)
-        email = st.text_input("Email", key="l_email")
-        password = st.text_input("Password", type="password", key="l_pass")
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Log In", type="primary", use_container_width=True):
-            if supabase:
-                try:
-                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                    st.session_state.user = res.user
-                    st.session_state.is_subscribed = check_subscription_status(res.user.email)
-                    st.session_state.user_profile = fetch_user_profile(res.user.id)
-                    if st.session_state.referral_captured and st.session_state.user_profile:
-                        if not st.session_state.user_profile.get('referred_by'):
-                            try: supabase.table("profiles").update({"referred_by": st.session_state.referral_captured}).eq("id", res.user.id).execute()
-                            except: pass
-                    st.rerun()
-                except Exception as e: st.error(f"Login failed: {e}")
+    # Updated HTML to match Airbnb Card Aesthetic
+    html_content = f"""
+        <div class="airbnb-card">
+            <div class="card-header">
+                <div>
+                    <span class="status-badge">{badge_text}</span>
+                    <div class="card-title">{lead.get('name') or 'Rolodex Query'}</div>
+                </div>
+            </div>
+            
+            <div class="briefing-section">
+                <div class="stat-label" style="color:#FF385C;">Morning Briefing</div>
+                <div style="font-size:16px; font-weight:500; color:#222; margin-top:4px; line-height:1.5;">{brief}</div>
+            </div>
 
-    with tab_signup:
-        st.markdown("<br>", unsafe_allow_html=True)
-        email = st.text_input("Email", key="s_email")
-        password = st.text_input("Password", type="password", key="s_pass")
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        btn_label = f"Create Account (Ref: {st.session_state.referral_captured})" if st.session_state.referral_captured else "Create Account"
-        if st.button(btn_label, type="primary", use_container_width=True):
-            if supabase:
-                try:
-                    meta = {}
-                    if st.session_state.referral_captured: meta["referred_by"] = st.session_state.referral_captured
-                    
-                    res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
-                    
-                    if res.user:
-                        st.session_state.user = res.user
-                        st.session_state.is_subscribed = check_subscription_status(res.user.email)
-                        st.session_state.user_profile = fetch_user_profile(res.user.id)
-                        st.success("Account created! Logging in...")
-                        st.rerun()
-                    else: st.warning("Please verify email manually.")
-                except Exception as e: st.error(f"Signup failed: {e}")
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Strategy</div>
+                    <div class="stat-value">{lead.get('sales_angle') or '-'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Next Step</div>
+                    <div class="stat-value">{lead.get('follow_up') or '-'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Product Fit</div>
+                    <div class="stat-value">{lead.get('product_pitch') or '-'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Contact</div>
+                    <div class="stat-value">{lead.get('contact_info') or '-'}</div>
+                </div>
+            </div>
+            
+            <div style="margin-top:24px;">
+                <div class="stat-label">Background / Notes</div>
+                <p style="font-size:14px; margin-top:8px; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
+            </div>
+        </div>
+    """.replace("\n", " ")
+    
+    st.markdown(html_content, unsafe_allow_html=True)
+    
+    # Action Buttons
+    c1, c2 = st.columns(2)
+    with c1:
+        if lead.get('name'):
+            vcf = create_vcard(data)
+            safe_name = lead.get('name').strip().replace(" ", "_")
+            st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
+    with c2:
+        if st.button("Close File", use_container_width=True, type="secondary"):
+            st.session_state.omni_result = None
+            st.session_state.selected_lead = None # Reset Rolodex Selection too
+            st.rerun()
 
-# ==========================================
-# 7. MAIN APP ROUTER (Auth Guard Moved Here)
-# ==========================================
-if not st.session_state.user:
-    login_screen()
-    st.stop()
-
-def render_header():
-    if not st.session_state.user_profile: st.session_state.user_profile = fetch_user_profile(st.session_state.user.id)
-    c1, c2 = st.columns([8, 1])
+def view_omni():
+    c1, c2 = st.columns([8, 1]) 
+    with c1: st.markdown("<h2 style='margin-top:10px;'>Omni-Assistant</h2>", unsafe_allow_html=True)
     with c2:
         with st.popover("👤"):
-            if st.session_state.user_profile:
-                earnings = calculate_commissions(st.session_state.user_profile)
-                st.markdown(f"**Lifetime Earnings:** ${earnings:.2f}")
-                if st.button("Sign Out"):
-                    supabase.auth.sign_out()
-                    st.session_state.clear()
-                    st.rerun()
+            if st.button("Sign Out", type="secondary"):
+                supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
 
-# --- SUBSCRIPTION GATE ---
+    if not st.session_state.omni_result:
+        st.markdown("""
+            <div style="text-align: center; padding: 60px 20px;">
+                <div style="font-size: 64px; margin-bottom: 20px;">🎙️</div>
+                <h3 style="margin-bottom: 10px;">Tap to Speak</h3>
+                <p style="font-size: 16px;">"Create a lead for John..."<br>"Update Sarah's file..."</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Audio input styled as pill
+        audio_val = st.audio_input("OmniInput", label_visibility="collapsed")
+        
+        if audio_val:
+            with st.spinner("Analyzing Rolodex..."):
+                existing_leads = load_leads_summary()
+                result = process_omni_voice(audio_val.read(), existing_leads)
+                if "error" in result: st.error(result['error'])
+                else:
+                    action = result.get('action')
+                    lead_data = result.get('lead_data', {})
+                    if action == "CREATE": save_new_lead(lead_data)
+                    elif action == "UPDATE" and result.get('match_id'): update_existing_lead(result['match_id'], lead_data)
+                    st.session_state.omni_result = result
+                    st.rerun()
+    else:
+        render_executive_card(st.session_state.omni_result)
+
+def view_pipeline():
+    # --- MASTER DETAIL LOGIC ---
+    if st.session_state.selected_lead:
+        # DETAIL VIEW
+        
+        # Back Button (Top Left)
+        if st.button("← Back", key="back_to_list", type="secondary"):
+            st.session_state.selected_lead = None
+            st.rerun()
+        
+        # Render the full card using the existing renderer
+        # We wrap the data to match the expected format
+        wrapped_data = {
+            'lead_data': st.session_state.selected_lead,
+            'action': 'QUERY',
+            'executive_brief': "Viewing full file from Rolodex."
+        }
+        render_executive_card(wrapped_data)
+        
+    else:
+        # LIST VIEW
+        st.markdown("<h2 style='padding:20px 0 10px 0;'>Rolodex</h2>", unsafe_allow_html=True)
+        if not st.session_state.user: return
+        leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
+        
+        if not leads:
+            st.info("Rolodex is empty.")
+            return
+            
+        # Render List as Clickable Buttons
+        for lead in leads:
+            # We create a button that looks like a card item
+            # The label contains the Name and the Strategy
+            label = f"{lead.get('name', 'Unknown')} | {lead.get('sales_angle', '')[:30]}..."
+            
+            if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
+                st.session_state.selected_lead = lead
+                st.rerun()
+
+def view_analytics():
+    st.markdown("<h2 style='padding:20px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
+    if not st.session_state.user: return
+    leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).execute().data
+    if not leads: st.warning("No data."); return
+    df = pd.DataFrame(leads)
+    st.metric("Total Network", len(leads))
+    st.bar_chart(df['product_pitch'].value_counts())
+
+# ==========================================
+# 7. MAIN ROUTER
+# ==========================================
+if not st.session_state.user:
+    st.markdown("<div style='text-align:center; padding-top:40px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
+    
+    st.markdown("<div class='airbnb-card'>", unsafe_allow_html=True)
+    email = st.text_input("Email", placeholder="name@example.com")
+    password = st.text_input("Password", type="password", placeholder="••••••••")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    c1, c2 = st.columns(2)
+    if c1.button("Log In", type="primary", use_container_width=True):
+        try:
+            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+            st.session_state.user = res.user
+            st.session_state.is_subscribed = check_subscription_status(res.user.email)
+            st.rerun()
+        except Exception as e: st.error(str(e))
+    if c2.button("Sign Up", type="secondary", use_container_width=True):
+        try:
+            meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
+            res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
+            if res.user: st.success("Account created! Log in."); 
+        except Exception as e: st.error(str(e))
+    st.stop()
+
 if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed: st.rerun()
-    render_header()
-    st.markdown("""<div class="paywall-container"><h1>The Closer</h1><div class="price-tag">$15/mo</div></div>""", unsafe_allow_html=True)
-    if st.button("Subscribe", type="primary", use_container_width=True):
-        url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
-        if url: st.link_button("Checkout", url, type="primary", use_container_width=True)
-    st.stop()
-
-# --- TAB 1: THE OMNI-TOOL (COMMAND CENTER) ---
-def view_command_center():
-    render_header()
     
     st.markdown("""
-        <div class="omni-container">
-            <div class="omni-title">How can I help?</div>
-            <div class="omni-sub">Tap to Create, Update, or Retrieve Dossiers</div>
+        <div style="text-align:center; padding: 40px 20px;">
+            <h1>Upgrade Plan</h1>
+            <p>Unlock unlimited leads and pipeline storage.</p>
+            <div class="airbnb-card" style="margin-top:20px;">
+                <h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2>
+            </div>
         </div>
     """, unsafe_allow_html=True)
     
-    # 1. The Microphone (Fix 4: Minimalist)
-    audio = st.audio_input("Command", label_visibility="collapsed")
-    
-    # 2. Processor
-    if audio:
-        with st.spinner("Processing..."):
-            # A. Parse Intent
-            command = process_voice_command(audio.read())
-            
-            if "error" not in command:
-                # B. Execute Intent
-                result = execute_command(command)
-                st.session_state.last_command_result = result
-                st.rerun()
-            else:
-                st.error("Could not understand audio.")
+    if st.button("Subscribe Now", type="primary", use_container_width=True):
+        url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
+        if url: st.link_button("Go to Checkout", url, type="primary")
+    st.stop()
 
-    # 3. Result Display
-    res = st.session_state.last_command_result
-    if res:
-        if res['status'] == 'success' and res.get('type') == 'card':
-            if res.get('msg'): st.toast(res['msg'], icon="✅")
-            
-            lead = res['data']
-            st.markdown(f"""
-            <div class="airbnb-card">
-                <div class="card-header">
-                    <h3 class="card-title">{lead['name']}</h3>
-                    <span class="card-badge">{lead.get('follow_up', 'Active')}</span>
-                </div>
-                
-                <div class="strategy-box">
-                    <span class="strategy-title">The Strategy</span>
-                    <span class="strategy-text">{lead['sales_angle']}</span>
-                </div>
-                
-                <div class="intel-box">
-                    <strong>Executive Briefing:</strong><br>
-                    {lead['background']} 
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button("Close Dossier", type="secondary", use_container_width=True):
-                st.session_state.last_command_result = None
-                st.rerun()
-                
-        elif res['status'] == 'error':
-            st.error(res['msg'])
-
-# --- TAB 2: THE ROLODEX (Fix 3: Sleek Expandable Cards) ---
-def view_rolodex():
-    render_header()
-    st.markdown("## Full Rolodex")
-    leads = load_leads()
-    for lead in leads:
-        # Expander acts as the "Closed" state (Just Name)
-        with st.expander(f"📂 {lead['name']}", expanded=False):
-            # Inside is the sleek executive card
-            st.markdown(f"""
-            <div class="airbnb-card">
-                <div class="card-header">
-                    <h3 class="card-title">{lead['name']}</h3>
-                    <span class="card-badge">{lead.get('follow_up', 'No Action')}</span>
-                </div>
-                <div class="strategy-box">
-                    <span class="strategy-title">The Strategy</span>
-                    <span class="strategy-text">{lead['sales_angle']}</span>
-                </div>
-                <div class="intel-box">
-                    <strong>Key Intel:</strong><br>
-                    {lead['background']} 
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-def view_analytics():
-    render_header()
-    st.markdown("## Analytics")
-    leads = load_leads()
-    st.metric("Total Dossiers", len(leads))
-
-# --- ROUTER ---
-if st.session_state.active_tab == "command_center": view_command_center()
-elif st.session_state.active_tab == "rolodex": view_rolodex()
+if st.session_state.active_tab == "omni": view_omni()
+elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
-# --- BOTTOM NAV ---
-st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
+# --- NAVIGATION BAR (FIXED) ---
 with st.container():
     st.markdown('<div class="nav-fixed-container">', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    def nav(col, label, key):
+    def nav_btn(col, label, target, icon):
         with col:
-            cls = "nav-active" if st.session_state.active_tab == key else "nav-btn"
+            cls = "nav-active" if st.session_state.active_tab == target else "nav-btn"
             st.markdown(f'<div class="{cls}">', unsafe_allow_html=True)
-            if st.button(label, key=f"nav_{key}", use_container_width=True): st.session_state.active_tab = key; st.rerun()
+            if st.button(label, key=f"nav_{target}", use_container_width=True):
+                st.session_state.active_tab = target
+                st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-    nav(c1, "Assistant", "command_center")
-    nav(c2, "Rolodex", "rolodex")
-    nav(c3, "Stats", "analytics")
+    
+    nav_btn(c1, "Assistant", "omni", "")
+    nav_btn(c2, "Rolodex", "pipeline", "")
+    nav_btn(c3, "Analytics", "analytics", "")
     st.markdown('</div>', unsafe_allow_html=True)
