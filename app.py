@@ -7,7 +7,6 @@ import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
 import stripe
-import textwrap  # <--- ADDED THIS IMPORT
 
 # ==========================================
 # 1. CONFIG & STATE
@@ -341,7 +340,8 @@ def render_executive_card(data):
     if action == "CREATE": badge_text = "NEW ASSET ACQUIRED"
     elif action == "UPDATE": badge_text = "FILE UPDATED"
     
-    # FIX: We use textwrap.dedent to ensure the HTML isn't treated as code blocks
+    # FIX: We replace newline characters with spaces to flatten the string.
+    # This prevents the Markdown parser from seeing indentation and triggering code blocks.
     html_content = f"""
         <div class="exec-card">
             <div class="exec-header">
@@ -379,8 +379,9 @@ def render_executive_card(data):
                 </div>
             </div>
         </div>
-    """
-    st.markdown(textwrap.dedent(html_content), unsafe_allow_html=True)
+    """.replace("\n", " ")
+    
+    st.markdown(html_content, unsafe_allow_html=True)
     
     # Action Buttons
     c1, c2 = st.columns(2)
