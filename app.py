@@ -26,14 +26,20 @@ if 'generated_lead' not in st.session_state: st.session_state.generated_lead = N
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'user_profile' not in st.session_state: st.session_state.user_profile = None
 
-# --- CAPTURE REFERRAL CODE FROM URL ---
-# This runs immediately when the app loads
-try:
-    query_params = st.query_params
-    if "ref" in query_params:
-        st.session_state.referral_captured = query_params["ref"]
-except:
-    pass
+# --- CAPTURE REFERRAL CODE (STICKY) ---
+# We check if it's already captured so we don't overwrite it with None on a refresh
+if not st.session_state.referral_captured:
+    try:
+        query_params = st.query_params
+        if "ref" in query_params:
+            ref_val = query_params["ref"]
+            # Handle potential list return
+            if isinstance(ref_val, list):
+                st.session_state.referral_captured = ref_val[0]
+            else:
+                st.session_state.referral_captured = ref_val
+    except:
+        pass
 
 # ==========================================
 # 2. CONNECTIONS (SUPABASE & STRIPE)
@@ -42,6 +48,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+# CRITICAL: This must match your Railway URL exactly in production
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
 
 @st.cache_resource
@@ -293,7 +300,6 @@ def calculate_commissions(profile):
         total_revenue = 0.0
         
         # 2. Query Stripe for charges from these emails
-        # Note: We iterate manually to keep it simple for now
         for email in referrals_emails:
             charges = stripe.Charge.list(email=email, limit=100) 
             for charge in charges.data:
@@ -415,7 +421,7 @@ def login_screen():
     
     # If a referral code was captured, show a friendly message
     if st.session_state.referral_captured:
-        st.info(f"🎉 You've been invited! Promo code applied: {st.session_state.referral_captured}")
+        st.info(f"🎉 Invite Applied: {st.session_state.referral_captured}")
 
     tab_login, tab_signup = st.tabs(["Log In", "Sign Up"])
     
@@ -431,6 +437,19 @@ def login_screen():
                     st.session_state.user = res.user
                     st.session_state.is_subscribed = check_subscription_status(res.user.email)
                     st.session_state.user_profile = fetch_user_profile(res.user.id)
+                    
+                    # --- THE FIX: SELF-HEALING REFERRAL ---
+                    # If user arrives via Boomerang link but profile is missing referrer, fix it now
+                    if st.session_state.referral_captured and st.session_state.user_profile:
+                        if not st.session_state.user_profile.get('referred_by'):
+                            try:
+                                supabase.table("profiles").update({
+                                    "referred_by": st.session_state.referral_captured
+                                }).eq("id", res.user.id).execute()
+                                # Update local state
+                                st.session_state.user_profile['referred_by'] = st.session_state.referral_captured
+                            except: pass
+                            
                     st.rerun()
                 except Exception as e: st.error(f"Login failed: {e}")
 
@@ -439,23 +458,31 @@ def login_screen():
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_pass")
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Create Account", type="primary", use_container_width=True):
+        
+        # DEBUG LABEL
+        btn_label = "Create Account"
+        if st.session_state.referral_captured:
+            btn_label = f"Create Account (Ref: {st.session_state.referral_captured})"
+            
+        if st.button(btn_label, type="primary", use_container_width=True):
             if supabase:
                 try:
-                    res = supabase.auth.sign_up({"email": email, "password": password})
+                    meta = {}
+                    # 1. Prepare Redirect URL (The Boomerang)
+                    # This tells Supabase: "After they click the email, send them back HERE with the ref code"
+                    redirect_url = APP_BASE_URL
+                    if st.session_state.referral_captured:
+                        meta["referred_by"] = st.session_state.referral_captured
+                        redirect_url = f"{APP_BASE_URL}?ref={st.session_state.referral_captured}"
                     
-                    # --- REFERRAL LOGIC START ---
-                    # If we have a referral code, update the profile immediately
-                    if st.session_state.referral_captured and res.user:
-                        try:
-                            # The 'profiles' row is created by trigger, we just update the column
-                            supabase.table("profiles").update({
-                                "referred_by": st.session_state.referral_captured
-                            }).eq("id", res.user.id).execute()
-                        except:
-                            pass # Fail silently on referral if DB issue
-                    # --- REFERRAL LOGIC END ---
-                    
+                    res = supabase.auth.sign_up({
+                        "email": email, 
+                        "password": password,
+                        "options": {
+                            "data": meta,
+                            "email_redirect_to": redirect_url # <--- THIS IS THE FIX
+                        } 
+                    })
                     st.success("Account created! Check your email.")
                 except Exception as e: st.error(f"Signup failed: {e}")
             else: st.warning("Database not connected.")
