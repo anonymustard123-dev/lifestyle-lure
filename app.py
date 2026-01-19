@@ -468,39 +468,48 @@ def render_executive_card(data, show_close=True):
             st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
 
 def view_omni():
-    c1, c2 = st.columns([8, 1]) 
-    with c1: st.markdown("<h2 style='margin-top:10px;'>Omni-Assistant</h2>", unsafe_allow_html=True)
-    with c2:
-        with st.popover("👤"):
-            if st.button("Sign Out", type="secondary"):
-                supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
-
-    if not st.session_state.omni_result:
-        st.markdown("""
-            <div style="text-align: center; padding: 60px 20px;">
-                <div style="font-size: 64px; margin-bottom: 20px;">🎙️</div>
-                <h3 style="margin-bottom: 10px;">Tap to Speak</h3>
-                <p style="font-size: 16px;">"Create a lead for John..."<br>"Update Sarah's file..."</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Audio input styled as pill
-        audio_val = st.audio_input("OmniInput", label_visibility="collapsed")
-        
-        if audio_val:
-            with st.spinner("Analyzing Rolodex..."):
-                existing_leads = load_leads_summary()
-                result = process_omni_voice(audio_val.read(), existing_leads)
-                if "error" in result: st.error(result['error'])
-                else:
-                    action = result.get('action')
-                    lead_data = result.get('lead_data', {})
-                    if action == "CREATE": save_new_lead(lead_data)
-                    elif action == "UPDATE" and result.get('match_id'): update_existing_lead(result['match_id'], lead_data)
-                    st.session_state.omni_result = result
-                    st.rerun()
-    else:
+    # If a result exists, show the card. Otherwise, show the minimal landing page.
+    if st.session_state.omni_result:
         render_executive_card(st.session_state.omni_result, show_close=True)
+        return
+
+    # --- Minimal Omni Layout ---
+    
+    # 1. Centered Header
+    st.markdown("<h2 style='text-align: center; margin-top: 20px; margin-bottom: 5px;'>Omni-Assistant</h2>", unsafe_allow_html=True)
+    
+    # 2. Centered Profile Button (Below Header)
+    # We use columns to center the button visually
+    c_prof_1, c_prof_2, c_prof_3 = st.columns([3, 2, 3])
+    with c_prof_2:
+        with st.popover("👤 Account", use_container_width=True):
+            if st.button("Sign Out", type="secondary", use_container_width=True):
+                supabase.auth.sign_out()
+                st.session_state.user = None
+                st.rerun()
+
+    # Spacer for vertical centering
+    st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
+    
+    # 3. Small Central Mic Button
+    # We use narrow columns to constrain the audio widget width so it looks like a small button
+    c_mic_1, c_mic_2, c_mic_3 = st.columns([1, 1, 1])
+    with c_mic_2:
+        audio_val = st.audio_input("OmniInput", label_visibility="collapsed")
+    
+    # Audio Processing Logic
+    if audio_val:
+        with st.spinner("Analyzing Rolodex..."):
+            existing_leads = load_leads_summary()
+            result = process_omni_voice(audio_val.read(), existing_leads)
+            if "error" in result: st.error(result['error'])
+            else:
+                action = result.get('action')
+                lead_data = result.get('lead_data', {})
+                if action == "CREATE": save_new_lead(lead_data)
+                elif action == "UPDATE" and result.get('match_id'): update_existing_lead(result['match_id'], lead_data)
+                st.session_state.omni_result = result
+                st.rerun()
 
 def view_pipeline():
     # --- MASTER DETAIL LOGIC ---
