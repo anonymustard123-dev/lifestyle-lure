@@ -61,151 +61,198 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. CSS (NATIVE APP FEEL - FIXED)
+# 3. CSS (AIRBNB DESIGN SYSTEM + NATIVE FEEL)
 # ==========================================
 st.markdown("""
     <style>
-        /* --- 1. LOCK VIEWPORT & DISABLE BOUNCE --- */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+
+        /* --- 1. GLOBAL RESET & TYPOGRAPHY --- */
         html, body, .stApp {
+            font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+            background-color: #FFFFFF !important;
+            color: #222222;
             height: 100vh;
             width: 100vw;
             margin: 0;
             padding: 0;
-            overflow: hidden !important; /* Disable scroll on main container */
-            overscroll-behavior: none;   /* Disable pull-to-refresh/bounce */
+            overflow: hidden !important;
+            overscroll-behavior: none;
             position: fixed;
             top: 0;
             left: 0;
-            -webkit-user-select: none; /* Disable text selection */
+            -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
+        h1, h2, h3 {
+            font-weight: 800 !important;
+            color: #222222 !important;
+            letter-spacing: -0.5px;
+        }
+
+        p, label, span, div {
+            color: #717171;
+        }
+
+        /* Hide Default Streamlit Chrome */
+        [data-testid="stHeader"], footer { display: none !important; }
+
         /* --- 2. SCROLLABLE CONTENT AREA --- */
-        /* Only this specific container scrolls */
         .main .block-container {
-            height: calc(100vh - 70px); /* Leave space for bottom nav */
+            height: calc(100vh - 80px); /* Leave room for bottom nav */
             overflow-y: auto !important;
             overflow-x: hidden;
-            padding-top: env(safe-area-inset-top) !important;
+            padding-top: max(env(safe-area-inset-top), 20px) !important;
             padding-bottom: 100px !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
+            padding-left: 20px !important;
+            padding-right: 20px !important;
             -webkit-overflow-scrolling: touch;
         }
 
-        /* Hide Default Header/Footer */
-        [data-testid="stHeader"], footer { display: none !important; }
+        /* --- 3. AIRBNB CARDS --- */
+        .airbnb-card {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border: 1px solid #dddddd;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
 
-        /* --- 3. FORCE HORIZONTAL NAV BAR --- */
+        .status-badge {
+            background-color: #FF385C;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 6px 10px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #222222;
+            margin: 10px 0 5px 0;
+        }
+
+        /* --- 4. BUTTONS --- */
+        /* Primary (Rausch Pink) */
+        button[kind="primary"] {
+            background-color: #FF385C !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 14px 24px !important;
+            font-weight: 600 !important;
+            font-size: 16px !important;
+            height: auto !important;
+            box-shadow: none !important;
+            transition: transform 0.1s ease;
+        }
+        button[kind="primary"]:active {
+            transform: scale(0.98);
+        }
+
+        /* Secondary (Outline) */
+        button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #222222 !important;
+            border: 1px solid #222222 !important;
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+            height: auto !important;
+        }
+
+        /* --- 5. INPUTS --- */
+        /* Text Inputs */
+        div[data-baseweb="input"] {
+            background-color: #F7F7F7 !important;
+            border: 1px solid transparent !important;
+            border-radius: 12px !important;
+        }
+        div[data-baseweb="input"]:focus-within {
+            border: 1px solid #222222 !important;
+            background-color: #FFFFFF !important;
+        }
+        input {
+            color: #222222 !important;
+            font-weight: 500 !important;
+            caret-color: #FF385C !important;
+        }
+        
+        /* Audio Input - Pill Shape */
+        [data-testid="stAudioInput"] {
+            background-color: #F7F7F7 !important;
+            border-radius: 50px !important;
+            border: none !important;
+            color: #222 !important;
+            padding: 5px !important;
+        }
+
+        /* --- 6. NAVIGATION (Fixed Bottom) --- */
         .nav-fixed-container {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 70px; /* Fixed height for nav */
-            background: #ffffff;
+            height: 80px;
+            background-color: #FFFFFF;
             border-top: 1px solid #f2f2f2;
             z-index: 999999;
             padding-bottom: env(safe-area-inset-bottom);
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.03);
         }
 
-        /* Force Streamlit Columns to stay side-by-side on mobile */
         .nav-fixed-container [data-testid="stHorizontalBlock"] {
             display: flex !important;
-            flex-direction: row !important; /* Force row direction */
+            flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
             gap: 0 !important;
         }
         
-        /* Force individual columns to share width equally */
         .nav-fixed-container [data-testid="column"] {
             flex: 1 !important;
-            width: 33.33% !important;
-            min-width: 0 !important;
             padding: 0 !important;
         }
         
-        /* Remove default Streamlit gap */
-        .nav-fixed-container [data-testid="column"] > div {
-            width: 100% !important;
-        }
-
-        /* Nav Buttons Styling */
         .nav-btn button, .nav-active button {
             width: 100% !important;
-            height: 50px !important;
-            padding: 0 !important;
-            margin: 0 !important;
+            height: 100% !important;
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            padding: 10px 0 !important;
         }
         
-        .nav-btn button p, .nav-active button p {
-            font-size: 10px !important;
-            font-weight: 600 !important;
-            margin: 0 !important;
-            line-height: 1.2 !important;
-        }
-        
-        /* Active State */
-        .nav-active button p { color: #FF385C !important; }
-        .nav-btn button p { color: #b0b0b0 !important; }
+        .nav-btn button p { color: #b0b0b0 !important; font-weight: 500 !important; font-size: 11px !important; }
+        .nav-active button p { color: #FF385C !important; font-weight: 700 !important; font-size: 11px !important; }
 
-        /* --- EXECUTIVE CARD STYLES --- */
-        .exec-card {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            overflow: hidden;
-            margin-bottom: 24px;
-        }
-        .exec-header { background: #222; color: white; padding: 20px 24px; }
-        .exec-title { font-size: 24px; font-weight: 700; color: white !important; margin: 0; }
-        .exec-badge { 
-            background: #FF385C; color: white; font-size: 10px; font-weight: 800; 
-            padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px;
-            display: inline-block; margin-bottom: 8px;
-        }
-        .exec-body { padding: 24px; }
-        .briefing-box {
-            background-color: #F7F7F7; border-left: 4px solid #FF385C;
-            padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;
-        }
-        .briefing-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #FF385C; margin-bottom: 4px; }
-        .briefing-text { font-size: 16px; font-weight: 500; color: #222; line-height: 1.5; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; }
-        .stat-value { font-size: 15px; font-weight: 600; color: #222 !important; margin-top: 4px; }
+        /* --- UTILS --- */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+        .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
+        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
+        .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
-        /* --- GENERAL UI --- */
-        h1, h2, h3 { color: #222 !important; }
-        input { color: #222 !important; caret-color: #FF385C !important; }
-        div[data-baseweb="input"], div[data-baseweb="base-input"] {
-            background-color: #ffffff !important;
-            border: 1px solid #e0e0e0 !important;
-            border-radius: 12px !important;
-        }
-        
-        /* Primary Action Button */
-        button[kind="primary"] {
-            background-color: #FF385C !important;
-            color: white !important;
-            border-radius: 12px !important;
-            height: 50px !important;
-            font-weight: 600 !important;
-            border: none !important;
-            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.2) !important;
+        .briefing-section {
+            background-color: #F7F7F7;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -350,43 +397,46 @@ def render_executive_card(data):
     action = data.get('action', 'QUERY')
     brief = data.get('executive_brief', 'No briefing available.')
     badge_text = "INTELLIGENCE REPORT"
-    if action == "CREATE": badge_text = "NEW ASSET ACQUIRED"
-    elif action == "UPDATE": badge_text = "FILE UPDATED"
+    if action == "CREATE": badge_text = "NEW ASSET"
+    elif action == "UPDATE": badge_text = "UPDATED"
     
-    # Flatten HTML to avoid indentation bugs
+    # Updated HTML to match Airbnb Card Aesthetic
     html_content = f"""
-        <div class="exec-card">
-            <div class="exec-header">
-                <div class="exec-badge">{badge_text}</div>
-                <div class="exec-title">{lead.get('name') or 'Rolodex Query'}</div>
+        <div class="airbnb-card">
+            <div class="card-header">
+                <div>
+                    <span class="status-badge">{badge_text}</span>
+                    <div class="card-title">{lead.get('name') or 'Rolodex Query'}</div>
+                </div>
             </div>
-            <div class="exec-body">
-                <div class="briefing-box">
-                    <div class="briefing-label">Morning Briefing</div>
-                    <div class="briefing-text">{brief}</div>
+            
+            <div class="briefing-section">
+                <div class="stat-label" style="color:#FF385C;">Morning Briefing</div>
+                <div style="font-size:16px; font-weight:500; color:#222; margin-top:4px; line-height:1.5;">{brief}</div>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Strategy</div>
+                    <div class="stat-value">{lead.get('sales_angle') or '-'}</div>
                 </div>
-                <div class="stat-grid">
-                    <div>
-                        <div class="stat-label">Strategy</div>
-                        <div class="stat-value">{lead.get('sales_angle') or '-'}</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Next Step</div>
-                        <div class="stat-value">{lead.get('follow_up') or '-'}</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Product Fit</div>
-                        <div class="stat-value">{lead.get('product_pitch') or '-'}</div>
-                    </div>
-                    <div>
-                        <div class="stat-label">Contact</div>
-                        <div class="stat-value">{lead.get('contact_info') or '-'}</div>
-                    </div>
+                <div class="stat-item">
+                    <div class="stat-label">Next Step</div>
+                    <div class="stat-value">{lead.get('follow_up') or '-'}</div>
                 </div>
-                <div style="margin-top:20px;">
-                    <div class="stat-label">Background / Notes</div>
-                    <p style="font-size:14px; margin-top:5px; line-height:1.6;">{lead.get('background') or '-'}</p>
+                <div class="stat-item">
+                    <div class="stat-label">Product Fit</div>
+                    <div class="stat-value">{lead.get('product_pitch') or '-'}</div>
                 </div>
+                <div class="stat-item">
+                    <div class="stat-label">Contact</div>
+                    <div class="stat-value">{lead.get('contact_info') or '-'}</div>
+                </div>
+            </div>
+            
+            <div style="margin-top:24px;">
+                <div class="stat-label">Background / Notes</div>
+                <p style="font-size:14px; margin-top:8px; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
             </div>
         </div>
     """.replace("\n", " ")
@@ -399,9 +449,9 @@ def render_executive_card(data):
         if lead.get('name'):
             vcf = create_vcard(data)
             safe_name = lead.get('name').strip().replace(" ", "_")
-            st.download_button("Export to Contacts", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
+            st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
     with c2:
-        if st.button("Close File", use_container_width=True):
+        if st.button("Close File", use_container_width=True, type="secondary"):
             st.session_state.omni_result = None
             st.rerun()
 
@@ -410,18 +460,21 @@ def view_omni():
     with c1: st.markdown("<h2 style='margin-top:10px;'>Omni-Assistant</h2>", unsafe_allow_html=True)
     with c2:
         with st.popover("👤"):
-            if st.button("Sign Out"):
+            if st.button("Sign Out", type="secondary"):
                 supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
 
     if not st.session_state.omni_result:
         st.markdown("""
-            <div style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 60px; margin-bottom: 10px;">🎙️</div>
-                <p style="font-size: 18px; color: #222; font-weight:600;">Tap to Speak</p>
-                <p style="font-size: 14px; color: #888;">"Create a lead for John..."<br>"Update Sarah's file..."</p>
+            <div style="text-align: center; padding: 60px 20px;">
+                <div style="font-size: 64px; margin-bottom: 20px;">🎙️</div>
+                <h3 style="margin-bottom: 10px;">Tap to Speak</h3>
+                <p style="font-size: 16px;">"Create a lead for John..."<br>"Update Sarah's file..."</p>
             </div>
         """, unsafe_allow_html=True)
+        
+        # Audio input styled as pill
         audio_val = st.audio_input("OmniInput", label_visibility="collapsed")
+        
         if audio_val:
             with st.spinner("Analyzing Rolodex..."):
                 existing_leads = load_leads_summary()
@@ -443,6 +496,8 @@ def view_pipeline():
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
     if not leads: st.info("Rolodex is empty.")
     for lead in leads:
+        # Using markdown for card look instead of expander for better style control, 
+        # but expander is safer for native streamlit. We'll stick to expander but it might look basic.
         with st.expander(f"{lead.get('name', 'Unknown')} - {lead.get('sales_angle', '')}"):
             st.write(lead.get('background'))
             st.caption(f"Last updated: {lead.get('created_at')[:10]}")
@@ -460,9 +515,13 @@ def view_analytics():
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    st.markdown("<h1 style='text-align: center;'>The Closer</h1>", unsafe_allow_html=True)
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
+    st.markdown("<div style='text-align:center; padding-top:40px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
+    
+    st.markdown("<div class='airbnb-card'>", unsafe_allow_html=True)
+    email = st.text_input("Email", placeholder="name@example.com")
+    password = st.text_input("Password", type="password", placeholder="••••••••")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
     c1, c2 = st.columns(2)
     if c1.button("Log In", type="primary", use_container_width=True):
         try:
@@ -471,7 +530,7 @@ if not st.session_state.user:
             st.session_state.is_subscribed = check_subscription_status(res.user.email)
             st.rerun()
         except Exception as e: st.error(str(e))
-    if c2.button("Sign Up", use_container_width=True):
+    if c2.button("Sign Up", type="secondary", use_container_width=True):
         try:
             meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
             res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
@@ -483,8 +542,18 @@ if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed: st.rerun()
-    st.markdown("<br><br><h1 style='text-align:center'>Premium Access Required</h1>", unsafe_allow_html=True)
-    if st.button("Subscribe ($15/mo)", type="primary"):
+    
+    st.markdown("""
+        <div style="text-align:center; padding: 40px 20px;">
+            <h1>Upgrade Plan</h1>
+            <p>Unlock unlimited leads and pipeline storage.</p>
+            <div class="airbnb-card" style="margin-top:20px;">
+                <h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("Subscribe Now", type="primary", use_container_width=True):
         url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
         if url: st.link_button("Go to Checkout", url, type="primary")
     st.stop()
@@ -506,7 +575,6 @@ with st.container():
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
     
-    # Removed Emojis as requested
     nav_btn(c1, "Assistant", "omni", "")
     nav_btn(c2, "Rolodex", "pipeline", "")
     nav_btn(c3, "Analytics", "analytics", "")
