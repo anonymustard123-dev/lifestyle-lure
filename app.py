@@ -386,7 +386,6 @@ def save_new_lead(lead_data):
 
 def update_existing_lead(lead_id, new_data, old_background=""):
     if not st.session_state.user: return "Not logged in"
-    timestamp = datetime.now().strftime("%Y-%m-%d")
     final_data = {
         "sales_angle": new_data.get('sales_angle'),
         "product_pitch": new_data.get('product_pitch'),
@@ -400,11 +399,15 @@ def update_existing_lead(lead_id, new_data, old_background=""):
     except Exception as e: return str(e)
 
 def create_vcard(data):
+    # Ensure we get the name correctly whether 'data' is the wrapper or the lead itself
+    lead_info = data.get('lead_data', data)
+    brief = data.get('executive_brief', '')
+    
     vcard = [
         "BEGIN:VCARD", "VERSION:3.0", 
-        f"FN:{data.get('name', 'Lead')}", 
-        f"TEL;TYPE=CELL:{data.get('contact_info', '')}", 
-        f"NOTE:{data.get('executive_brief','')}", 
+        f"FN:{lead_info.get('name', 'Lead')}", 
+        f"TEL;TYPE=CELL:{lead_info.get('contact_info', '')}", 
+        f"NOTE:{brief}", 
         "END:VCARD"
     ]
     return "\n".join(vcard)
@@ -413,7 +416,7 @@ def create_vcard(data):
 # 6. APP VIEWS
 # ==========================================
 
-def render_executive_card(data):
+def render_executive_card(data, show_close=True):
     """Display the sleek Omni-Tool Output"""
     lead = data.get('lead_data', {})
     action = data.get('action', 'QUERY')
@@ -422,7 +425,6 @@ def render_executive_card(data):
     if action == "CREATE": badge_text = "NEW ASSET"
     elif action == "UPDATE": badge_text = "UPDATED"
     
-    # Updated HTML to match Airbnb Card Aesthetic
     html_content = f"""
         <div class="airbnb-card">
             <div class="card-header">
@@ -466,17 +468,27 @@ def render_executive_card(data):
     st.markdown(html_content, unsafe_allow_html=True)
     
     # Action Buttons
-    c1, c2 = st.columns(2)
-    with c1:
+    # Logic: If we are in Rolodex view (show_close=False), only show Save Contact. 
+    # If in Omni view (show_close=True), show both.
+    
+    if show_close:
+        c1, c2 = st.columns(2)
+        with c1:
+            if lead.get('name'):
+                vcf = create_vcard(data)
+                safe_name = lead.get('name').strip().replace(" ", "_")
+                st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
+        with c2:
+            if st.button("Close File", use_container_width=True, type="secondary"):
+                st.session_state.omni_result = None
+                st.session_state.selected_lead = None
+                st.rerun()
+    else:
+        # Rolodex View: Create Contact Button Only
         if lead.get('name'):
             vcf = create_vcard(data)
             safe_name = lead.get('name').strip().replace(" ", "_")
             st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
-    with c2:
-        if st.button("Close File", use_container_width=True, type="secondary"):
-            st.session_state.omni_result = None
-            st.session_state.selected_lead = None # Reset Rolodex Selection too
-            st.rerun()
 
 def view_omni():
     c1, c2 = st.columns([8, 1]) 
@@ -511,7 +523,7 @@ def view_omni():
                     st.session_state.omni_result = result
                     st.rerun()
     else:
-        render_executive_card(st.session_state.omni_result)
+        render_executive_card(st.session_state.omni_result, show_close=True)
 
 def view_pipeline():
     # --- MASTER DETAIL LOGIC ---
@@ -530,7 +542,8 @@ def view_pipeline():
             'action': 'QUERY',
             'executive_brief': "Viewing full file from Rolodex."
         }
-        render_executive_card(wrapped_data)
+        # Pass show_close=False to remove the Close button
+        render_executive_card(wrapped_data, show_close=False)
         
     else:
         # LIST VIEW
@@ -544,10 +557,7 @@ def view_pipeline():
             
         # Render List as Clickable Buttons
         for lead in leads:
-            # We create a button that looks like a card item
-            # The label contains the Name and the Strategy
             label = f"{lead.get('name', 'Unknown')} | {lead.get('sales_angle', '')[:30]}..."
-            
             if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
                 st.session_state.selected_lead = lead
                 st.rerun()
