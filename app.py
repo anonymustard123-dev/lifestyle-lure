@@ -61,88 +61,88 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. CSS (CLAIMSCRIBE STYLE + NATIVE FEEL)
+# 3. CSS (PROFESSIONAL UI UPGRADE)
 # ==========================================
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
         html, body, .stApp {
             font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
-            background-color: #FFFFFF !important;
+            background-color: #FAFAFA !important; /* Slightly off-white background for contrast */
             color: #222222;
-            height: 100vh;
-            width: 100vw;
-            margin: 0;
-            padding: 0;
-            overflow: hidden !important;
-            overscroll-behavior: none;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
         }
-        h1, h2, h3 { font-weight: 800 !important; color: #222222 !important; letter-spacing: -0.5px; }
-        p, label, span, div { color: #717171; }
+        h1, h2, h3 { font-weight: 900 !important; color: #222222 !important; letter-spacing: -0.5px; }
+        
+        /* HIDE DEFAULT CHROME */
         [data-testid="stHeader"], footer { display: none !important; }
-        .main .block-container {
-            height: 100vh;
-            overflow-y: auto !important;
-            overflow-x: hidden;
-            padding-top: max(env(safe-area-inset-top), 20px) !important;
-            padding-bottom: 100px !important;
-            padding-left: 20px !important;
-            padding-right: 20px !important;
-            -webkit-overflow-scrolling: touch;
-        }
+        .main .block-container { padding-top: 20px !important; padding-bottom: 100px !important; max-width: 1000px; margin: 0 auto; }
+
+        /* --- NAVIGATION TABS --- */
         [data-testid="stRadio"] div[role="radiogroup"] {
-            display: flex; flex-direction: row; justify-content: center !important; 
-            width: 100% !important; overflow-x: auto; white-space: nowrap; gap: 24px;
-            border-bottom: 1px solid #F2F2F2; padding-bottom: 0px; margin-bottom: 24px;
+            background: white; padding: 10px; border-radius: 16px; 
+            border: 1px solid #EBEBEB; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            justify-content: space-around !important;
         }
-        [data-testid="stRadio"] label > div:first-child { display: none !important; }
-        [data-testid="stRadio"] label { padding: 12px 0px !important; margin-right: 0px !important; border-bottom: 3px solid transparent; cursor: pointer; }
-        [data-testid="stRadio"] label p { font-size: 15px !important; font-weight: 600 !important; color: #717171 !important; margin: 0 !important; }
-        [data-testid="stRadio"] label:has(input:checked) { border-bottom-color: #FF385C !important; }
-        [data-testid="stRadio"] label:has(input:checked) p { color: #222222 !important; }
-        .airbnb-card {
-            background-color: #FFFFFF; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-            border: 1px solid #dddddd; padding: 24px; margin-bottom: 24px;
-        }
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-        .status-badge {
-            background-color: #FF385C; color: white; font-size: 10px; font-weight: 800;
-            padding: 6px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: inline-block;
-        }
-        .card-title {
-            font-size: 22px; font-weight: 800; color: #222222; margin: 0; line-height: 1.2;
-            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-        }
-        .meta-bubble {
-            font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px;
-            border: 1px solid #EBEBEB; white-space: nowrap; vertical-align: middle; display: inline-flex; align-items: center;
-        }
-        .bubble-client { background-color: #E6FFFA; color: #008a73; border-color: #008a73; }
-        .bubble-lead { background-color: #EBF8FF; color: #2C5282; border-color: #2C5282; }
-        .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
-        .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
-        .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
+        [data-testid="stRadio"] label { padding: 8px 16px !important; border-radius: 8px; transition: all 0.2s; }
+        [data-testid="stRadio"] label:hover { background: #F7F7F7; }
+
+        /* --- ROLODEX CARD BUTTONS (THE UPGRADE) --- */
         .stButton > button {
-            background-color: #FFE5E5 !important; border: 1px solid #000000 !important; border-radius: 12px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; color: #000000 !important; font-weight: 700 !important;
-            padding: 16px 20px !important; text-align: left !important; display: flex !important;
-            justify-content: flex-start !important; align-items: center !important; height: auto !important; width: 100% !important;
+            background-color: #FFFFFF !important;
+            border: 1px solid #EBEBEB !important;
+            border-radius: 16px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
+            color: #222222 !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            padding: 24px 20px !important;
+            text-align: left !important;
+            display: flex !important; flex-direction: column !important; align-items: flex-start !important;
+            height: auto !important; width: 100% !important;
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         }
-        .stButton > button p { font-weight: 700 !important; text-align: left !important; }
-        .stButton > button:active, .stButton > button:focus:not(:active) { transform: scale(0.98); background-color: #FFD1D1 !important; }
-        button[kind="primary"] { background-color: #FF385C !important; color: white !important; border: none !important; text-align: center !important; justify-content: center !important; }
-        button[kind="primary"] p { text-align: center !important; }
-        div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
-        div[data-baseweb="input"]:focus-within { border: 1px solid #222222 !important; background-color: #FFFFFF !important; }
-        input { color: #222222 !important; font-weight: 500 !important; caret-color: #FF385C !important; }
-        [data-testid="stAudioInput"] { background-color: #F7F7F7 !important; border-radius: 50px !important; border: none !important; color: #222 !important; padding: 5px !important; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
-        .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
-        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
-        .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
+        .stButton > button:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.08) !important;
+            border-color: #222222 !important;
+            z-index: 10;
+        }
+        /* Primary Actions (Login, Save) Override */
+        button[kind="primary"] {
+            background-color: #FF385C !important;
+            color: white !important;
+            text-align: center !important;
+            align-items: center !important;
+        }
+
+        /* --- AIRBNB CARD VIEW --- */
+        .airbnb-card {
+            background-color: #FFFFFF; border-radius: 24px; 
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border: 1px solid #EBEBEB; padding: 32px; margin-bottom: 24px;
+        }
+        .status-badge {
+            background-color: #222; color: white; font-size: 10px; font-weight: 800;
+            padding: 6px 12px; border-radius: 100px; text-transform: uppercase; letter-spacing: 1px;
+        }
+        
+        /* BUBBLES */
+        .meta-bubble {
+            font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 20px;
+            white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .bubble-client { background-color: #E6FFFA; color: #008a73; border: 1px solid #E6FFFA; }
+        .bubble-lead { background-color: #EBF8FF; color: #2C5282; border: 1px solid #EBF8FF; }
+        .bubble-outreach { background-color: #FFFBEB; color: #B7791F; border: 1px solid #FFFBEB; }
+        
+        /* SECTIONS */
+        .report-bubble, .transaction-bubble {
+            background: #F8F8F8; border-radius: 16px; padding: 20px; margin-top: 16px;
+        }
+
+        /* UTILS */
+        div[data-baseweb="input"] { border-radius: 12px !important; border: 1px solid #EBEBEB !important; background: white !important; }
+        [data-testid="stAudioInput"] { background-color: white !important; border-radius: 50px !important; border: 1px solid #EBEBEB !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -217,13 +217,12 @@ def process_omni_voice(audio_bytes, existing_leads_context):
        - "UPDATE": Adding info to existing.
        - "QUERY": Asking questions.
     
-    CRITICAL UPDATING RULES (To prevent data loss):
+    CRITICAL UPDATING RULES:
     - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. 
     - **Product Fit (product_pitch) Preservation**: 
         - If the user bought an item, that does NOT automatically change their 'product_pitch' (Product Fit).
         - **Rule**: Do NOT return a value for 'product_pitch' unless the user EXPLICITLY says "Change their interest to X" or "They are now looking for Y".
-        - If they just bought something, leave 'product_pitch' as NULL so the original value is preserved.
-    - **Background Safety**: Only return a 'background' string if the user explicitly adds narrative notes. If they only mention a sale, leave 'background' null.
+    - **Background Safety**: Only return a 'background' string if the user explicitly adds narrative notes.
     - **Status**: If a sale occurred, set "status" to "Client".
     
     RETURN ONLY RAW JSON:
@@ -256,7 +255,6 @@ def save_new_lead(lead_data):
     lead_data['user_id'] = st.session_state.user.id
     lead_data['created_at'] = datetime.now().isoformat()
     if not lead_data.get('status'): lead_data['status'] = 'Lead'
-    # Clean temp field
     if 'transaction_item' in lead_data:
         if lead_data['transaction_item']:
             lead_data['transactions'] = f"{datetime.now().strftime('%Y-%m-%d')}: {lead_data['transaction_item']}"
@@ -270,49 +268,33 @@ def save_new_lead(lead_data):
 def update_existing_lead(lead_id, new_data, existing_leads_context):
     if not st.session_state.user: return "Not logged in"
     
-    # 1. ROBUST FIND
     original = next((item for item in existing_leads_context if str(item["id"]) == str(lead_id)), None)
+    if not original: return "Error: Original record not found."
     
-    if not original:
-        return "Error: Could not find original record to update. Aborting to prevent data loss."
-    
-    # 2. SAFE MERGE
-    
-    # Handle Transactions: Append Logic
+    # Transactions Append Logic
     current_tx = original.get('transactions') or ""
     new_item = new_data.get('transaction_item')
     final_tx = current_tx
-    
     if new_item:
         timestamp = datetime.now().strftime('%Y-%m-%d')
         entry = f"• {timestamp}: {new_item}"
-        if current_tx:
-            final_tx = f"{current_tx}\n{entry}"
-        else:
-            final_tx = entry
+        final_tx = f"{current_tx}\n{entry}" if current_tx else entry
             
-    # Handle Status: Auto-promote if transaction occurred
     final_status = "Client" if new_item else (new_data.get('status') or original.get('status'))
 
     final_data = {
         "name": new_data.get('name') or original.get('name'),
         "contact_info": new_data.get('contact_info') or original.get('contact_info'),
-        
-        # FIX: Only update product_pitch if AI explicitly sent a new one. 
-        # If AI sent None/Empty (per new prompt rules), keep the original.
         "product_pitch": new_data.get('product_pitch') if new_data.get('product_pitch') else original.get('product_pitch'),
-        
-        # Only overwrite background if AI provided a non-empty string
         "background": new_data.get('background') if new_data.get('background') else original.get('background'),
-        
         "status": final_status,
-        "next_outreach": new_data.get('next_outreach'), # Allow clearing this if needed
+        "next_outreach": new_data.get('next_outreach'),
         "transactions": final_tx
     }
 
     try:
         supabase.table("leads").update(final_data).eq("id", lead_id).execute()
-        return final_data # Return the merged object for display
+        return final_data
     except Exception as e: return str(e)
 
 def create_vcard(data):
@@ -352,32 +334,32 @@ def render_executive_card(data, show_close=True):
             <div class="card-header">
                 <div>
                     <span class="status-badge">{badge_text}</span>
-                    <div class="card-title">
+                    <div style="margin-top:12px;" class="card-title">
                         {lead.get('name') or 'Rolodex Query'}
                         {bubbles_html}
                     </div>
                 </div>
             </div>
             
-            <div class="stat-grid">
-                <div class="stat-item">
-                    <div class="stat-label">Product Fit</div>
-                    <div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:24px;">
+                <div>
+                    <div style="font-size:11px; font-weight:700; color:#888; letter-spacing:0.5px; text-transform:uppercase;">Product Fit</div>
+                    <div style="font-size:15px; font-weight:600; color:#222; margin-top:4px;">{lead.get('product_pitch') or 'None specified'}</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-label">Contact</div>
-                    <div class="stat-value">{lead.get('contact_info') or '-'}</div>
+                <div>
+                    <div style="font-size:11px; font-weight:700; color:#888; letter-spacing:0.5px; text-transform:uppercase;">Contact</div>
+                    <div style="font-size:15px; font-weight:600; color:#222; margin-top:4px;">{lead.get('contact_info') or '-'}</div>
                 </div>
             </div>
             
             <div class="report-bubble">
-                <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
-                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
+                <div style="font-size:11px; font-weight:700; color:#888; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:8px;">Background / Notes</div>
+                <p style="font-size:14px; margin:0; line-height:1.6; color:#555;">{lead.get('background') or '-'}</p>
             </div>
 
             <div class="transaction-bubble">
-                <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
-                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
+                <div style="font-size:11px; font-weight:700; color:#888; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:8px;">Purchase History</div>
+                <p style="font-size:14px; margin:0; line-height:1.6; color:#555; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
             </div>
         </div>
     """.replace("\n", " ")
@@ -421,16 +403,9 @@ def view_omni():
                 if action == "CREATE": 
                     save_new_lead(lead_data)
                 elif action == "UPDATE" and result.get('match_id'): 
-                    # Pass full existing_leads context to Python function
                     saved_data = update_existing_lead(result['match_id'], lead_data, existing_leads)
-                    
-                    if isinstance(saved_data, dict):
-                        # SUCCESS: Update the display data to match what was saved
-                        result['lead_data'] = saved_data
-                    else:
-                        # FAIL: Show error (likely ID mismatch)
-                        st.error(saved_data)
-                        return
+                    if isinstance(saved_data, dict): result['lead_data'] = saved_data
+                    else: st.error(saved_data); return
 
                 st.session_state.omni_result = result
                 st.rerun()
@@ -444,31 +419,57 @@ def view_pipeline():
         wrapped_data = {'lead_data': st.session_state.selected_lead, 'action': 'QUERY'}
         render_executive_card(wrapped_data, show_close=False)
     else:
-        st.markdown("<h2 style='padding:10px 0 10px 0;'>Rolodex</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='margin-bottom:20px;'>Rolodex</h2>", unsafe_allow_html=True)
         if not st.session_state.user: return
-        leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
         
-        if not leads:
-            st.info("Rolodex is empty.")
-            return
+        # --- NEW: SEARCH & FILTER ---
+        c_search, c_filter = st.columns([2, 1])
+        with c_search:
+            search_query = st.text_input("Search", placeholder="Search names...", label_visibility="collapsed")
+        with c_filter:
+            # Using pills for a sleek filter look
+            filter_status = st.pills("Filter", ["All", "Clients", "Leads"], default="All", label_visibility="collapsed")
+
+        # Fetch Data
+        raw_leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
+        if not raw_leads:
+            st.info("Rolodex is empty."); return
+
+        # Apply Filters
+        leads = [l for l in raw_leads if search_query.lower() in l.get('name', '').lower()]
+        if filter_status == "Clients": leads = [l for l in leads if l.get('status') == 'Client']
+        elif filter_status == "Leads": leads = [l for l in leads if l.get('status') != 'Client']
+        
+        if not leads: st.caption("No matches found.")
             
-        for lead in leads:
-            name = lead.get('name', 'Unknown')
-            status = lead.get('status', 'Lead')
-            # Updated Label to show Status
-            label = f"{name}  •  {status}"
-            
-            if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
-                st.session_state.selected_lead = lead
-                st.rerun()
+        # --- NEW: GRID LAYOUT ---
+        cols = st.columns(3)
+        for i, lead in enumerate(leads):
+            with cols[i % 3]:
+                is_client = lead.get('status') == 'Client'
+                emoji = "🟢" if is_client else "🔵"
+                status_txt = "CLIENT" if is_client else "LEAD"
+                
+                # We simply use the button label to display the info cleanly
+                # Styling is handled by CSS to make this button look like a card
+                label = f"{emoji}  {lead.get('name', 'Unknown')}\n\n{status_txt}"
+                
+                if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
+                    st.session_state.selected_lead = lead
+                    st.rerun()
 
 def view_analytics():
-    st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='margin-bottom:20px;'>Analytics</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).execute().data
     if not leads: st.warning("No data."); return
     df = pd.DataFrame(leads)
-    st.metric("Total Network", len(leads))
+    
+    c1, c2 = st.columns(2)
+    c1.metric("Total Network", len(leads))
+    c2.metric("Clients", len([l for l in leads if l.get('status') == 'Client']))
+    
+    st.subheader("Product Fit")
     st.bar_chart(df['product_pitch'].value_counts())
 
 # ==========================================
