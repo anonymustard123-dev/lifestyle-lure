@@ -125,6 +125,8 @@ st.markdown("""
         .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
+        
+        /* GLOBAL BUTTON STYLE - Keeping this for Login/Menu buttons */
         .stButton > button {
             background-color: #FFE5E5 !important; border: 1px solid #000000 !important; border-radius: 12px !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; color: #000000 !important; font-weight: 700 !important;
@@ -145,10 +147,10 @@ st.markdown("""
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
         /* ============================================================ */
-        /* CRITICAL FIX FOR ROLODEX LIST LAYOUT & PINK BUTTON ISSUE    */
+        /* LIST CARD FIXES (HIGHER SPECIFICITY)                        */
         /* ============================================================ */
         
-        /* 1. Target the Container Wrapper (The Card) */
+        /* 1. Style the Card Wrapper */
         div[data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #FFFFFF;
             border-radius: 12px;
@@ -158,58 +160,58 @@ st.markdown("""
             margin-bottom: 8px;
         }
 
-        /* 2. OVERRIDE THE GLOBAL PINK BUTTON STYLE SPECIFICALLY HERE */
-        /* We use 'div' and class chaining to beat the global specificity */
-        div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
-            width: auto !important;       /* This fixes the 'Brick' layout break */
+        /* 2. OVERRIDE BUTTON STYLE (Removing the Pink Brick) 
+           We use 'html body ...' to ensure we beat the global .stButton > button selector 
+        */
+        html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
+            width: auto !important;
             background-color: transparent !important;
             border: none !important;
-            color: #BBBBBB !important;
+            color: #BBBBBB !important; /* Chevron Color */
             box-shadow: none !important;
             padding: 0 !important;
             height: auto !important;
             min-height: 0 !important;
-            line-height: 1 !important;
             margin: 0 !important;
             display: flex !important;
             justify-content: center !important;
+            align-items: center !important;
         }
         
-        div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button:hover {
+        html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button:hover {
             color: #FF385C !important;
             background-color: transparent !important;
         }
         
-        /* Make the chevron bigger */
-        div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button p {
+        html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button p {
             font-size: 24px !important;
             font-weight: 300 !important;
-            margin-bottom: 4px !important; /* Visual alignment fix */
+            margin: 0 !important;
+            line-height: 1 !important;
         }
 
         /* 3. FORCE MOBILE ROW LAYOUT (Prevent Stacking) */
-        /* This prevents the 100% width button from breaking the flex row */
-        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-        }
-        
-        /* Allow the text column (first child) to shrink/grow */
-        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(1) {
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-        }
-        
-        /* Fix the button column (second child) width */
-        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(2) {
-            flex: 0 0 auto !important;
-            width: 40px !important;
-            min-width: 40px !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
+        /* Override Streamlit's mobile behavior that stacks columns */
+        @media (max-width: 768px) {
+            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 8px !important;
+            }
+            
+            /* Allow text column to shrink properly */
+            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:first-child {
+                flex: 1 1 auto !important;
+                min-width: 0 !important; /* Crucial for preventing text overflow from forcing a wrap */
+            }
+            
+            /* Fix button column width */
+            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:last-child {
+                flex: 0 0 auto !important;
+                width: 40px !important;
+                min-width: 40px !important;
+            }
         }
     </style>
 """, unsafe_allow_html=True)
@@ -565,7 +567,8 @@ def view_pipeline():
         # Render Card Container
         with st.container(border=True):
             # Using 5:1 ratio gives text plenty of room
-            c_info, c_action = st.columns([5, 1])
+            # vertical_alignment="center" ensures the button stays aligned with text block
+            c_info, c_action = st.columns([5, 1], vertical_alignment="center")
             
             with c_info:
                 # Top Row: Name + Badge
