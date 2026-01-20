@@ -144,7 +144,7 @@ st.markdown("""
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
-        /* --- NEW UI TWEAKS FOR ROLODEX LIST --- */
+        /* --- RICH LIST & CARD FIXES --- */
         [data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #FFFFFF;
             border-radius: 12px;
@@ -153,17 +153,52 @@ st.markdown("""
             padding: 12px !important;
             margin-bottom: 8px;
         }
-        /* Hide the default button border for the "arrow" button in list to make it cleaner */
-        [data-testid="stVerticalBlockBorderWrapper"] button {
-            border: none !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            font-size: 18px !important;
-            padding: 0 !important;
-            justify-content: center !important;
+
+        /* 1. FORCE ROW LAYOUT ON MOBILE for Cards */
+        /* Overrides Streamlit's default stacking behavior for screens < 640px */
+        @media (max-width: 640px) {
+            [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
+                flex-direction: row !important; /* Force side-by-side */
+                align-items: center !important;
+                gap: 8px !important;
+            }
+            /* Adjust the text column width to take up available space */
+            [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
+            /* Adjust the button column to shrink to fit content */
+            [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
+                flex: 0 0 auto !important;
+                width: auto !important;
+                min-width: 40px !important;
+            }
         }
+
+        /* 2. FIX BUTTON STYLE (REMOVE PINK BRICK) */
+        /* Targets buttons explicitly inside the BorderWrapper (Card) */
+        [data-testid="stVerticalBlockBorderWrapper"] button {
+            background-color: transparent !important;
+            border: none !important;
+            color: #BBBBBB !important; /* Subtle Gray */
+            box-shadow: none !important;
+            padding: 0px !important;
+            margin: 0px !important;
+            height: auto !important;
+            min-height: 0px !important;
+            line-height: 1 !important;
+        }
+        /* Hover Effect for the Arrow */
         [data-testid="stVerticalBlockBorderWrapper"] button:hover {
-            background: #F7F7F7 !important;
+            color: #FF385C !important;
+            background-color: transparent !important;
+            transform: translateX(2px); /* Slight nudge animation */
+        }
+        /* Ensure the button paragraph text is also styled correctly */
+        [data-testid="stVerticalBlockBorderWrapper"] button p {
+            font-size: 24px !important;
+            font-weight: 300 !important;
+            color: inherit !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -518,7 +553,8 @@ def view_pipeline():
         
         # Render Card Container
         with st.container(border=True):
-            c_info, c_action = st.columns([4, 1])
+            # Using 5:1 ratio helps slightly, but CSS is the real fix
+            c_info, c_action = st.columns([5, 1])
             
             with c_info:
                 # Top Row: Name + Badge
@@ -533,8 +569,8 @@ def view_pipeline():
                 st.caption(f"{contact} • {pitch[:20]}{'...' if len(pitch)>20 else ''}")
             
             with c_action:
-                # Chevron Button
-                if st.button("➝", key=f"btn_{lead['id']}", use_container_width=True):
+                # Chevron Button (Now Transparent via CSS)
+                if st.button("›", key=f"btn_{lead['id']}", use_container_width=True):
                     st.session_state.selected_lead = lead
                     st.rerun()
 
