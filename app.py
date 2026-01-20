@@ -270,15 +270,13 @@ def save_new_lead(lead_data):
 def update_existing_lead(lead_id, new_data, existing_leads_context):
     if not st.session_state.user: return "Not logged in"
     
-    # 1. ROBUST FIND (Fix for "Mismatch Issue")
-    # Convert both to strings to ensure matching works regardless of int/str types
+    # 1. ROBUST FIND
     original = next((item for item in existing_leads_context if str(item["id"]) == str(lead_id)), None)
     
     if not original:
         return "Error: Could not find original record to update. Aborting to prevent data loss."
     
-    # 2. SAFE MERGE (Fix for "Empties all fields")
-    # We only use new_data if it is NOT None/Empty. Otherwise, keep original.
+    # 2. SAFE MERGE
     
     # Handle Transactions: Append Logic
     current_tx = original.get('transactions') or ""
@@ -455,7 +453,11 @@ def view_pipeline():
             return
             
         for lead in leads:
-            label = lead.get('name', 'Unknown')
+            name = lead.get('name', 'Unknown')
+            status = lead.get('status', 'Lead')
+            # Updated Label to show Status
+            label = f"{name}  •  {status}"
+            
             if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
                 st.session_state.selected_lead = lead
                 st.rerun()
