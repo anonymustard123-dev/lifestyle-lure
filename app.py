@@ -199,7 +199,7 @@ def clean_json_string(json_str):
 def load_leads_summary():
     if not st.session_state.user or not supabase: return []
     try:
-        response = supabase.table("leads").select("id, name, background, contact_info, status, next_outreach, transactions").eq("user_id", st.session_state.user.id).execute()
+        response = supabase.table("leads").select("id, name, background, contact_info, status, next_outreach, transactions, product_pitch").eq("user_id", st.session_state.user.id).execute()
         return response.data
     except: return []
 
@@ -218,8 +218,12 @@ def process_omni_voice(audio_bytes, existing_leads_context):
        - "QUERY": Asking questions.
     
     CRITICAL UPDATING RULES (To prevent data loss):
-    - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. Do NOT return the full history. 
-    - **Background Safety**: Only return a 'background' string if the user explicitly adds narrative notes. If they only mention a sale, leave 'background' null (so we keep the old one).
+    - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. 
+    - **Product Fit (product_pitch) Preservation**: 
+        - If the user bought an item, that does NOT automatically change their 'product_pitch' (Product Fit).
+        - **Rule**: Do NOT return a value for 'product_pitch' unless the user EXPLICITLY says "Change their interest to X" or "They are now looking for Y".
+        - If they just bought something, leave 'product_pitch' as NULL so the original value is preserved.
+    - **Background Safety**: Only return a 'background' string if the user explicitly adds narrative notes. If they only mention a sale, leave 'background' null.
     - **Status**: If a sale occurred, set "status" to "Client".
     
     RETURN ONLY RAW JSON:
@@ -230,7 +234,7 @@ def process_omni_voice(audio_bytes, existing_leads_context):
             "name": "Full Name",
             "contact_info": "Phone/Email",
             "background": "Updated summary (OR NULL if no change)",
-            "product_pitch": "Product interest",
+            "product_pitch": "Updated Product Fit (OR NULL if just a sale occurred)",
             "status": "Lead" | "Client",
             "next_outreach": "Date/Timeframe" (or null),
             "transaction_item": "New item sold (OR NULL)" 
@@ -295,13 +299,16 @@ def update_existing_lead(lead_id, new_data, existing_leads_context):
     final_data = {
         "name": new_data.get('name') or original.get('name'),
         "contact_info": new_data.get('contact_info') or original.get('contact_info'),
-        "product_pitch": new_data.get('product_pitch') or original.get('product_pitch'),
+        
+        # FIX: Only update product_pitch if AI explicitly sent a new one. 
+        # If AI sent None/Empty (per new prompt rules), keep the original.
+        "product_pitch": new_data.get('product_pitch') if new_data.get('product_pitch') else original.get('product_pitch'),
         
         # Only overwrite background if AI provided a non-empty string
         "background": new_data.get('background') if new_data.get('background') else original.get('background'),
         
         "status": final_status,
-        "next_outreach": new_data.get('next_outreach'), # Allow clearing this if needed, or change logic to preserve if desired
+        "next_outreach": new_data.get('next_outreach'), # Allow clearing this if needed
         "transactions": final_tx
     }
 
