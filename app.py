@@ -144,8 +144,12 @@ st.markdown("""
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
-        /* --- RICH LIST & CARD FIXES --- */
-        [data-testid="stVerticalBlockBorderWrapper"] {
+        /* ============================================================ */
+        /* CRITICAL FIX FOR ROLODEX LIST LAYOUT & PINK BUTTON ISSUE    */
+        /* ============================================================ */
+        
+        /* 1. Target the Container Wrapper */
+        div[data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #FFFFFF;
             border-radius: 12px;
             border: 1px solid #F2F2F2;
@@ -154,51 +158,49 @@ st.markdown("""
             margin-bottom: 8px;
         }
 
-        /* 1. FORCE ROW LAYOUT ON MOBILE for Cards */
-        /* Overrides Streamlit's default stacking behavior for screens < 640px */
+        /* 2. OVERRIDE THE GLOBAL PINK BUTTON STYLE SPECIFICALLY HERE */
+        /* We use 'div' and class chaining to beat the global specificity */
+        div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
+            width: auto !important;       /* This fixes the 'Brick' layout break */
+            background-color: transparent !important;
+            border: none !important;
+            color: #BBBBBB !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+        
+        div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button:hover {
+            color: #FF385C !important;
+            background-color: transparent !important;
+        }
+
+        /* 3. FORCE MOBILE ROW LAYOUT (Prevent Stacking) */
         @media (max-width: 640px) {
-            [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
-                flex-direction: row !important; /* Force side-by-side */
+            /* Force the internal columns to stay in a row */
+            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
                 align-items: center !important;
-                gap: 8px !important;
             }
-            /* Adjust the text column width to take up available space */
-            [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
+            
+            /* Allow the text column (first child) to shrink/grow */
+            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(1) {
                 flex: 1 1 auto !important;
                 min-width: 0 !important;
             }
-            /* Adjust the button column to shrink to fit content */
-            [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
+            
+            /* Fix the button column (second child) width so it doesn't expand */
+            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(2) {
                 flex: 0 0 auto !important;
-                width: auto !important;
+                width: 40px !important;
                 min-width: 40px !important;
             }
-        }
-
-        /* 2. FIX BUTTON STYLE (REMOVE PINK BRICK) */
-        /* Targets buttons explicitly inside the BorderWrapper (Card) */
-        [data-testid="stVerticalBlockBorderWrapper"] button {
-            background-color: transparent !important;
-            border: none !important;
-            color: #BBBBBB !important; /* Subtle Gray */
-            box-shadow: none !important;
-            padding: 0px !important;
-            margin: 0px !important;
-            height: auto !important;
-            min-height: 0px !important;
-            line-height: 1 !important;
-        }
-        /* Hover Effect for the Arrow */
-        [data-testid="stVerticalBlockBorderWrapper"] button:hover {
-            color: #FF385C !important;
-            background-color: transparent !important;
-            transform: translateX(2px); /* Slight nudge animation */
-        }
-        /* Ensure the button paragraph text is also styled correctly */
-        [data-testid="stVerticalBlockBorderWrapper"] button p {
-            font-size: 24px !important;
-            font-weight: 300 !important;
-            color: inherit !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -553,7 +555,7 @@ def view_pipeline():
         
         # Render Card Container
         with st.container(border=True):
-            # Using 5:1 ratio helps slightly, but CSS is the real fix
+            # Using 5:1 ratio gives text plenty of room
             c_info, c_action = st.columns([5, 1])
             
             with c_info:
