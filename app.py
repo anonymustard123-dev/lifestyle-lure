@@ -110,7 +110,7 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
 
-        /* --- 3. CUSTOM NAV (STYLING RADIO BUTTONS) --- */
+        /* --- 3. CUSTOM CLAIMSCRIBE NAV (STYLING RADIO BUTTONS) --- */
         /* Target the radio group to look like a scrollable bar */
         [data-testid="stRadio"] div[role="radiogroup"] {
             display: flex;
@@ -200,59 +200,53 @@ st.markdown("""
             border: 1px solid #EBEBEB;
         }
 
-        /* --- 5. ROLODEX LIST STYLING (THE CARD BUTTONS) --- */
-        
-        /* This targets the specific buttons used in the Rolodex list.
-           We want them to look like white cards with shadow, not red buttons.
-        */
-        
-        div.row-widget.stButton > button {
-            background-color: #FFFFFF !important;
-            border: 1px solid #EBEBEB !important; 
+        /* --- 5. ROLODEX LIST STYLING (THE BUBBLE BUTTONS) --- */
+        /* Target ALL standard buttons to look like Rolodex Cards */
+        .stButton > button {
+            background-color: #FFE5E5 !important; /* LIGHT RED BACKGROUND ALWAYS */
+            border: 1px solid #000000 !important; /* BLACK OUTLINE */
             border-radius: 12px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-            color: #222222 !important;
-            padding: 16px !important;
-            margin-bottom: 12px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+            color: #000000 !important; /* BLACK TEXT */
+            font-weight: 700 !important; /* BOLD */
+            padding: 16px 20px !important;
             
-            /* Layout inside the button */
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            justify-content: center !important;
+            /* FORCE LEFT ALIGNMENT */
             text-align: left !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
             
+            transition: transform 0.1s ease;
             height: auto !important;
+            min-height: 60px !important;
             width: 100% !important;
-            transition: transform 0.1s ease, box-shadow 0.1s ease;
         }
         
-        /* Hover/Active states for the card button */
-        div.row-widget.stButton > button:active, 
-        div.row-widget.stButton > button:focus:not(:active) {
-            transform: scale(0.99);
-            border-color: #222222 !important;
-            background-color: #F7F7F7 !important;
+        /* Ensure the text inside (p tag) is also bold and left aligned */
+        .stButton > button p {
+            font-weight: 700 !important;
+            text-align: left !important;
         }
 
-        /* Reset styles for PRIMARY action buttons so they don't look like cards */
+        .stButton > button:active, .stButton > button:focus:not(:active) {
+            transform: scale(0.98);
+            background-color: #FFD1D1 !important;
+            color: #000000 !important;
+            border-color: #000000 !important;
+        }
+        
+        /* OVERRIDE FOR PRIMARY ACTION BUTTONS (Solid Red, Centered) */
         button[kind="primary"] {
             background-color: #FF385C !important;
             color: white !important;
             border: none !important;
-            box-shadow: none !important;
-            border-radius: 8px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
             text-align: center !important;
+            justify-content: center !important;
         }
         
-        button[kind="secondary"] {
-             background-color: transparent !important;
-             border: 1px solid #222 !important;
-             color: #222 !important;
-             box-shadow: none !important;
+        button[kind="primary"] p {
+            text-align: center !important;
         }
 
         /* --- 6. INPUTS --- */
@@ -533,9 +527,8 @@ def view_pipeline():
         render_executive_card(wrapped_data, show_close=False)
         
     else:
-        # LIST VIEW (REDESIGNED TO MATCH PHOTO)
-        st.markdown("<h2 style='padding:10px 0 20px 0;'>Rolodex</h2>", unsafe_allow_html=True)
-        
+        # LIST VIEW
+        st.markdown("<h2 style='padding:10px 0 10px 0;'>Rolodex</h2>", unsafe_allow_html=True)
         if not st.session_state.user: return
         leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
         
@@ -543,25 +536,13 @@ def view_pipeline():
             st.info("Rolodex is empty.")
             return
             
-        # Iterate and create "Card" Buttons
+        # Render List as Clickable Buttons (Styled as Cards via CSS)
         for lead in leads:
-            name = lead.get('name', 'Unknown')
-            contact = lead.get('contact_info') or "Contact Info"
-            fit = lead.get('product_pitch') or "Product Fit"
+            # We create a button that looks like a card item
+            # Only showing Name (Bold via CSS)
+            label = lead.get('name', 'Unknown')
             
-            # Create a label string that visually mimics the structure in the photo:
-            # Name (Bolded via markdown if Streamlit supported it in buttons, but we use CSS for the main text)
-            # Contact Info
-            # Product Fit
-            
-            # Since standard Streamlit buttons can't take complex HTML inside, 
-            # we simply format the text with newlines. 
-            # Our custom CSS in Section 3 targets `div.row-widget.stButton > button`
-            # to make it left-aligned and white.
-            
-            button_label = f"""{name}\n{contact}\n{fit}"""
-            
-            if st.button(button_label, key=f"lead_{lead['id']}", use_container_width=True):
+            if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
                 st.session_state.selected_lead = lead
                 st.rerun()
 
@@ -668,3 +649,4 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
