@@ -182,14 +182,38 @@ st.markdown("""
             border-radius: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: inline-block;
         }
 
         .card-title {
             font-size: 22px;
             font-weight: 800;
             color: #222222;
-            margin: 10px 0 5px 0;
+            margin: 0;
+            line-height: 1.2;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
         }
+        
+        /* NEW BUBBLES */
+        .meta-bubble {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid #EBEBEB;
+            white-space: nowrap;
+            vertical-align: middle;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .bubble-client { background-color: #E6FFFA; color: #008a73; border-color: #008a73; }
+        .bubble-lead { background-color: #EBF8FF; color: #2C5282; border-color: #2C5282; }
+        .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
         
         /* Large Report Bubble (Background/Notes) */
         .report-bubble {
@@ -338,7 +362,8 @@ def clean_json_string(json_str):
 def load_leads_summary():
     if not st.session_state.user or not supabase: return []
     try:
-        response = supabase.table("leads").select("id, name, background, contact_info").eq("user_id", st.session_state.user.id).execute()
+        # Added status and next_outreach to select for context
+        response = supabase.table("leads").select("id, name, background, contact_info, status, next_outreach").eq("user_id", st.session_state.user.id).execute()
         return response.data
     except: return []
 
@@ -357,8 +382,10 @@ def process_omni_voice(audio_bytes, existing_leads_context):
        - If they are asking a question about a person or the list -> Action: "QUERY"
     
     DATA EXTRACTION GUIDELINES:
-    - **Product Fit**: Listen for what specific product/service the *user* believes the lead is interested in. Do NOT invent a pitch; extract the specific interest mentioned.
+    - **Product Fit**: Listen for what specific product/service the *user* believes the lead is interested in. Do NOT invent a pitch.
     - **Background**: Write a brief yet formal executive report summarizing the lead's status and key details.
+    - **Status**: Classify person as "Lead" (prospect) or "Client" (converted). Default to "Lead" if unsure.
+    - **Next Outreach**: Extract specific follow-up timeframe/date (e.g. "Next Tuesday", "Jan 12th", "2 weeks"). Leave null if not mentioned.
     
     RETURN ONLY RAW JSON:
     {{
@@ -368,7 +395,9 @@ def process_omni_voice(audio_bytes, existing_leads_context):
             "name": "Full Name",
             "contact_info": "Phone/Email",
             "background": "Formal executive report...",
-            "product_pitch": "Specific product interest extracted from audio"
+            "product_pitch": "Specific product interest...",
+            "status": "Lead" | "Client",
+            "next_outreach": "Date String or Timeframe" (or null)
         }},
         "confidence": "High/Low"
     }}
@@ -386,6 +415,9 @@ def save_new_lead(lead_data):
     if not st.session_state.user: return "Not logged in"
     lead_data['user_id'] = st.session_state.user.id
     lead_data['created_at'] = datetime.now().isoformat()
+    # Ensure defaults
+    if not lead_data.get('status'): lead_data['status'] = 'Lead'
+    
     try: 
         res = supabase.table("leads").insert(lead_data).execute()
         return None
@@ -396,8 +428,14 @@ def update_existing_lead(lead_id, new_data, old_background=""):
     final_data = {
         "product_pitch": new_data.get('product_pitch'),
         "contact_info": new_data.get('contact_info'),
-        "background": new_data.get('background') 
+        "background": new_data.get('background'),
+        "status": new_data.get('status'),
+        "next_outreach": new_data.get('next_outreach')
     }
+    # Clean None values to avoid overwriting existing data with nulls if that is not intended
+    # (Optional, but here we assume the AI returns relevant updates. 
+    # For now we send all keys, assuming the AI preserved data it didn't change if it had context.)
+    
     try:
         supabase.table("leads").update(final_data).eq("id", lead_id).execute()
         return None
@@ -429,12 +467,25 @@ def render_executive_card(data, show_close=True):
     if action == "CREATE": badge_text = "NEW ASSET"
     elif action == "UPDATE": badge_text = "UPDATED"
     
+    # --- PREPARE BUBBLES ---
+    status = lead.get('status', 'Lead')
+    outreach = lead.get('next_outreach')
+    
+    status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
+    
+    bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
+    if outreach:
+        bubbles_html += f' <span class="meta-bubble bubble-outreach">⏰ {outreach}</span>'
+
     html_content = f"""
         <div class="airbnb-card">
             <div class="card-header">
                 <div>
                     <span class="status-badge">{badge_text}</span>
-                    <div class="card-title">{lead.get('name') or 'Rolodex Query'}</div>
+                    <div class="card-title">
+                        {lead.get('name') or 'Rolodex Query'}
+                        {bubbles_html}
+                    </div>
                 </div>
             </div>
             
@@ -649,4 +700,3 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
-
