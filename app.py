@@ -24,7 +24,6 @@ if 'user' not in st.session_state: st.session_state.user = None
 if 'is_subscribed' not in st.session_state: st.session_state.is_subscribed = False
 if 'active_tab' not in st.session_state: st.session_state.active_tab = "omni" 
 if 'omni_result' not in st.session_state: st.session_state.omni_result = None
-# TRACK SELECTED LEAD
 if 'selected_lead' not in st.session_state: st.session_state.selected_lead = None
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 
@@ -67,8 +66,6 @@ if STRIPE_SECRET_KEY:
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
-
-        /* --- 1. GLOBAL RESET & TYPOGRAPHY --- */
         html, body, .stApp {
             font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
             background-color: #FFFFFF !important;
@@ -83,21 +80,9 @@ st.markdown("""
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-
-        h1, h2, h3 {
-            font-weight: 800 !important;
-            color: #222222 !important;
-            letter-spacing: -0.5px;
-        }
-
-        p, label, span, div {
-            color: #717171;
-        }
-
-        /* Hide Default Streamlit Chrome */
+        h1, h2, h3 { font-weight: 800 !important; color: #222222 !important; letter-spacing: -0.5px; }
+        p, label, span, div { color: #717171; }
         [data-testid="stHeader"], footer { display: none !important; }
-
-        /* --- 2. SCROLLABLE CONTENT AREA --- */
         .main .block-container {
             height: 100vh;
             overflow-y: auto !important;
@@ -108,146 +93,52 @@ st.markdown("""
             padding-right: 20px !important;
             -webkit-overflow-scrolling: touch;
         }
-
-        /* --- 3. CUSTOM NAV (STYLING RADIO BUTTONS) --- */
         [data-testid="stRadio"] div[role="radiogroup"] {
-            display: flex;
-            flex-direction: row;
-            justify-content: center !important; 
-            width: 100% !important;
-            overflow-x: auto;
-            white-space: nowrap;
-            gap: 24px;
-            border-bottom: 1px solid #F2F2F2;
-            padding-bottom: 0px;
-            margin-bottom: 24px;
-            -webkit-overflow-scrolling: touch;
+            display: flex; flex-direction: row; justify-content: center !important; 
+            width: 100% !important; overflow-x: auto; white-space: nowrap; gap: 24px;
+            border-bottom: 1px solid #F2F2F2; padding-bottom: 0px; margin-bottom: 24px;
         }
         [data-testid="stRadio"] label > div:first-child { display: none !important; }
-        [data-testid="stRadio"] label {
-            padding: 12px 0px !important;
-            margin-right: 0px !important;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-        [data-testid="stRadio"] label p {
-            font-size: 15px !important;
-            font-weight: 600 !important;
-            color: #717171 !important;
-            margin: 0 !important;
-        }
+        [data-testid="stRadio"] label { padding: 12px 0px !important; margin-right: 0px !important; border-bottom: 3px solid transparent; cursor: pointer; }
+        [data-testid="stRadio"] label p { font-size: 15px !important; font-weight: 600 !important; color: #717171 !important; margin: 0 !important; }
         [data-testid="stRadio"] label:has(input:checked) { border-bottom-color: #FF385C !important; }
         [data-testid="stRadio"] label:has(input:checked) p { color: #222222 !important; }
-
-        /* --- 4. CARDS & BUBBLES --- */
         .airbnb-card {
-            background-color: #FFFFFF;
-            border-radius: 16px;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-            border: 1px solid #dddddd;
-            padding: 24px;
-            margin-bottom: 24px;
+            background-color: #FFFFFF; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border: 1px solid #dddddd; padding: 24px; margin-bottom: 24px;
         }
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-        }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
         .status-badge {
-            background-color: #FF385C;
-            color: white;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 6px 10px;
-            border-radius: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-            display: inline-block;
+            background-color: #FF385C; color: white; font-size: 10px; font-weight: 800;
+            padding: 6px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: inline-block;
         }
         .card-title {
-            font-size: 22px;
-            font-weight: 800;
-            color: #222222;
-            margin: 0;
-            line-height: 1.2;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px;
+            font-size: 22px; font-weight: 800; color: #222222; margin: 0; line-height: 1.2;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
         }
-        
-        /* META BUBBLES */
         .meta-bubble {
-            font-size: 12px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 12px;
-            border: 1px solid #EBEBEB;
-            white-space: nowrap;
-            vertical-align: middle;
-            display: inline-flex;
-            align-items: center;
+            font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px;
+            border: 1px solid #EBEBEB; white-space: nowrap; vertical-align: middle; display: inline-flex; align-items: center;
         }
         .bubble-client { background-color: #E6FFFA; color: #008a73; border-color: #008a73; }
         .bubble-lead { background-color: #EBF8FF; color: #2C5282; border-color: #2C5282; }
         .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
-        
-        /* SECTIONS */
-        .report-bubble {
-            background-color: #F7F7F7;
-            border-radius: 16px;
-            padding: 20px;
-            margin-top: 16px;
-            border: 1px solid #EBEBEB;
-        }
-        .transaction-bubble {
-            background-color: #F0FFF4;
-            border-radius: 16px;
-            padding: 20px;
-            margin-top: 16px;
-            border: 1px solid #C6F6D5;
-        }
-
-        /* --- 5. ROLODEX BUTTONS --- */
+        .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
+        .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         .stButton > button {
-            background-color: #FFE5E5 !important;
-            border: 1px solid #000000 !important;
-            border-radius: 12px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
-            color: #000000 !important;
-            font-weight: 700 !important;
-            padding: 16px 20px !important;
-            text-align: left !important;
-            display: flex !important;
-            justify-content: flex-start !important;
-            align-items: center !important;
-            height: auto !important;
-            min-height: 60px !important;
-            width: 100% !important;
+            background-color: #FFE5E5 !important; border: 1px solid #000000 !important; border-radius: 12px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; color: #000000 !important; font-weight: 700 !important;
+            padding: 16px 20px !important; text-align: left !important; display: flex !important;
+            justify-content: flex-start !important; align-items: center !important; height: auto !important; width: 100% !important;
         }
         .stButton > button p { font-weight: 700 !important; text-align: left !important; }
-        .stButton > button:active, .stButton > button:focus:not(:active) {
-            transform: scale(0.98);
-            background-color: #FFD1D1 !important;
-        }
-        button[kind="primary"] {
-            background-color: #FF385C !important;
-            color: white !important;
-            border: none !important;
-            text-align: center !important;
-            justify-content: center !important;
-        }
+        .stButton > button:active, .stButton > button:focus:not(:active) { transform: scale(0.98); background-color: #FFD1D1 !important; }
+        button[kind="primary"] { background-color: #FF385C !important; color: white !important; border: none !important; text-align: center !important; justify-content: center !important; }
         button[kind="primary"] p { text-align: center !important; }
-
-        /* --- 6. INPUTS & UTILS --- */
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
         div[data-baseweb="input"]:focus-within { border: 1px solid #222222 !important; background-color: #FFFFFF !important; }
         input { color: #222222 !important; font-weight: 500 !important; caret-color: #FF385C !important; }
         [data-testid="stAudioInput"] { background-color: #F7F7F7 !important; border-radius: 50px !important; border: none !important; color: #222 !important; padding: 5px !important; }
-        
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
         .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
@@ -308,7 +199,6 @@ def clean_json_string(json_str):
 def load_leads_summary():
     if not st.session_state.user or not supabase: return []
     try:
-        # Load all relevant fields including transactions
         response = supabase.table("leads").select("id, name, background, contact_info, status, next_outreach, transactions").eq("user_id", st.session_state.user.id).execute()
         return response.data
     except: return []
@@ -323,29 +213,27 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     YOUR TASK:
     1. MATCHING: Is the user talking about a person in the Rolodex? (Use fuzzy matching on name/context).
     2. INTENT: 
-       - If they are describing a NEW person -> Action: "CREATE"
-       - If they are adding info/updating -> Action: "UPDATE"
-       - If just asking -> Action: "QUERY"
+       - "CREATE": New person.
+       - "UPDATE": Adding info to existing.
+       - "QUERY": Asking questions.
     
-    CRITICAL RULES FOR UPDATING:
-    - **SEPARATION OF CONCERNS**: 'Background' and 'Transactions' are separate. 
-    - **BACKGROUND PRESERVATION**: If recording a transaction, do NOT change the 'background' field unless the user explicitly provides new narrative context. If no new background info is given, return the existing background string EXACTLY as is. Do not wipe it.
-    - **TRANSACTION LOGGING**: If a sale/deal occurred, append the details to 'transactions'. Do NOT put transaction logs in the background.
-    - **STATUS**: If a sale occurred, set "status" to "Client".
-    - **OUTPUT**: You must return the FULLY updated lead record.
+    CRITICAL UPDATING RULES (To prevent data loss):
+    - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. Do NOT return the full history. 
+    - **Background Safety**: Only return a 'background' string if the user explicitly adds narrative notes. If they only mention a sale, leave 'background' null (so we keep the old one).
+    - **Status**: If a sale occurred, set "status" to "Client".
     
     RETURN ONLY RAW JSON:
     {{
         "action": "CREATE" | "UPDATE" | "QUERY",
-        "match_id": (Integer ID if UPDATE matches),
+        "match_id": (Integer/String ID from Rolodex if UPDATE matches),
         "lead_data": {{
             "name": "Full Name",
             "contact_info": "Phone/Email",
-            "background": "The executive summary (Preserve existing if not changed)",
+            "background": "Updated summary (OR NULL if no change)",
             "product_pitch": "Product interest",
             "status": "Lead" | "Client",
             "next_outreach": "Date/Timeframe" (or null),
-            "transactions": "List of items sold (String)" (or null)
+            "transaction_item": "New item sold (OR NULL)" 
         }},
         "confidence": "High/Low"
     }}
@@ -364,7 +252,12 @@ def save_new_lead(lead_data):
     lead_data['user_id'] = st.session_state.user.id
     lead_data['created_at'] = datetime.now().isoformat()
     if not lead_data.get('status'): lead_data['status'] = 'Lead'
-    
+    # Clean temp field
+    if 'transaction_item' in lead_data:
+        if lead_data['transaction_item']:
+            lead_data['transactions'] = f"{datetime.now().strftime('%Y-%m-%d')}: {lead_data['transaction_item']}"
+        del lead_data['transaction_item']
+        
     try: 
         res = supabase.table("leads").insert(lead_data).execute()
         return None
@@ -373,29 +266,48 @@ def save_new_lead(lead_data):
 def update_existing_lead(lead_id, new_data, existing_leads_context):
     if not st.session_state.user: return "Not logged in"
     
-    # 1. FIND ORIGINAL DATA TO MERGE
-    # This prevents the AI from accidentally wiping a field by returning null
-    original = next((item for item in existing_leads_context if item["id"] == lead_id), {})
+    # 1. ROBUST FIND (Fix for "Mismatch Issue")
+    # Convert both to strings to ensure matching works regardless of int/str types
+    original = next((item for item in existing_leads_context if str(item["id"]) == str(lead_id)), None)
     
-    # 2. CONSTRUCT MERGED UPDATE
-    # Priority: New Data > Original Data > Empty
+    if not original:
+        return "Error: Could not find original record to update. Aborting to prevent data loss."
+    
+    # 2. SAFE MERGE (Fix for "Empties all fields")
+    # We only use new_data if it is NOT None/Empty. Otherwise, keep original.
+    
+    # Handle Transactions: Append Logic
+    current_tx = original.get('transactions') or ""
+    new_item = new_data.get('transaction_item')
+    final_tx = current_tx
+    
+    if new_item:
+        timestamp = datetime.now().strftime('%Y-%m-%d')
+        entry = f"• {timestamp}: {new_item}"
+        if current_tx:
+            final_tx = f"{current_tx}\n{entry}"
+        else:
+            final_tx = entry
+            
+    # Handle Status: Auto-promote if transaction occurred
+    final_status = "Client" if new_item else (new_data.get('status') or original.get('status'))
+
     final_data = {
         "name": new_data.get('name') or original.get('name'),
         "contact_info": new_data.get('contact_info') or original.get('contact_info'),
         "product_pitch": new_data.get('product_pitch') or original.get('product_pitch'),
         
-        # Explicit preservation logic for Background
-        # If AI returns empty string but we had one, keep the old one unless intent was to clear it (unlikely)
+        # Only overwrite background if AI provided a non-empty string
         "background": new_data.get('background') if new_data.get('background') else original.get('background'),
         
-        "status": new_data.get('status') or original.get('status'),
-        "next_outreach": new_data.get('next_outreach'), # Can be null if cleared
-        "transactions": new_data.get('transactions') or original.get('transactions')
+        "status": final_status,
+        "next_outreach": new_data.get('next_outreach'), # Allow clearing this if needed, or change logic to preserve if desired
+        "transactions": final_tx
     }
 
     try:
         supabase.table("leads").update(final_data).eq("id", lead_id).execute()
-        return final_data # Return what we actually saved for display
+        return final_data # Return the merged object for display
     except Exception as e: return str(e)
 
 def create_vcard(data):
@@ -414,7 +326,6 @@ def create_vcard(data):
 # ==========================================
 
 def render_executive_card(data, show_close=True):
-    """Display the sleek Omni-Tool Output"""
     lead = data.get('lead_data', {})
     action = data.get('action', 'QUERY')
     
@@ -422,7 +333,6 @@ def render_executive_card(data, show_close=True):
     if action == "CREATE": badge_text = "NEW ASSET"
     elif action == "UPDATE": badge_text = "UPDATED"
     
-    # --- PREPARE BUBBLES ---
     status = lead.get('status', 'Lead')
     outreach = lead.get('next_outreach')
     
@@ -462,7 +372,7 @@ def render_executive_card(data, show_close=True):
 
             <div class="transaction-bubble">
                 <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
-                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('transactions') or 'No recorded transactions.'}</p>
+                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
             </div>
         </div>
     """.replace("\n", " ")
@@ -483,12 +393,10 @@ def render_executive_card(data, show_close=True):
                 st.rerun()
 
 def view_omni():
-    # If a result exists, show the card.
     if st.session_state.omni_result:
         render_executive_card(st.session_state.omni_result, show_close=True)
         return
 
-    # --- Minimal Omni Layout ---
     st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
     c_mic_1, c_mic_2, c_mic_3 = st.columns([1, 1, 1])
     with c_mic_2:
@@ -508,14 +416,16 @@ def view_omni():
                 if action == "CREATE": 
                     save_new_lead(lead_data)
                 elif action == "UPDATE" and result.get('match_id'): 
-                    # --- CRITICAL FIX: Merge & Save, then update display ---
+                    # Pass full existing_leads context to Python function
                     saved_data = update_existing_lead(result['match_id'], lead_data, existing_leads)
                     
                     if isinstance(saved_data, dict):
-                        # Ensure the display reflects exactly what was saved to DB
+                        # SUCCESS: Update the display data to match what was saved
                         result['lead_data'] = saved_data
                     else:
-                        st.error(f"Save Failed: {saved_data}")
+                        # FAIL: Show error (likely ID mismatch)
+                        st.error(saved_data)
+                        return
 
                 st.session_state.omni_result = result
                 st.rerun()
