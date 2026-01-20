@@ -148,7 +148,7 @@ st.markdown("""
         /* CRITICAL FIX FOR ROLODEX LIST LAYOUT & PINK BUTTON ISSUE    */
         /* ============================================================ */
         
-        /* 1. Target the Container Wrapper */
+        /* 1. Target the Container Wrapper (The Card) */
         div[data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #FFFFFF;
             border-radius: 12px;
@@ -179,28 +179,37 @@ st.markdown("""
             color: #FF385C !important;
             background-color: transparent !important;
         }
+        
+        /* Make the chevron bigger */
+        div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button p {
+            font-size: 24px !important;
+            font-weight: 300 !important;
+            margin-bottom: 4px !important; /* Visual alignment fix */
+        }
 
         /* 3. FORCE MOBILE ROW LAYOUT (Prevent Stacking) */
-        @media (max-width: 640px) {
-            /* Force the internal columns to stay in a row */
-            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                align-items: center !important;
-            }
-            
-            /* Allow the text column (first child) to shrink/grow */
-            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(1) {
-                flex: 1 1 auto !important;
-                min-width: 0 !important;
-            }
-            
-            /* Fix the button column (second child) width so it doesn't expand */
-            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(2) {
-                flex: 0 0 auto !important;
-                width: 40px !important;
-                min-width: 40px !important;
-            }
+        /* This prevents the 100% width button from breaking the flex row */
+        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+        }
+        
+        /* Allow the text column (first child) to shrink/grow */
+        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(1) {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+        
+        /* Fix the button column (second child) width */
+        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:nth-of-type(2) {
+            flex: 0 0 auto !important;
+            width: 40px !important;
+            min-width: 40px !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -571,8 +580,8 @@ def view_pipeline():
                 st.caption(f"{contact} • {pitch[:20]}{'...' if len(pitch)>20 else ''}")
             
             with c_action:
-                # Chevron Button (Now Transparent via CSS)
-                if st.button("›", key=f"btn_{lead['id']}", use_container_width=True):
+                # CRITICAL: use_container_width=False prevents the width fight
+                if st.button("›", key=f"btn_{lead['id']}", use_container_width=False):
                     st.session_state.selected_lead = lead
                     st.rerun()
 
