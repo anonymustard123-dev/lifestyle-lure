@@ -143,6 +143,28 @@ st.markdown("""
         .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
+        
+        /* --- NEW UI TWEAKS FOR ROLODEX LIST --- */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            border: 1px solid #F2F2F2;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            padding: 12px !important;
+            margin-bottom: 8px;
+        }
+        /* Hide the default button border for the "arrow" button in list to make it cleaner */
+        [data-testid="stVerticalBlockBorderWrapper"] button {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            font-size: 18px !important;
+            padding: 0 !important;
+            justify-content: center !important;
+        }
+        [data-testid="stVerticalBlockBorderWrapper"] button:hover {
+            background: #F7F7F7 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -436,6 +458,7 @@ def view_omni():
                 st.rerun()
 
 def view_pipeline():
+    # 1. DETAIL VIEW
     if st.session_state.selected_lead:
         if st.button("← Back to List", key="back_to_list", type="secondary"):
             st.session_state.selected_lead = None
@@ -443,24 +466,77 @@ def view_pipeline():
         
         wrapped_data = {'lead_data': st.session_state.selected_lead, 'action': 'QUERY'}
         render_executive_card(wrapped_data, show_close=False)
-    else:
-        st.markdown("<h2 style='padding:10px 0 10px 0;'>Rolodex</h2>", unsafe_allow_html=True)
-        if not st.session_state.user: return
-        leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
+        return
+
+    # 2. LIST VIEW HEADER (Search & Filter)
+    st.markdown("<h2 style='padding:10px 0 0px 0;'>Rolodex</h2>", unsafe_allow_html=True)
+    
+    if not st.session_state.user: return
+
+    c_search, c_filter = st.columns([2, 1])
+    with c_search:
+        search_query = st.text_input("Search", placeholder="Find a name...", label_visibility="collapsed")
+    with c_filter:
+        filter_status = st.pills("Status", ["All", "Lead", "Client"], default="All", selection_mode="single", label_visibility="collapsed")
+
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+
+    # 3. FETCH DATA
+    leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
+    
+    if not leads:
+        st.info("Rolodex is empty.")
+        return
+
+    # 4. FILTER LOGIC
+    filtered_leads = []
+    for l in leads:
+        # Search Filter
+        if search_query:
+            if search_query.lower() not in (l.get('name') or '').lower():
+                continue
+        # Status Filter
+        if filter_status and filter_status != "All":
+            if (l.get('status') or 'Lead').lower() != filter_status.lower():
+                continue
+        filtered_leads.append(l)
+
+    if not filtered_leads:
+        st.caption("No matching contacts found.")
+        return
+
+    # 5. RENDER "RICH LIST" CARDS
+    for lead in filtered_leads:
+        # Prepare Data
+        name = lead.get('name', 'Unknown')
+        status = lead.get('status', 'Lead')
+        contact = lead.get('contact_info') or "No contact info"
+        pitch = lead.get('product_pitch') or "No pitch"
         
-        if not leads:
-            st.info("Rolodex is empty.")
-            return
+        # Determine Badge Style
+        badge_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
+        
+        # Render Card Container
+        with st.container(border=True):
+            c_info, c_action = st.columns([4, 1])
             
-        for lead in leads:
-            name = lead.get('name', 'Unknown')
-            status = lead.get('status', 'Lead')
-            # Updated Label to show Status
-            label = f"{name}  •  {status}"
+            with c_info:
+                # Top Row: Name + Badge
+                st.markdown(f"""
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <span style="font-weight: 700; font-size: 16px; color: #222;">{name}</span>
+                        <span class="meta-bubble {badge_class}" style="font-size: 10px; padding: 2px 8px;">{status}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Bottom Row: Subtext
+                st.caption(f"{contact} • {pitch[:20]}{'...' if len(pitch)>20 else ''}")
             
-            if st.button(label, key=f"lead_{lead['id']}", use_container_width=True):
-                st.session_state.selected_lead = lead
-                st.rerun()
+            with c_action:
+                # Chevron Button
+                if st.button("➝", key=f"btn_{lead['id']}", use_container_width=True):
+                    st.session_state.selected_lead = lead
+                    st.rerun()
 
 def view_analytics():
     st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
@@ -542,4 +618,3 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
-
