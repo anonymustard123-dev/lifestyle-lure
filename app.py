@@ -126,15 +126,28 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* GLOBAL BUTTON STYLE - Keeping this for Login/Menu buttons */
+        /* GLOBAL BUTTON STYLE 
+           CRITICAL FIX: Removed 'width: 100% !important;' to allow buttons to autosize.
+           Your Login/Signup buttons will still be full width because they use use_container_width=True in Python.
+        */
         .stButton > button {
-            background-color: #FFE5E5 !important; border: 1px solid #000000 !important; border-radius: 12px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; color: #000000 !important; font-weight: 700 !important;
-            padding: 16px 20px !important; text-align: left !important; display: flex !important;
-            justify-content: flex-start !important; align-items: center !important; height: auto !important; width: 100% !important;
+            background-color: #FFE5E5 !important; 
+            border: 1px solid #000000 !important; 
+            border-radius: 12px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; 
+            color: #000000 !important; 
+            font-weight: 700 !important;
+            padding: 16px 20px !important; 
+            text-align: left !important; 
+            display: flex !important;
+            justify-content: flex-start !important; 
+            align-items: center !important; 
+            height: auto !important; 
+            /* width: 100% !important;  <-- REMOVED THIS TO FIX THE BRICK ISSUE */
         }
         .stButton > button p { font-weight: 700 !important; text-align: left !important; }
         .stButton > button:active, .stButton > button:focus:not(:active) { transform: scale(0.98); background-color: #FFD1D1 !important; }
+        
         button[kind="primary"] { background-color: #FF385C !important; color: white !important; border: none !important; text-align: center !important; justify-content: center !important; }
         button[kind="primary"] p { text-align: center !important; }
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
@@ -147,7 +160,7 @@ st.markdown("""
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
         /* ============================================================ */
-        /* LIST CARD FIXES (HIGHER SPECIFICITY)                        */
+        /* ROLODEX LIST STYLING                                       */
         /* ============================================================ */
         
         /* 1. Style the Card Wrapper */
@@ -161,13 +174,13 @@ st.markdown("""
         }
 
         /* 2. OVERRIDE BUTTON STYLE (Removing the Pink Brick) 
-           We use 'html body ...' to ensure we beat the global .stButton > button selector 
+           We use 'html body .stApp' to create NUCLEAR specificity that beats everything else. 
         */
         html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
-            width: auto !important;
+            width: auto !important; /* Allow it to be small! */
             background-color: transparent !important;
             border: none !important;
-            color: #BBBBBB !important; /* Chevron Color */
+            color: #BBBBBB !important;
             box-shadow: none !important;
             padding: 0 !important;
             height: auto !important;
@@ -183,16 +196,18 @@ st.markdown("""
             background-color: transparent !important;
         }
         
+        /* Style the chevron text */
         html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button p {
             font-size: 24px !important;
             font-weight: 300 !important;
             margin: 0 !important;
             line-height: 1 !important;
+            color: inherit !important;
         }
 
         /* 3. FORCE MOBILE ROW LAYOUT (Prevent Stacking) */
-        /* Override Streamlit's mobile behavior that stacks columns */
         @media (max-width: 768px) {
+            /* Force row direction */
             div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
                 display: flex !important;
                 flex-direction: row !important;
@@ -200,13 +215,13 @@ st.markdown("""
                 gap: 8px !important;
             }
             
-            /* Allow text column to shrink properly */
+            /* Text Column: Allow shrinking */
             div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:first-child {
                 flex: 1 1 auto !important;
-                min-width: 0 !important; /* Crucial for preventing text overflow from forcing a wrap */
+                min-width: 0 !important; 
             }
             
-            /* Fix button column width */
+            /* Button Column: Fixed small width */
             div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:last-child {
                 flex: 0 0 auto !important;
                 width: 40px !important;
