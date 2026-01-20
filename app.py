@@ -223,6 +223,15 @@ st.markdown("""
             margin-top: 16px;
             border: 1px solid #EBEBEB;
         }
+        
+        /* Secondary bubble for transactions */
+        .transaction-bubble {
+            background-color: #F0FFF4;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 16px;
+            border: 1px solid #C6F6D5;
+        }
 
         /* --- 5. ROLODEX LIST STYLING (THE BUBBLE BUTTONS) --- */
         /* Target ALL standard buttons to look like Rolodex Cards */
@@ -362,8 +371,8 @@ def clean_json_string(json_str):
 def load_leads_summary():
     if not st.session_state.user or not supabase: return []
     try:
-        # Added status and next_outreach to select for context
-        response = supabase.table("leads").select("id, name, background, contact_info, status, next_outreach").eq("user_id", st.session_state.user.id).execute()
+        # Added 'transactions' to the select query to give the AI context
+        response = supabase.table("leads").select("id, name, background, contact_info, status, next_outreach, transactions").eq("user_id", st.session_state.user.id).execute()
         return response.data
     except: return []
 
@@ -382,10 +391,15 @@ def process_omni_voice(audio_bytes, existing_leads_context):
        - If they are asking a question about a person or the list -> Action: "QUERY"
     
     DATA EXTRACTION GUIDELINES:
-    - **Product Fit**: Listen for what specific product/service the *user* believes the lead is interested in. Do NOT invent a pitch.
-    - **Background**: Write a brief yet formal executive report summarizing the lead's status and key details.
-    - **Status**: Classify person as "Lead" (prospect) or "Client" (converted). Default to "Lead" if unsure.
-    - **Next Outreach**: Extract specific follow-up timeframe/date (e.g. "Next Tuesday", "Jan 12th", "2 weeks"). Leave null if not mentioned.
+    - **Status Logic**: 
+        - If the user explicitly mentions they **SOLD** something, closed a deal, or the person bought something -> Set "status" to "Client".
+        - Otherwise, if undefined, default to "Lead".
+    - **Transactions**:
+        - If a sale occurred, extract the item/service sold.
+        - **IMPORTANT**: If the lead already has data in the 'transactions' field, APPEND the new sale to it (e.g. "Previous Item; New Item"). Do not overwrite history unless strictly necessary.
+    - **Product Fit**: Listen for what specific product/service the *user* believes the lead is interested in.
+    - **Background**: Update the executive summary.
+    - **Next Outreach**: Extract specific follow-up timeframe/date (e.g. "Next Tuesday", "Jan 12th").
     
     RETURN ONLY RAW JSON:
     {{
@@ -397,7 +411,8 @@ def process_omni_voice(audio_bytes, existing_leads_context):
             "background": "Formal executive report...",
             "product_pitch": "Specific product interest...",
             "status": "Lead" | "Client",
-            "next_outreach": "Date String or Timeframe" (or null)
+            "next_outreach": "Date String or Timeframe" (or null),
+            "transactions": "List of items sold (String)" (or null)
         }},
         "confidence": "High/Low"
     }}
@@ -425,16 +440,16 @@ def save_new_lead(lead_data):
 
 def update_existing_lead(lead_id, new_data, old_background=""):
     if not st.session_state.user: return "Not logged in"
+    
+    # We construct the update dictionary carefully
     final_data = {
         "product_pitch": new_data.get('product_pitch'),
         "contact_info": new_data.get('contact_info'),
         "background": new_data.get('background'),
         "status": new_data.get('status'),
-        "next_outreach": new_data.get('next_outreach')
+        "next_outreach": new_data.get('next_outreach'),
+        "transactions": new_data.get('transactions')
     }
-    # Clean None values to avoid overwriting existing data with nulls if that is not intended
-    # (Optional, but here we assume the AI returns relevant updates. 
-    # For now we send all keys, assuming the AI preserved data it didn't change if it had context.)
     
     try:
         supabase.table("leads").update(final_data).eq("id", lead_id).execute()
@@ -503,6 +518,11 @@ def render_executive_card(data, show_close=True):
             <div class="report-bubble">
                 <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
                 <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
+            </div>
+
+            <div class="transaction-bubble">
+                <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
+                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('transactions') or 'No recorded transactions.'}</p>
             </div>
         </div>
     """.replace("\n", " ")
