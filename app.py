@@ -82,13 +82,16 @@ st.markdown("""
         }
         h1, h2, h3 { font-weight: 800 !important; color: #222222 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
-        [data-testid="stHeader"], footer { display: none !important; }
+        
+        /* HIDE FOOTER & HEADER AGGRESSIVELY */
+        [data-testid="stHeader"], footer, [data-testid="stFooter"] { display: none !important; visibility: hidden !important; height: 0px !important; }
+        
         .main .block-container {
             height: 100vh;
             overflow-y: auto !important;
             overflow-x: hidden;
             padding-top: max(env(safe-area-inset-top), 20px) !important;
-            padding-bottom: 100px !important;
+            padding-bottom: 80px !important; /* Adjusted to prevent moving white bar while keeping nav accessible */
             padding-left: 20px !important;
             padding-right: 20px !important;
             -webkit-overflow-scrolling: touch;
@@ -123,13 +126,18 @@ st.markdown("""
             font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px;
             border: 1px solid #EBEBEB; white-space: nowrap; vertical-align: middle; display: inline-flex; align-items: center;
         }
+        
+        /* BUBBLE COLORS - UPDATED LEAD TO MATCH RED/PINK ACCENT */
         .bubble-client { background-color: #E6FFFA; color: #008a73; border-color: #008a73; }
-        .bubble-lead { background-color: #EBF8FF; color: #2C5282; border-color: #2C5282; }
+        .bubble-lead { background-color: #FFF5F7; color: #FF385C; border-color: #FF385C; } /* Updated to Red/Pink */
         .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
+        
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* DEFAULT BUTTON STYLE (LEAD / PINK) */
+        /* =========================================================
+           ROLODEX CARD BUTTONS (DEFAULT = LEAD/PINK)
+           ========================================================= */
         div.stButton > button {
             text-align: left !important;
             display: flex !important;
@@ -142,11 +150,15 @@ st.markdown("""
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
             width: 100% !important;
             padding: 16px 20px !important;
-            margin-bottom: 0px !important; /* Spacing handled by Streamlit gap */
+            margin-bottom: 0px !important;
             transition: all 0.2s ease !important;
         }
 
-        div.stButton > button > div { width: 100% !important; }
+        /* STRICT LEFT ALIGNMENT FIX */
+        div.stButton > button > div { 
+            width: 100% !important; 
+            justify-content: flex-start !important; /* Forces internal flex container to left */
+        }
 
         div.stButton > button p {
             font-family: 'Circular', sans-serif !important;
@@ -156,6 +168,7 @@ st.markdown("""
             margin: 0 !important;
             line-height: 1.2 !important;
             width: 100% !important;
+            text-align: left !important; /* Forces text to left */
         }
 
         /* Hover (Pink) */
@@ -413,6 +426,7 @@ def render_executive_card(data, show_close=True):
     status = lead.get('status', 'Lead')
     outreach = lead.get('next_outreach')
     
+    # CSS handles the color for bubble-lead (Red) and bubble-client (Green)
     status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
     
     bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
@@ -649,7 +663,3 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
-
-
-
-
