@@ -94,7 +94,7 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
         
-        /* HIDE DEFAULT RADIO BUTTONS & MAKE THEM LOOK LIKE TABS */
+        /* TAB STYLES */
         [data-testid="stRadio"] div[role="radiogroup"] {
             display: flex; flex-direction: row; justify-content: center !important; 
             width: 100% !important; overflow-x: auto; white-space: nowrap; gap: 24px;
@@ -129,9 +129,7 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* =========================================================
-           ROLODEX CARD BUTTONS (DEFAULT = LEAD/PINK)
-           ========================================================= */
+        /* DEFAULT BUTTON STYLE (LEAD / PINK) */
         div.stButton > button {
             text-align: left !important;
             display: flex !important;
@@ -139,22 +137,16 @@ st.markdown("""
             align-items: center !important;
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
-            border-left: 6px solid #FF385C !important; /* Default Pink (Lead) */
+            border-left: 6px solid #FF385C !important; /* Default Pink */
             border-radius: 12px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
             width: 100% !important;
             padding: 16px 20px !important;
-            margin-bottom: 12px !important;
+            margin-bottom: 0px !important; /* Spacing handled by Streamlit gap */
             transition: all 0.2s ease !important;
         }
 
-        /* Fix internal div alignment */
-        div.stButton > button > div {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            display: flex !important;
-            width: 100% !important;
-        }
+        div.stButton > button > div { width: 100% !important; }
 
         div.stButton > button p {
             font-family: 'Circular', sans-serif !important;
@@ -163,11 +155,10 @@ st.markdown("""
             color: #222222 !important;
             margin: 0 !important;
             line-height: 1.2 !important;
-            text-align: left !important; 
             width: 100% !important;
         }
 
-        /* HOVER EFFECTS (Default Pink) */
+        /* Hover (Pink) */
         div.stButton > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
@@ -178,36 +169,33 @@ st.markdown("""
         div.stButton > button:active { transform: scale(0.98); background-color: #FAFAFA !important; }
 
         /* =========================================================
-           CLIENT OVERRIDE (GREEN ACCENT)
-           Triggered by the hidden "client-trigger" div
+           CLIENT OVERRIDE (GREEN ACCENT + SPACING FIX)
            ========================================================= */
-        /* This selector finds a div containing the hidden hook, then styles the button in the NEXT div */
-        div:has(.client-trigger) + div.stButton > button,
-        div:has(.client-trigger) + div > div.stButton > button { 
+        
+        /* 1. Hide the container holding the marker to kill the spacing gap */
+        div.element-container:has(.client-marker) {
+            display: none !important;
+        }
+
+        /* 2. Target the button in the NEXT container (The Sibling) */
+        div.element-container:has(.client-marker) + div.element-container button {
             border-left-color: #008a73 !important;
         }
         
-        div:has(.client-trigger) + div.stButton > button:hover,
-        div:has(.client-trigger) + div > div.stButton > button:hover {
+        div.element-container:has(.client-marker) + div.element-container button:hover {
             border-color: #008a73 !important;
             color: #008a73 !important;
             box-shadow: 0 8px 15px rgba(0, 138, 115, 0.15) !important;
         }
 
-        div:has(.client-trigger) + div.stButton > button:hover p,
-        div:has(.client-trigger) + div > div.stButton > button:hover p {
+        div.element-container:has(.client-marker) + div.element-container button:hover p {
             color: #008a73 !important;
         }
 
         /* GENERAL FORM ELEMENTS */
         button[kind="primary"] { 
-            background-color: #FF385C !important; 
-            color: white !important; 
-            border: none !important; 
-            text-align: center !important;
-            justify-content: center !important;
-            padding: 12px 24px !important;
-            border-left: none !important; 
+            background-color: #FF385C !important; color: white !important; border: none !important; 
+            text-align: center !important; justify-content: center !important; padding: 12px 24px !important; border-left: none !important; 
         }
         button[kind="primary"] p { color: white !important; text-align: center !important; width: 100% !important; justify-content: center !important; }
         button[kind="primary"] > div { justify-content: center !important; }
@@ -570,13 +558,13 @@ def view_pipeline():
         # Check if they are a client (case insensitive)
         is_client = str(status).strip().lower() == "client"
 
-        # INJECT CSS HOOK:
-        # If Client -> Inject a hidden div. The CSS sees this and turns the NEXT button green.
+        # INJECT MARKER FOR CLIENTS
+        # The CSS hides this container (display:none) so it takes up 0 space, 
+        # but uses it to style the *next* button green.
         if is_client:
-            st.markdown('<div class="client-trigger" style="display:none;"></div>', unsafe_allow_html=True)
+            st.markdown('<div class="client-marker"></div>', unsafe_allow_html=True)
         
-        # RENDER BUTTON:
-        # We only pass 'name' now (removing the text "• CLIENT").
+        # RENDER BUTTON (Just the name, no extra text)
         if st.button(name, key=f"card_{lead['id']}", use_container_width=True):
             st.session_state.selected_lead = lead
             st.rerun()
@@ -661,6 +649,7 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
 
 
