@@ -61,7 +61,7 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 # ==========================================
-# 3. CSS (CLAIMSCRIBE STYLE + NATIVE FEEL)
+# 3. CSS (COMPLETE REFACTOR)
 # ==========================================
 st.markdown("""
     <style>
@@ -126,30 +126,52 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* GLOBAL BUTTON STYLE 
-           CRITICAL FIX: Removed 'width: 100% !important;' to allow buttons to autosize.
-           Your Login/Signup buttons will still be full width because they use use_container_width=True in Python.
+        /* VITAL NEW APPROACH:
+           1. PRIMARY BUTTONS (Actions) -> Pink/Red Filled
+           2. SECONDARY BUTTONS (Cards/Lists) -> White, Shadowed, Left-Aligned
         */
-        .stButton > button {
-            background-color: #FFE5E5 !important; 
-            border: 1px solid #000000 !important; 
-            border-radius: 12px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; 
-            color: #000000 !important; 
-            font-weight: 700 !important;
-            padding: 16px 20px !important; 
-            text-align: left !important; 
-            display: flex !important;
-            justify-content: flex-start !important; 
-            align-items: center !important; 
-            height: auto !important; 
-            /* width: 100% !important;  <-- REMOVED THIS TO FIX THE BRICK ISSUE */
-        }
-        .stButton > button p { font-weight: 700 !important; text-align: left !important; }
-        .stButton > button:active, .stButton > button:focus:not(:active) { transform: scale(0.98); background-color: #FFD1D1 !important; }
         
-        button[kind="primary"] { background-color: #FF385C !important; color: white !important; border: none !important; text-align: center !important; justify-content: center !important; }
-        button[kind="primary"] p { text-align: center !important; }
+        /* DEFAULT BUTTON (Acts as the Card) */
+        .stButton > button {
+            background-color: #FFFFFF !important; 
+            border: 1px solid #EBEBEB !important; 
+            border-radius: 12px !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important; 
+            color: #222222 !important; 
+            padding: 16px !important; 
+            text-align: left !important; 
+            display: block !important;
+            height: auto !important;
+            min-height: 70px !important;
+            white-space: pre-wrap !important; /* Allows multi-line text */
+            transition: transform 0.1s ease !important;
+        }
+        
+        .stButton > button:active { 
+            transform: scale(0.98); 
+            background-color: #F7F7F7 !important; 
+        }
+
+        .stButton > button p {
+            font-family: 'Circular', sans-serif !important;
+            text-align: left !important;
+        }
+
+        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - KEEP PINK */
+        button[kind="primary"] { 
+            background-color: #FF385C !important; 
+            color: white !important; 
+            border: none !important; 
+            text-align: center !important; 
+            justify-content: center !important; 
+            display: flex !important;
+            align-items: center !important;
+        }
+        button[kind="primary"] p { 
+            text-align: center !important; 
+            color: white !important;
+        }
+
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
         div[data-baseweb="input"]:focus-within { border: 1px solid #222222 !important; background-color: #FFFFFF !important; }
         input { color: #222222 !important; font-weight: 500 !important; caret-color: #FF385C !important; }
@@ -158,76 +180,6 @@ st.markdown("""
         .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
-        
-        /* ============================================================ */
-        /* ROLODEX LIST STYLING                                       */
-        /* ============================================================ */
-        
-        /* 1. Style the Card Wrapper */
-        div[data-testid="stVerticalBlockBorderWrapper"] {
-            background-color: #FFFFFF;
-            border-radius: 12px;
-            border: 1px solid #F2F2F2;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            padding: 12px !important;
-            margin-bottom: 8px;
-        }
-
-        /* 2. OVERRIDE BUTTON STYLE (Removing the Pink Brick) 
-           We use 'html body .stApp' to create NUCLEAR specificity that beats everything else. 
-        */
-        html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button {
-            width: auto !important; /* Allow it to be small! */
-            background-color: transparent !important;
-            border: none !important;
-            color: #BBBBBB !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            height: auto !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-        }
-        
-        html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button:hover {
-            color: #FF385C !important;
-            background-color: transparent !important;
-        }
-        
-        /* Style the chevron text */
-        html body .stApp div[data-testid="stVerticalBlockBorderWrapper"] .stButton > button p {
-            font-size: 24px !important;
-            font-weight: 300 !important;
-            margin: 0 !important;
-            line-height: 1 !important;
-            color: inherit !important;
-        }
-
-        /* 3. FORCE MOBILE ROW LAYOUT (Prevent Stacking) */
-        @media (max-width: 768px) {
-            /* Force row direction */
-            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
-                display: flex !important;
-                flex-direction: row !important;
-                align-items: center !important;
-                gap: 8px !important;
-            }
-            
-            /* Text Column: Allow shrinking */
-            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:first-child {
-                flex: 1 1 auto !important;
-                min-width: 0 !important; 
-            }
-            
-            /* Button Column: Fixed small width */
-            div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="column"]:last-child {
-                flex: 0 0 auto !important;
-                width: 40px !important;
-                min-width: 40px !important;
-            }
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -568,7 +520,7 @@ def view_pipeline():
         st.caption("No matching contacts found.")
         return
 
-    # 5. RENDER "RICH LIST" CARDS
+    # 5. RENDER "RICH LIST" CARDS (BUTTON APPROACH)
     for lead in filtered_leads:
         # Prepare Data
         name = lead.get('name', 'Unknown')
@@ -576,32 +528,20 @@ def view_pipeline():
         contact = lead.get('contact_info') or "No contact info"
         pitch = lead.get('product_pitch') or "No pitch"
         
-        # Determine Badge Style
-        badge_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
+        # Prepare Label (Text Simulation of Rich Card)
+        status_icon = "🟢" if str(status).lower() == "client" else "🔹"
+        pitch_short = f"{pitch[:30]}..." if len(pitch) > 30 else pitch
         
-        # Render Card Container
-        with st.container(border=True):
-            # Using 5:1 ratio gives text plenty of room
-            # vertical_alignment="center" ensures the button stays aligned with text block
-            c_info, c_action = st.columns([5, 1], vertical_alignment="center")
-            
-            with c_info:
-                # Top Row: Name + Badge
-                st.markdown(f"""
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                        <span style="font-weight: 700; font-size: 16px; color: #222;">{name}</span>
-                        <span class="meta-bubble {badge_class}" style="font-size: 10px; padding: 2px 8px;">{status}</span>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                # Bottom Row: Subtext
-                st.caption(f"{contact} • {pitch[:20]}{'...' if len(pitch)>20 else ''}")
-            
-            with c_action:
-                # CRITICAL: use_container_width=False prevents the width fight
-                if st.button("›", key=f"btn_{lead['id']}", use_container_width=False):
-                    st.session_state.selected_lead = lead
-                    st.rerun()
+        # The Label is carefully constructed for the multi-line CSS
+        button_label = f"{name}  {status_icon} {status}\n{contact} • {pitch_short}"
+        
+        # Single Element - No Stacking Issues
+        if st.button(button_label, key=f"btn_{lead['id']}", use_container_width=True):
+            st.session_state.selected_lead = lead
+            st.rerun()
+        
+        # Add a tiny spacer since we removed st.container
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
 def view_analytics():
     st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
