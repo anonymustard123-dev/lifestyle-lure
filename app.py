@@ -91,7 +91,10 @@ st.markdown("""
             overflow-y: auto !important;
             overflow-x: hidden;
             padding-top: max(env(safe-area-inset-top), 20px) !important;
-            padding-bottom: 80px !important; /* Adjusted to prevent moving white bar while keeping nav accessible */
+            
+            /* REMOVE THE WHITE BAR: Reduced padding from 80px to 20px */
+            padding-bottom: 20px !important; 
+            
             padding-left: 20px !important;
             padding-right: 20px !important;
             -webkit-overflow-scrolling: touch;
@@ -655,7 +658,7 @@ if st.session_state.active_tab == "omni": view_omni()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
-st.markdown("---")
+# Cleaned up: Removed the separator line to remove 'white bar' artifact
 with st.popover("👤", use_container_width=True):
     if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
         supabase.auth.sign_out()
