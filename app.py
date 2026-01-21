@@ -128,47 +128,57 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* ROLODEX LIST BUTTON STYLING (The "Sleek" Fix) 
-           This overrides the standard button to look like a clickable list item/card.
-        */
+        /* =========================================================
+           ROLODEX CARD BUTTONS (SLEEK LIST STYLE + LEFT ALIGN)
+           ========================================================= */
         .stButton > button {
-            background-color: #FFFFFF !important; 
-            border: 1px solid #EBEBEB !important; 
-            border-radius: 16px !important; /* Matches .airbnb-card radius */
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; 
-            color: #222222 !important; 
-            font-weight: 600 !important;
-            font-size: 16px !important;
-            padding: 18px 24px !important;
-            
-            /* KEY ALIGNMENT FIXES */
+            /* 1. FORCE LEFT ALIGNMENT */
             text-align: left !important;
             display: flex !important;
-            justify-content: flex-start !important;
+            justify-content: flex-start !important; /* Pushes text to the left */
             align-items: center !important;
-            width: 100% !important;
             
-            transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease !important;
-            margin-bottom: 10px !important;
+            /* 2. MATCH CARD STYLE */
+            background-color: #FFFFFF !important;
+            border: 1px solid #EBEBEB !important; 
+            
+            /* The "Pink Accent" on the left gives it the professional 'CRM' feel */
+            border-left: 6px solid #FF385C !important; 
+            
+            border-radius: 12px !important; /* Rounded like your cards */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+            
+            /* 3. TYPOGRAPHY & SPACING */
+            color: #222222 !important; /* Dark Black (not gray) */
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            padding: 16px 20px !important; /* Generous padding */
+            width: 100% !important;
+            margin-bottom: 12px !important;
+            transition: all 0.2s ease !important;
         }
-        
+
+        /* HOVER EFFECT */
         .stButton > button:hover {
-            border-color: #222222 !important;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
-            transform: translateY(-1px) !important;
-            color: #FF385C !important;
+            border-color: #FF385C !important; /* Pink border on hover */
+            transform: translateY(-2px) !important; /* Slight lift */
+            box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
+            color: #FF385C !important; /* Brand color text on hover */
         }
 
         .stButton > button:active { 
-            transform: scale(0.99); 
+            transform: scale(0.98); 
             background-color: #FAFAFA !important; 
         }
         
+        /* FIX INTERNAL TEXT WRAPPING */
         .stButton > button p {
             font-family: 'Circular', sans-serif !important;
             font-size: 16px !important;
             margin: 0 !important;
             line-height: 1.2 !important;
+            width: 100%;
+            text-align: left !important;
         }
 
         /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - Override to keep them pink/centered */
@@ -176,9 +186,11 @@ st.markdown("""
             background-color: #FF385C !important; 
             color: white !important; 
             border: none !important; 
+            /* Reset alignment for primary buttons */
             text-align: center !important;
             justify-content: center !important;
             padding: 12px 24px !important;
+            border-left: none !important; /* Remove accent from primary buttons */
         }
         button[kind="primary"] p { 
             color: white !important;
@@ -187,6 +199,7 @@ st.markdown("""
         button[kind="primary"]:hover {
             color: white !important;
             box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important;
+            transform: none !important;
         }
 
         /* SECONDARY SMALL BUTTONS (Back, Close) */
@@ -201,6 +214,7 @@ st.markdown("""
             height: auto !important;
             width: auto !important;
             min-height: 0px !important;
+            border-left: none !important;
         }
 
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
@@ -547,18 +561,16 @@ def view_pipeline():
         return
 
     # 5. RENDER "RICH CARD BUTTONS"
-    # Replaces 'Open' buttons with the Card itself being the button.
-    # We use a clean text format to replace the emojis.
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
         name = lead.get('name', 'Unknown')
         
-        # Clean label (No emojis)
-        # Format: "John Doe  •  CLIENT"
-        button_label = f"{name}  •  {str(status).upper()}"
+        # Format: "Name    •    STATUS"
+        # The CSS handles the layout, alignment, and 'pink border' indicator
+        label = f"{name}   •   {str(status).upper()}"
         
-        # Direct Button (No Container, No Pitch)
-        if st.button(button_label, key=f"card_{lead['id']}", use_container_width=True):
+        # The 'key' ensures each button is unique
+        if st.button(label, key=f"card_{lead['id']}", use_container_width=True):
             st.session_state.selected_lead = lead
             st.rerun()
 
