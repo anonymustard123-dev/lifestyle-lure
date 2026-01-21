@@ -129,30 +129,24 @@ st.markdown("""
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
         /* =========================================================
-           ROLODEX CARD BUTTONS (DEEP ALIGNMENT FIX)
+           ROLODEX CARD BUTTONS (DEFAULT = LEAD/PINK)
            ========================================================= */
         div.stButton > button {
-            /* 1. FORCE LEFT ALIGNMENT ON CONTAINER */
             text-align: left !important;
             display: flex !important;
             justify-content: flex-start !important;
             align-items: center !important;
-            
-            /* 2. MATCH CARD STYLE */
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
-            border-left: 6px solid #FF385C !important; /* Pink Accent */
+            border-left: 6px solid #FF385C !important; /* Default Pink (Lead) */
             border-radius: 12px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-            
-            /* 3. SIZE & SPACING */
             width: 100% !important;
             padding: 16px 20px !important;
             margin-bottom: 12px !important;
             transition: all 0.2s ease !important;
         }
 
-        /* 4. TARGET THE HIDDEN INTERNAL DIV (Fixes the Centering Issue) */
         div.stButton > button > div {
             text-align: left !important;
             justify-content: flex-start !important;
@@ -160,7 +154,6 @@ st.markdown("""
             width: 100% !important;
         }
 
-        /* 5. TARGET THE TEXT ITSELF */
         div.stButton > button p {
             font-family: 'Circular', sans-serif !important;
             font-size: 16px !important;
@@ -168,39 +161,47 @@ st.markdown("""
             color: #222222 !important;
             margin: 0 !important;
             line-height: 1.2 !important;
-            
-            /* FORCE LEFT ALIGNMENT ON TEXT BLOCK */
             text-align: left !important; 
             width: 100% !important;
         }
 
-        /* HOVER EFFECTS */
+        /* HOVER EFFECTS (Default Pink) */
         div.stButton > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
             color: #FF385C !important;
         }
+        div.stButton > button:hover p { color: #FF385C !important; }
+        div.stButton > button:active { transform: scale(0.98); background-color: #FAFAFA !important; }
+
+        /* =========================================================
+           CLIENT OVERRIDE (GREEN ACCENT)
+           Triggered by the hidden "client-trigger" div 
+           ========================================================= */
+        div:has(.client-trigger) + div.stButton > button {
+            border-left-color: #008a73 !important;
+        }
         
-        div.stButton > button:hover p {
-            color: #FF385C !important;
+        div:has(.client-trigger) + div.stButton > button:hover {
+            border-color: #008a73 !important;
+            color: #008a73 !important;
+            box-shadow: 0 8px 15px rgba(0, 138, 115, 0.15) !important;
         }
 
-        div.stButton > button:active { 
-            transform: scale(0.98); 
-            background-color: #FAFAFA !important; 
+        div:has(.client-trigger) + div.stButton > button:hover p {
+            color: #008a73 !important;
         }
 
-        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - Override to keep them pink/centered */
+        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) */
         button[kind="primary"] { 
             background-color: #FF385C !important; 
             color: white !important; 
             border: none !important; 
-            /* Reset alignment for primary buttons */
             text-align: center !important;
             justify-content: center !important;
             padding: 12px 24px !important;
-            border-left: none !important; /* Remove accent from primary buttons */
+            border-left: none !important; 
         }
         button[kind="primary"] p { 
             color: white !important;
@@ -208,11 +209,7 @@ st.markdown("""
             width: 100% !important;
             justify-content: center !important;
         }
-        
-        /* Reset internal div for primary buttons to center */
-        button[kind="primary"] > div {
-             justify-content: center !important;
-        }
+        button[kind="primary"] > div { justify-content: center !important; }
 
         button[kind="primary"]:hover {
             color: white !important;
@@ -673,5 +670,6 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
 
