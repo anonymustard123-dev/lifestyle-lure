@@ -178,19 +178,10 @@ st.markdown("""
         div.stButton > button:active { transform: scale(0.98); background-color: #FAFAFA !important; }
 
         /* =========================================================
-           CLIENT OVERRIDE (GREEN ACCENT & SPACING FIX)
+           CLIENT OVERRIDE (GREEN ACCENT)
            Triggered by the hidden "client-trigger" div
            ========================================================= */
-        
-        /* 1. SPACING FIX: Squash the hidden trigger container so it takes 0px space */
-        div:has(.client-trigger) {
-            height: 0px !important;
-            margin: 0px !important;
-            overflow: hidden !important;
-            display: none !important; 
-        }
-
-        /* 2. COLOR OVERRIDE: Target the button that immediately follows */
+        /* This selector finds a div containing the hidden hook, then styles the button in the NEXT div */
         div:has(.client-trigger) + div.stButton > button,
         div:has(.client-trigger) + div > div.stButton > button { 
             border-left-color: #008a73 !important;
@@ -670,8 +661,6 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
-
-
 
 
 
