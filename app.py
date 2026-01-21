@@ -129,56 +129,66 @@ st.markdown("""
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
         /* =========================================================
-           ROLODEX CARD BUTTONS (SLEEK LIST STYLE + LEFT ALIGN)
+           ROLODEX CARD BUTTONS (DEEP ALIGNMENT FIX)
            ========================================================= */
-        .stButton > button {
-            /* 1. FORCE LEFT ALIGNMENT */
+        div.stButton > button {
+            /* 1. FORCE LEFT ALIGNMENT ON CONTAINER */
             text-align: left !important;
             display: flex !important;
-            justify-content: flex-start !important; /* Pushes text to the left */
+            justify-content: flex-start !important;
             align-items: center !important;
             
             /* 2. MATCH CARD STYLE */
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
-            
-            /* The "Pink Accent" on the left gives it the professional 'CRM' feel */
-            border-left: 6px solid #FF385C !important; 
-            
-            border-radius: 12px !important; /* Rounded like your cards */
+            border-left: 6px solid #FF385C !important; /* Pink Accent */
+            border-radius: 12px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
             
-            /* 3. TYPOGRAPHY & SPACING */
-            color: #222222 !important; /* Dark Black (not gray) */
-            font-size: 16px !important;
-            font-weight: 600 !important;
-            padding: 16px 20px !important; /* Generous padding */
+            /* 3. SIZE & SPACING */
             width: 100% !important;
+            padding: 16px 20px !important;
             margin-bottom: 12px !important;
             transition: all 0.2s ease !important;
         }
 
-        /* HOVER EFFECT */
-        .stButton > button:hover {
-            border-color: #FF385C !important; /* Pink border on hover */
-            transform: translateY(-2px) !important; /* Slight lift */
-            box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
-            color: #FF385C !important; /* Brand color text on hover */
+        /* 4. TARGET THE HIDDEN INTERNAL DIV (Fixes the Centering Issue) */
+        div.stButton > button > div {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            display: flex !important;
+            width: 100% !important;
         }
 
-        .stButton > button:active { 
-            transform: scale(0.98); 
-            background-color: #FAFAFA !important; 
-        }
-        
-        /* FIX INTERNAL TEXT WRAPPING */
-        .stButton > button p {
+        /* 5. TARGET THE TEXT ITSELF */
+        div.stButton > button p {
             font-family: 'Circular', sans-serif !important;
             font-size: 16px !important;
+            font-weight: 600 !important;
+            color: #222222 !important;
             margin: 0 !important;
             line-height: 1.2 !important;
-            width: 100%;
-            text-align: left !important;
+            
+            /* FORCE LEFT ALIGNMENT ON TEXT BLOCK */
+            text-align: left !important; 
+            width: 100% !important;
+        }
+
+        /* HOVER EFFECTS */
+        div.stButton > button:hover {
+            border-color: #FF385C !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
+            color: #FF385C !important;
+        }
+        
+        div.stButton > button:hover p {
+            color: #FF385C !important;
+        }
+
+        div.stButton > button:active { 
+            transform: scale(0.98); 
+            background-color: #FAFAFA !important; 
         }
 
         /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - Override to keep them pink/centered */
@@ -195,12 +205,21 @@ st.markdown("""
         button[kind="primary"] p { 
             color: white !important;
             text-align: center !important;
+            width: 100% !important;
+            justify-content: center !important;
         }
+        
+        /* Reset internal div for primary buttons to center */
+        button[kind="primary"] > div {
+             justify-content: center !important;
+        }
+
         button[kind="primary"]:hover {
             color: white !important;
             box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important;
             transform: none !important;
         }
+        button[kind="primary"]:hover p { color: white !important; }
 
         /* SECONDARY SMALL BUTTONS (Back, Close) */
         button[kind="secondaryFormSubmit"] {
@@ -654,3 +673,4 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
