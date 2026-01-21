@@ -5,3 +5,4 @@ pandas
 supabase
 stripe
 gotrue
+st-click-detector
