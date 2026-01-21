@@ -103,6 +103,8 @@ st.markdown("""
         [data-testid="stRadio"] label p { font-size: 15px !important; font-weight: 600 !important; color: #717171 !important; margin: 0 !important; }
         [data-testid="stRadio"] label:has(input:checked) { border-bottom-color: #FF385C !important; }
         [data-testid="stRadio"] label:has(input:checked) p { color: #222222 !important; }
+        
+        /* CARD STYLES */
         .airbnb-card {
             background-color: #FFFFFF; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             border: 1px solid #dddddd; padding: 24px; margin-bottom: 24px;
@@ -126,50 +128,58 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* VITAL NEW APPROACH:
-           1. PRIMARY BUTTONS (Actions) -> Pink/Red Filled
-           2. SECONDARY BUTTONS (Cards/Lists) -> White, Shadowed, Left-Aligned
-        */
+        /* NEW: STYLE THE LIST CONTAINERS TO LOOK LIKE CARDS */
+        [data-testid="stBorderWrapper"] {
+            background-color: #FFFFFF !important;
+            border-radius: 16px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+            border: 1px solid #EBEBEB !important;
+            padding: 16px !important;
+            transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+        }
+        [data-testid="stBorderWrapper"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important;
+            border-color: #DDDDDD !important;
+        }
         
-        /* DEFAULT BUTTON (Acts as the Card) */
+        /* BUTTON STYLING */
         .stButton > button {
             background-color: #FFFFFF !important; 
             border: 1px solid #EBEBEB !important; 
             border-radius: 12px !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important; 
             color: #222222 !important; 
-            padding: 16px !important; 
-            text-align: left !important; 
-            display: block !important;
-            height: auto !important;
-            min-height: 70px !important;
-            white-space: pre-wrap !important; /* Allows multi-line text */
+            font-weight: 600 !important;
+            padding: 8px 16px !important;
             transition: transform 0.1s ease !important;
         }
-        
         .stButton > button:active { 
             transform: scale(0.98); 
             background-color: #F7F7F7 !important; 
         }
-
         .stButton > button p {
             font-family: 'Circular', sans-serif !important;
-            text-align: left !important;
         }
 
-        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - KEEP PINK */
+        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) */
         button[kind="primary"] { 
             background-color: #FF385C !important; 
             color: white !important; 
             border: none !important; 
-            text-align: center !important; 
-            justify-content: center !important; 
-            display: flex !important;
-            align-items: center !important;
         }
         button[kind="primary"] p { 
-            text-align: center !important; 
             color: white !important;
+        }
+
+        /* SECONDARY BUTTONS (Open, Close) */
+        button[kind="secondaryFormSubmit"] {
+            border: 1px solid #EBEBEB !important;
+            color: #FF385C !important;
+        }
+        button[kind="secondaryFormSubmit"]:hover {
+            border-color: #FF385C !important;
+            background-color: #FFF0F5 !important;
         }
 
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
@@ -473,7 +483,7 @@ def view_omni():
                 st.rerun()
 
 def view_pipeline():
-    # 1. DETAIL VIEW
+    # 1. DETAIL VIEW (Unchanged)
     if st.session_state.selected_lead:
         if st.button("← Back to List", key="back_to_list", type="secondary"):
             st.session_state.selected_lead = None
@@ -483,7 +493,7 @@ def view_pipeline():
         render_executive_card(wrapped_data, show_close=False)
         return
 
-    # 2. LIST VIEW HEADER (Search & Filter)
+    # 2. LIST VIEW HEADER
     st.markdown("<h2 style='padding:10px 0 0px 0;'>Rolodex</h2>", unsafe_allow_html=True)
     
     if not st.session_state.user: return
@@ -506,42 +516,44 @@ def view_pipeline():
     # 4. FILTER LOGIC
     filtered_leads = []
     for l in leads:
-        # Search Filter
-        if search_query:
-            if search_query.lower() not in (l.get('name') or '').lower():
-                continue
-        # Status Filter
-        if filter_status and filter_status != "All":
-            if (l.get('status') or 'Lead').lower() != filter_status.lower():
-                continue
+        if search_query and search_query.lower() not in (l.get('name') or '').lower(): continue
+        if filter_status and filter_status != "All" and (l.get('status') or 'Lead').lower() != filter_status.lower(): continue
         filtered_leads.append(l)
 
     if not filtered_leads:
         st.caption("No matching contacts found.")
         return
 
-    # 5. RENDER "RICH LIST" CARDS (BUTTON APPROACH)
+    # 5. RENDER "RICH CARDS"
+    # Replaces the old plain buttons with styled containers containing HTML and action buttons
     for lead in filtered_leads:
-        # Prepare Data
-        name = lead.get('name', 'Unknown')
         status = lead.get('status', 'Lead')
-        contact = lead.get('contact_info') or "No contact info"
-        pitch = lead.get('product_pitch') or "No pitch"
+        status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
         
-        # Prepare Label (Text Simulation of Rich Card)
-        status_icon = "🟢" if str(status).lower() == "client" else "🔹"
-        pitch_short = f"{pitch[:30]}..." if len(pitch) > 30 else pitch
+        name = lead.get('name', 'Unknown')
+        pitch = lead.get('product_pitch') or "No specific interest listed."
+        pitch_short = f"{pitch[:60]}..." if len(pitch) > 60 else pitch
         
-        # The Label is carefully constructed for the multi-line CSS
-        button_label = f"{name}  {status_icon} {status}\n{contact} • {pitch_short}"
-        
-        # Single Element - No Stacking Issues
-        if st.button(button_label, key=f"btn_{lead['id']}", use_container_width=True):
-            st.session_state.selected_lead = lead
-            st.rerun()
-        
-        # Add a tiny spacer since we removed st.container
-        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            c_info, c_btn = st.columns([0.8, 0.2])
+            
+            with c_info:
+                st.markdown(f"""
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <span style="font-size: 18px; font-weight: 800; color: #222;">{name}</span>
+                        <span class="meta-bubble {status_class}" style="font-size: 10px; padding: 2px 8px;">{status}</span>
+                    </div>
+                    <div style="font-size: 14px; color: #717171; line-height: 1.4;">
+                        {pitch_short}
+                    </div>
+                """, unsafe_allow_html=True)
+                
+            with c_btn:
+                # Vertical spacer for alignment
+                st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
+                if st.button("OPEN", key=f"open_{lead['id']}", use_container_width=True, type="secondary"):
+                    st.session_state.selected_lead = lead
+                    st.rerun()
 
 def view_analytics():
     st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
