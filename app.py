@@ -93,6 +93,8 @@ st.markdown("""
             padding-right: 20px !important;
             -webkit-overflow-scrolling: touch;
         }
+        
+        /* HIDE DEFAULT RADIO BUTTONS & MAKE THEM LOOK LIKE TABS */
         [data-testid="stRadio"] div[role="radiogroup"] {
             display: flex; flex-direction: row; justify-content: center !important; 
             width: 100% !important; overflow-x: auto; white-space: nowrap; gap: 24px;
@@ -104,12 +106,11 @@ st.markdown("""
         [data-testid="stRadio"] label:has(input:checked) { border-bottom-color: #FF385C !important; }
         [data-testid="stRadio"] label:has(input:checked) p { color: #222222 !important; }
         
-        /* CARD STYLES (For Detail View) */
+        /* CARD STYLES */
         .airbnb-card {
             background-color: #FFFFFF; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             border: 1px solid #dddddd; padding: 24px; margin-bottom: 24px;
         }
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
         .status-badge {
             background-color: #FF385C; color: white; font-size: 10px; font-weight: 800;
             padding: 6px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: inline-block;
@@ -147,6 +148,7 @@ st.markdown("""
             transition: all 0.2s ease !important;
         }
 
+        /* Fix internal div alignment */
         div.stButton > button > div {
             text-align: left !important;
             justify-content: flex-start !important;
@@ -177,23 +179,27 @@ st.markdown("""
 
         /* =========================================================
            CLIENT OVERRIDE (GREEN ACCENT)
-           Triggered by the hidden "client-trigger" div 
+           Triggered by the hidden "client-trigger" div
            ========================================================= */
-        div:has(.client-trigger) + div.stButton > button {
+        /* This selector finds a div containing the hidden hook, then styles the button in the NEXT div */
+        div:has(.client-trigger) + div.stButton > button,
+        div:has(.client-trigger) + div > div.stButton > button { 
             border-left-color: #008a73 !important;
         }
         
-        div:has(.client-trigger) + div.stButton > button:hover {
+        div:has(.client-trigger) + div.stButton > button:hover,
+        div:has(.client-trigger) + div > div.stButton > button:hover {
             border-color: #008a73 !important;
             color: #008a73 !important;
             box-shadow: 0 8px 15px rgba(0, 138, 115, 0.15) !important;
         }
 
-        div:has(.client-trigger) + div.stButton > button:hover p {
+        div:has(.client-trigger) + div.stButton > button:hover p,
+        div:has(.client-trigger) + div > div.stButton > button:hover p {
             color: #008a73 !important;
         }
 
-        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) */
+        /* GENERAL FORM ELEMENTS */
         button[kind="primary"] { 
             background-color: #FF385C !important; 
             color: white !important; 
@@ -203,36 +209,16 @@ st.markdown("""
             padding: 12px 24px !important;
             border-left: none !important; 
         }
-        button[kind="primary"] p { 
-            color: white !important;
-            text-align: center !important;
-            width: 100% !important;
-            justify-content: center !important;
-        }
+        button[kind="primary"] p { color: white !important; text-align: center !important; width: 100% !important; justify-content: center !important; }
         button[kind="primary"] > div { justify-content: center !important; }
-
-        button[kind="primary"]:hover {
-            color: white !important;
-            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important;
-            transform: none !important;
-        }
-        button[kind="primary"]:hover p { color: white !important; }
-
-        /* SECONDARY SMALL BUTTONS (Back, Close) */
+        button[kind="primary"]:hover { box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important; transform: none !important; }
+        
         button[kind="secondaryFormSubmit"] {
-            border: none !important;
-            background: transparent !important;
-            color: #FF385C !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            text-align: left !important;
-            justify-content: flex-start !important;
-            height: auto !important;
-            width: auto !important;
-            min-height: 0px !important;
-            border-left: none !important;
+            border: none !important; background: transparent !important; color: #FF385C !important;
+            box-shadow: none !important; padding: 0 !important; text-align: left !important;
+            justify-content: flex-start !important; border-left: none !important;
         }
-
+        
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
         div[data-baseweb="input"]:focus-within { border: 1px solid #222222 !important; background-color: #FFFFFF !important; }
         input { color: #222222 !important; font-weight: 500 !important; caret-color: #FF385C !important; }
@@ -581,12 +567,17 @@ def view_pipeline():
         status = lead.get('status', 'Lead')
         name = lead.get('name', 'Unknown')
         
-        # Format: "Name    •    STATUS"
-        # The CSS handles the layout, alignment, and 'pink border' indicator
-        label = f"{name}   •   {str(status).upper()}"
+        # Check if they are a client (case insensitive)
+        is_client = str(status).strip().lower() == "client"
+
+        # INJECT CSS HOOK:
+        # If Client -> Inject a hidden div. The CSS sees this and turns the NEXT button green.
+        if is_client:
+            st.markdown('<div class="client-trigger" style="display:none;"></div>', unsafe_allow_html=True)
         
-        # The 'key' ensures each button is unique
-        if st.button(label, key=f"card_{lead['id']}", use_container_width=True):
+        # RENDER BUTTON:
+        # We only pass 'name' now (removing the text "• CLIENT").
+        if st.button(name, key=f"card_{lead['id']}", use_container_width=True):
             st.session_state.selected_lead = lead
             st.rerun()
 
@@ -670,6 +661,7 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
 
 
