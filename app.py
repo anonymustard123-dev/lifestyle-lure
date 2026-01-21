@@ -128,33 +128,35 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* BUTTON AS CARD STYLING 
-           This transforms the standard Streamlit button into a card-like element.
-           - Left aligned text
-           - Padding to give it height
-           - Box shadow and border for the 'card' effect
+        /* ROLODEX LIST BUTTON STYLING (The "Sleek" Fix) 
+           This overrides the standard button to look like a clickable list item/card.
         */
         .stButton > button {
             background-color: #FFFFFF !important; 
             border: 1px solid #EBEBEB !important; 
-            border-radius: 16px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important; 
+            border-radius: 16px !important; /* Matches .airbnb-card radius */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; 
             color: #222222 !important; 
             font-weight: 600 !important;
             font-size: 16px !important;
-            padding: 20px 24px !important; /* Larger padding for card feel */
-            text-align: left !important;   /* Force text to left */
+            padding: 18px 24px !important;
+            
+            /* KEY ALIGNMENT FIXES */
+            text-align: left !important;
             display: flex !important;
             justify-content: flex-start !important;
+            align-items: center !important;
             width: 100% !important;
-            transition: transform 0.1s ease, box-shadow 0.1s ease !important;
-            margin-bottom: 8px !important;
+            
+            transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease !important;
+            margin-bottom: 10px !important;
         }
         
         .stButton > button:hover {
-            border-color: #DDDDDD !important;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
-            color: #FF385C !important; /* Highlight text on hover */
+            border-color: #222222 !important;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
+            transform: translateY(-1px) !important;
+            color: #FF385C !important;
         }
 
         .stButton > button:active { 
@@ -165,6 +167,8 @@ st.markdown("""
         .stButton > button p {
             font-family: 'Circular', sans-serif !important;
             font-size: 16px !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
         }
 
         /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - Override to keep them pink/centered */
@@ -544,17 +548,14 @@ def view_pipeline():
 
     # 5. RENDER "RICH CARD BUTTONS"
     # Replaces 'Open' buttons with the Card itself being the button.
-    # We use Emojis to simulate the badge since st.button is text-only.
+    # We use a clean text format to replace the emojis.
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
         name = lead.get('name', 'Unknown')
         
-        # Icon Logic
-        is_client = str(status).lower() == "client"
-        icon = "🟢" if is_client else "🔹"
-        
-        # Formatted Button Label: "Name      [Icon Status]"
-        button_label = f"{name}    {icon} {status}"
+        # Clean label (No emojis)
+        # Format: "John Doe  •  CLIENT"
+        button_label = f"{name}  •  {str(status).upper()}"
         
         # Direct Button (No Container, No Pitch)
         if st.button(button_label, key=f"card_{lead['id']}", use_container_width=True):
