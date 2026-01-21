@@ -104,7 +104,7 @@ st.markdown("""
         [data-testid="stRadio"] label:has(input:checked) { border-bottom-color: #FF385C !important; }
         [data-testid="stRadio"] label:has(input:checked) p { color: #222222 !important; }
         
-        /* CARD STYLES */
+        /* CARD STYLES (For Detail View) */
         .airbnb-card {
             background-color: #FFFFFF; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             border: 1px solid #dddddd; padding: 24px; margin-bottom: 24px;
@@ -128,58 +128,75 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* NEW: STYLE THE LIST CONTAINERS TO LOOK LIKE CARDS */
-        [data-testid="stBorderWrapper"] {
-            background-color: #FFFFFF !important;
-            border-radius: 16px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-            border: 1px solid #EBEBEB !important;
-            padding: 16px !important;
-            transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-        }
-        [data-testid="stBorderWrapper"]:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important;
-            border-color: #DDDDDD !important;
-        }
-        
-        /* BUTTON STYLING */
+        /* BUTTON AS CARD STYLING 
+           This transforms the standard Streamlit button into a card-like element.
+           - Left aligned text
+           - Padding to give it height
+           - Box shadow and border for the 'card' effect
+        */
         .stButton > button {
             background-color: #FFFFFF !important; 
             border: 1px solid #EBEBEB !important; 
-            border-radius: 12px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important; 
+            border-radius: 16px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important; 
             color: #222222 !important; 
             font-weight: 600 !important;
-            padding: 8px 16px !important;
-            transition: transform 0.1s ease !important;
+            font-size: 16px !important;
+            padding: 20px 24px !important; /* Larger padding for card feel */
+            text-align: left !important;   /* Force text to left */
+            display: flex !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+            margin-bottom: 8px !important;
         }
-        .stButton > button:active { 
-            transform: scale(0.98); 
-            background-color: #F7F7F7 !important; 
-        }
-        .stButton > button p {
-            font-family: 'Circular', sans-serif !important;
+        
+        .stButton > button:hover {
+            border-color: #DDDDDD !important;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1) !important;
+            color: #FF385C !important; /* Highlight text on hover */
         }
 
-        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) */
+        .stButton > button:active { 
+            transform: scale(0.99); 
+            background-color: #FAFAFA !important; 
+        }
+        
+        .stButton > button p {
+            font-family: 'Circular', sans-serif !important;
+            font-size: 16px !important;
+        }
+
+        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - Override to keep them pink/centered */
         button[kind="primary"] { 
             background-color: #FF385C !important; 
             color: white !important; 
             border: none !important; 
+            text-align: center !important;
+            justify-content: center !important;
+            padding: 12px 24px !important;
         }
         button[kind="primary"] p { 
             color: white !important;
+            text-align: center !important;
+        }
+        button[kind="primary"]:hover {
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important;
         }
 
-        /* SECONDARY BUTTONS (Open, Close) */
+        /* SECONDARY SMALL BUTTONS (Back, Close) */
         button[kind="secondaryFormSubmit"] {
-            border: 1px solid #EBEBEB !important;
+            border: none !important;
+            background: transparent !important;
             color: #FF385C !important;
-        }
-        button[kind="secondaryFormSubmit"]:hover {
-            border-color: #FF385C !important;
-            background-color: #FFF0F5 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+            height: auto !important;
+            width: auto !important;
+            min-height: 0px !important;
         }
 
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
@@ -485,6 +502,7 @@ def view_omni():
 def view_pipeline():
     # 1. DETAIL VIEW (Unchanged)
     if st.session_state.selected_lead:
+        # Use a "Back" button that looks like a link
         if st.button("← Back to List", key="back_to_list", type="secondary"):
             st.session_state.selected_lead = None
             st.rerun()
@@ -524,36 +542,24 @@ def view_pipeline():
         st.caption("No matching contacts found.")
         return
 
-    # 5. RENDER "RICH CARDS"
-    # Replaces the old plain buttons with styled containers containing HTML and action buttons
+    # 5. RENDER "RICH CARD BUTTONS"
+    # Replaces 'Open' buttons with the Card itself being the button.
+    # We use Emojis to simulate the badge since st.button is text-only.
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
-        status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
-        
         name = lead.get('name', 'Unknown')
-        pitch = lead.get('product_pitch') or "No specific interest listed."
-        pitch_short = f"{pitch[:60]}..." if len(pitch) > 60 else pitch
         
-        with st.container(border=True):
-            c_info, c_btn = st.columns([0.8, 0.2])
-            
-            with c_info:
-                st.markdown(f"""
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                        <span style="font-size: 18px; font-weight: 800; color: #222;">{name}</span>
-                        <span class="meta-bubble {status_class}" style="font-size: 10px; padding: 2px 8px;">{status}</span>
-                    </div>
-                    <div style="font-size: 14px; color: #717171; line-height: 1.4;">
-                        {pitch_short}
-                    </div>
-                """, unsafe_allow_html=True)
-                
-            with c_btn:
-                # Vertical spacer for alignment
-                st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
-                if st.button("OPEN", key=f"open_{lead['id']}", use_container_width=True, type="secondary"):
-                    st.session_state.selected_lead = lead
-                    st.rerun()
+        # Icon Logic
+        is_client = str(status).lower() == "client"
+        icon = "🟢" if is_client else "🔹"
+        
+        # Formatted Button Label: "Name      [Icon Status]"
+        button_label = f"{name}    {icon} {status}"
+        
+        # Direct Button (No Container, No Pitch)
+        if st.button(button_label, key=f"card_{lead['id']}", use_container_width=True):
+            st.session_state.selected_lead = lead
+            st.rerun()
 
 def view_analytics():
     st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
