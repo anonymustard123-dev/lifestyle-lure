@@ -128,53 +128,34 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* =========================================================
-           ROLODEX CARD BUTTONS (DEEP ALIGNMENT FIX)
-           ========================================================= */
-        div.stButton > button {
-            /* 1. FORCE LEFT ALIGNMENT ON CONTAINER */
-            text-align: left !important;
+        /* ROLODEX ROW (Flexbox for Name + Bubble) */
+        .rolodex-row {
             display: flex !important;
-            justify-content: flex-start !important;
             align-items: center !important;
-            
-            /* 2. MATCH CARD STYLE */
-            background-color: #FFFFFF !important;
-            border: 1px solid #EBEBEB !important; 
-            border-left: 6px solid #FF385C !important; /* Pink Accent */
-            border-radius: 12px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-            
-            /* 3. SIZE & SPACING */
-            width: 100% !important;
-            padding: 16px 20px !important;
-            margin-bottom: 12px !important;
-            transition: all 0.2s ease !important;
+            gap: 12px !important; /* Space between Name and Bubble */
+            padding: 8px 0 !important;
         }
-
-        /* 4. TARGET THE HIDDEN INTERNAL DIV (Fixes the Centering Issue) */
-        div.stButton > button > div {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            display: flex !important;
-            width: 100% !important;
-        }
-
-        /* 5. TARGET THE TEXT ITSELF */
-        div.stButton > button p {
-            font-family: 'Circular', sans-serif !important;
+        .rolodex-name {
             font-size: 16px !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             color: #222222 !important;
             margin: 0 !important;
-            line-height: 1.2 !important;
-            
-            /* FORCE LEFT ALIGNMENT ON TEXT BLOCK */
-            text-align: left !important; 
-            width: 100% !important;
         }
-
-        /* HOVER EFFECTS */
+        
+        /* Custom separator for list items */
+        .list-separator {
+            border: 0; border-top: 1px solid #F0F0F0; margin: 16px 0;
+        }
+        
+        /* BUTTON STYLES */
+        div.stButton > button {
+            background-color: #FFFFFF !important;
+            border: 1px solid #EBEBEB !important; 
+            border-radius: 12px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+            transition: all 0.2s ease !important;
+            font-weight: 600 !important;
+        }
         div.stButton > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
@@ -182,44 +163,20 @@ st.markdown("""
             color: #FF385C !important;
         }
         
-        div.stButton > button:hover p {
-            color: #FF385C !important;
-        }
-
-        div.stButton > button:active { 
-            transform: scale(0.98); 
-            background-color: #FAFAFA !important; 
-        }
-
-        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save) - Override to keep them pink/centered */
+        /* PRIMARY ACTION BUTTONS (Login, Subscribe, Save, View) */
         button[kind="primary"] { 
             background-color: #FF385C !important; 
             color: white !important; 
             border: none !important; 
-            /* Reset alignment for primary buttons */
             text-align: center !important;
             justify-content: center !important;
-            padding: 12px 24px !important;
-            border-left: none !important; /* Remove accent from primary buttons */
+            padding: 8px 16px !important;
         }
-        button[kind="primary"] p { 
-            color: white !important;
-            text-align: center !important;
-            width: 100% !important;
-            justify-content: center !important;
-        }
-        
-        /* Reset internal div for primary buttons to center */
-        button[kind="primary"] > div {
-             justify-content: center !important;
-        }
-
+        button[kind="primary"] p { color: white !important; }
         button[kind="primary"]:hover {
-            color: white !important;
             box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important;
-            transform: none !important;
+            transform: translateY(-1px) !important;
         }
-        button[kind="primary"]:hover p { color: white !important; }
 
         /* SECONDARY SMALL BUTTONS (Back, Close) */
         button[kind="secondaryFormSubmit"] {
@@ -233,7 +190,6 @@ st.markdown("""
             height: auto !important;
             width: auto !important;
             min-height: 0px !important;
-            border-left: none !important;
         }
 
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
@@ -579,19 +535,37 @@ def view_pipeline():
         st.caption("No matching contacts found.")
         return
 
-    # 5. RENDER "RICH CARD BUTTONS"
+    # 5. RENDER LIST WITH BUBBLES
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
+        status_lower = str(status).lower()
+        
+        # Determine Bubble Color
+        badge_class = "bubble-client" if status_lower == "client" else "bubble-lead"
         name = lead.get('name', 'Unknown')
         
-        # Format: "Name    •    STATUS"
-        # The CSS handles the layout, alignment, and 'pink border' indicator
-        label = f"{name}   •   {str(status).upper()}"
-        
-        # The 'key' ensures each button is unique
-        if st.button(label, key=f"card_{lead['id']}", use_container_width=True):
-            st.session_state.selected_lead = lead
-            st.rerun()
+        with st.container():
+            # Adjust column ratio to give more space to the name/bubble
+            c1, c2 = st.columns([0.75, 0.25])
+            
+            with c1:
+                # Use 'rolodex-row' (display:flex) to keep them side-by-side
+                st.markdown(f"""
+                <div class="rolodex-row">
+                    <span class="rolodex-name">{name}</span>
+                    <span class="meta-bubble {badge_class}">{status}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with c2:
+                # View Button
+                st.markdown('<div style="height: 4px;"></div>', unsafe_allow_html=True)
+                if st.button("View", key=f"view_{lead['id']}", type="primary", use_container_width=True):
+                    st.session_state.selected_lead = lead
+                    st.rerun()
+            
+            # Separator Line
+            st.markdown("<hr class='list-separator'>", unsafe_allow_html=True)
 
 def view_analytics():
     st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
@@ -673,5 +647,3 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
-
-
