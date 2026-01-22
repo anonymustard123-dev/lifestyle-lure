@@ -105,31 +105,36 @@ st.markdown("""
         /* 1. OUTER CONTAINER: Draws the full-width grey line & centers the inner group */
         [data-testid="stRadio"] {
             width: 100% !important;
-            border-bottom: 1px solid #F2F2F2 !important;
-            padding-bottom: 0px !important;
+            padding: 0 !important;
             margin-bottom: 24px !important;
-            background: transparent !important;
+            /* Move the border here so it spans the full page width */
+            border-bottom: 1px solid #F2F2F2 !important;
+            
+            /* Center the child (the button group) */
             display: flex !important;
-            justify-content: center !important; /* Forces the inner group to center */
+            justify-content: center !important;
+            align-items: center !important;
         }
 
         /* 2. INNER GROUP: Shrinks to fit content so it can be centered */
         [data-testid="stRadio"] div[role="radiogroup"] {
+            /* Shrink to fit content so it centers properly */
+            width: fit-content !important;
+            max-width: 100% !important;
+            
             display: flex !important;
             flex-direction: row !important;
             justify-content: center !important;
             align-items: center !important;
             
-            /* KEY FIX: fit-content allows it to center, max-width allows scroll on small phones */
-            width: fit-content !important; 
-            max-width: 100% !important;
-            overflow-x: auto !important; 
-            
-            white-space: nowrap !important; 
             gap: 12px !important;
-            border: none !important; /* Remove border from here (it's on parent now) */
             padding: 0 !important;
-            margin: 0 auto !important; /* Auto margins to ensure centering */
+            margin: 0 auto !important; /* Force centering */
+            
+            /* Remove border from here since we moved it up */
+            border-bottom: none !important;
+            overflow-x: auto !important; 
+            white-space: nowrap !important;
         }
 
         /* 3. Hide the circle icons */
@@ -712,6 +717,7 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
 
 
