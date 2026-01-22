@@ -101,11 +101,28 @@ st.markdown("""
         }
         
         /* TAB STYLES */
+        /* 1. Force the outer wrapper to center its children */
+        [data-testid="stRadio"] {
+            width: 100% !important;
+            display: flex;
+            justify-content: center !important;
+        }
+
+        /* 2. Center the buttons inside the group */
         [data-testid="stRadio"] div[role="radiogroup"] {
-            display: flex; flex-direction: row; justify-content: center !important; 
-            width: 100% !important; overflow-x: auto; white-space: nowrap; gap: 12px;
-            border-bottom: 1px solid #F2F2F2; padding-bottom: 0px; margin-bottom: 24px;
-            margin-left: auto !important; margin-right: auto !important;
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: center !important; /* Centers the tabs */
+            align-items: center !important;
+            width: 100% !important; 
+            overflow-x: auto !important; 
+            white-space: nowrap !important; 
+            gap: 12px !important;
+            border-bottom: 1px solid #F2F2F2; 
+            padding-bottom: 0px; 
+            margin-bottom: 24px;
+            margin-left: 0 !important; /* Remove auto margins */
+            margin-right: 0 !important;
         }
         [data-testid="stRadio"] label > div:first-child { display: none !important; }
         [data-testid="stRadio"] label { padding: 12px 0px !important; margin-right: 0px !important; border-bottom: 3px solid transparent; cursor: pointer; }
@@ -667,4 +684,5 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
