@@ -100,68 +100,61 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
         
-       /* TAB STYLES */
+       /* TAB STYLES - FORCED CENTER ALIGNMENT */
         
-        /* 1. OUTER CONTAINER: Draws the full-width grey line & centers the inner group */
+        /* 1. OUTER CONTAINER: Draws the full-width grey line */
         [data-testid="stRadio"] {
             width: 100% !important;
             padding: 0 !important;
-            margin-bottom: 24px !important;
-            /* Move the border here so it spans the full page width */
+            background: transparent !important;
             border-bottom: 1px solid #F2F2F2 !important;
-            
-            /* Center the child (the button group) */
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
+            margin-bottom: 24px !important;
+            display: block !important; /* Reset display to block to allow full width child */
         }
 
-        /* 2. INNER GROUP: Shrinks to fit content so it can be centered */
+        /* 2. INNER GROUP: Spans 100% width and centers the buttons inside */
         [data-testid="stRadio"] div[role="radiogroup"] {
-            /* Shrink to fit content so it centers properly */
-            width: fit-content !important;
-            max-width: 100% !important;
-            
+            width: 100% !important; /* Key Fix: Take up the whole screen width */
             display: flex !important;
             flex-direction: row !important;
-            justify-content: center !important;
+            justify-content: center !important; /* Key Fix: Center the buttons inside that full width */
             align-items: center !important;
-            
-            gap: 12px !important;
-            padding: 0 !important;
-            margin: 0 auto !important; /* Force centering */
-            
-            /* Remove border from here since we moved it up */
-            border-bottom: none !important;
-            overflow-x: auto !important; 
+            gap: 24px !important; 
+            overflow-x: auto !important;
             white-space: nowrap !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
-        /* 3. Hide the circle icons */
+        /* 3. Hide Radio Circles */
         [data-testid="stRadio"] label > div:first-child { display: none !important; }
 
         /* 4. Clickable Label Styling */
-        [data-testid="stRadio"] label { 
-            padding: 12px 0px !important; 
-            margin-right: 0px !important; 
-            border-bottom: 3px solid transparent; 
-            cursor: pointer; 
+        [data-testid="stRadio"] label {
+            cursor: pointer;
+            padding: 12px 16px !important;
+            margin: 0 !important;
+            border-bottom: 3px solid transparent;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
-
+        
         /* 5. Text Styling */
-        [data-testid="stRadio"] label p { 
-            font-size: 15px !important; 
-            font-weight: 600 !important; 
-            color: #717171 !important; 
-            margin: 0 !important; 
+        [data-testid="stRadio"] label p {
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            color: #717171 !important;
+            margin: 0 !important;
         }
 
-        /* 6. Active Tab Styling (Pink Underline) */
-        [data-testid="stRadio"] label:has(input:checked) { 
-            border-bottom-color: #FF385C !important; 
+        /* 6. Active Tab Styling */
+        [data-testid="stRadio"] label:has(input:checked) {
+            border-bottom-color: #FF385C !important;
         }
-        [data-testid="stRadio"] label:has(input:checked) p { 
-            color: #222222 !important; 
+        [data-testid="stRadio"] label:has(input:checked) p {
+            color: #222222 !important;
         }        
         /* CARD STYLES */
         .airbnb-card {
@@ -717,6 +710,7 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
 
 
