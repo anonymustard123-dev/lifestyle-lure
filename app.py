@@ -100,7 +100,7 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
         
-       /* TAB STYLES - FORCED CENTER ALIGNMENT */
+       /* TAB STYLES - FINAL CLEANUP */
         
         /* 1. OUTER CONTAINER: Draws the full-width grey line */
         [data-testid="stRadio"] {
@@ -109,15 +109,15 @@ st.markdown("""
             background: transparent !important;
             border-bottom: 1px solid #F2F2F2 !important;
             margin-bottom: 24px !important;
-            display: block !important; /* Reset display to block to allow full width child */
+            display: block !important;
         }
 
-        /* 2. INNER GROUP: Spans 100% width and centers the buttons inside */
+        /* 2. INNER GROUP: Spans 100% width and centers the buttons */
         [data-testid="stRadio"] div[role="radiogroup"] {
-            width: 100% !important; /* Key Fix: Take up the whole screen width */
+            width: 100% !important;
             display: flex !important;
             flex-direction: row !important;
-            justify-content: center !important; /* Key Fix: Center the buttons inside that full width */
+            justify-content: center !important; /* Centers the buttons */
             align-items: center !important;
             gap: 24px !important; 
             overflow-x: auto !important;
@@ -130,8 +130,8 @@ st.markdown("""
         /* 3. Hide Radio Circles */
         [data-testid="stRadio"] label > div:first-child { display: none !important; }
 
-        /* 4. Clickable Label Styling */
-        [data-testid="stRadio"] label {
+        /* 4. Clickable Label Styling (SCOPED TO RADIOGROUP ONLY) */
+        [data-testid="stRadio"] div[role="radiogroup"] label {
             cursor: pointer;
             padding: 12px 16px !important;
             margin: 0 !important;
@@ -142,7 +142,7 @@ st.markdown("""
         }
         
         /* 5. Text Styling */
-        [data-testid="stRadio"] label p {
+        [data-testid="stRadio"] div[role="radiogroup"] label p {
             font-size: 15px !important;
             font-weight: 600 !important;
             color: #717171 !important;
@@ -150,10 +150,10 @@ st.markdown("""
         }
 
         /* 6. Active Tab Styling */
-        [data-testid="stRadio"] label:has(input:checked) {
+        [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
             border-bottom-color: #FF385C !important;
         }
-        [data-testid="stRadio"] label:has(input:checked) p {
+        [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
             color: #222222 !important;
         }        
         /* CARD STYLES */
@@ -710,6 +710,7 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
 
 
