@@ -687,7 +687,8 @@ def view_analytics():
     
     # 1. FUNNEL CALC (Green Card - Money)
     total_leads = len(df)
-    clients = len(df[df['status'].str.strip().lower() == 'client'])
+    # CORRECTED SYNTAX: .str accessor repeated for both strip() and lower()
+    clients = len(df[df['status'].astype(str).str.strip().str.lower() == 'client'])
     conversion_rate = int((clients / total_leads) * 100) if total_leads > 0 else 0
     
     # 2. HUSTLE CALC (Red Card - Action)
