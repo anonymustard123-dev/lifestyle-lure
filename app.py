@@ -252,6 +252,49 @@ st.markdown("""
             color: #008a73 !important;
         }
 
+        /* =========================================================
+           ANALYTICS CARD STYLES (MATCHING ROLODEX)
+           ========================================================= */
+        .analytics-card {
+            background-color: #FFFFFF;
+            border: 1px solid #EBEBEB;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        /* Red accent for Hustle (Lead color) */
+        .analytics-card-red { border-left: 6px solid #FF385C; }
+        /* Green accent for Money/Funnel (Client color) */
+        .analytics-card-green { border-left: 6px solid #008a73; }
+        
+        .stat-title { 
+            font-size: 11px; 
+            font-weight: 800; 
+            color: #717171; 
+            text-transform: uppercase; 
+            letter-spacing: 0.8px; 
+            margin-bottom: 6px; 
+        }
+        .stat-metric { 
+            font-size: 26px; 
+            font-weight: 900; 
+            color: #222222; 
+            margin: 0; 
+            line-height: 1.1; 
+        }
+        .stat-sub { 
+            font-size: 14px; 
+            font-weight: 500; 
+            color: #717171; 
+            margin-top: 4px; 
+        }
+
         /* GENERAL FORM ELEMENTS */
         button[kind="primary"] { 
             background-color: #FF385C !important; color: white !important; border: none !important; 
@@ -631,13 +674,46 @@ def view_pipeline():
             st.rerun()
 
 def view_analytics():
-    st.markdown("<h2 style='padding:10px 0 10px 0;'>Analytics</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='padding:10px 0 20px 0;'>Performance</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
+    
+    # Fetch Data
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).execute().data
-    if not leads: st.warning("No data."); return
+    if not leads: 
+        st.info("Start adding leads to see your stats!")
+        return
+        
     df = pd.DataFrame(leads)
-    st.metric("Total Network", len(leads))
-    st.bar_chart(df['product_pitch'].value_counts())
+    
+    # 1. FUNNEL CALC (Green Card - Money)
+    total_leads = len(df)
+    clients = len(df[df['status'].str.strip().lower() == 'client'])
+    conversion_rate = int((clients / total_leads) * 100) if total_leads > 0 else 0
+    
+    # 2. HUSTLE CALC (Red Card - Action)
+    # Ensure created_at is datetime
+    if 'created_at' in df.columns:
+        df['created_at'] = pd.to_datetime(df['created_at'])
+        # Filter for last 30 days
+        thirty_days_ago = pd.Timestamp.now(tz=df['created_at'].dt.tz) - pd.Timedelta(days=30)
+        recent_leads = len(df[df['created_at'] >= thirty_days_ago])
+    else:
+        recent_leads = 0
+
+    # HTML RENDER - Designed to match Rolodex Cards exactly
+    st.markdown(f"""
+    <div class="analytics-card analytics-card-green">
+        <div class="stat-title">CONVERSION RATE</div>
+        <div class="stat-metric">{conversion_rate}%</div>
+        <div class="stat-sub">{clients} Clients / {total_leads} Total Network</div>
+    </div>
+    
+    <div class="analytics-card analytics-card-red">
+        <div class="stat-title">30-DAY HUSTLE</div>
+        <div class="stat-metric">+{recent_leads}</div>
+        <div class="stat-sub">New leads added recently</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
 # 7. MAIN ROUTER
@@ -710,9 +786,3 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
-
-
-
-
-
-
