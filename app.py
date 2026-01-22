@@ -100,36 +100,64 @@ st.markdown("""
             -webkit-overflow-scrolling: touch;
         }
         
-        /* TAB STYLES */
-        /* 1. Force the outer wrapper to center its children */
+       /* TAB STYLES */
+        
+        /* 1. OUTER CONTAINER: Draws the full-width grey line & centers the inner group */
         [data-testid="stRadio"] {
             width: 100% !important;
-            display: flex;
-            justify-content: center !important;
+            border-bottom: 1px solid #F2F2F2 !important;
+            padding-bottom: 0px !important;
+            margin-bottom: 24px !important;
+            background: transparent !important;
+            display: flex !important;
+            justify-content: center !important; /* Forces the inner group to center */
         }
 
-        /* 2. Center the buttons inside the group */
+        /* 2. INNER GROUP: Shrinks to fit content so it can be centered */
         [data-testid="stRadio"] div[role="radiogroup"] {
             display: flex !important;
             flex-direction: row !important;
-            justify-content: center !important; /* Centers the tabs */
+            justify-content: center !important;
             align-items: center !important;
-            width: 100% !important; 
+            
+            /* KEY FIX: fit-content allows it to center, max-width allows scroll on small phones */
+            width: fit-content !important; 
+            max-width: 100% !important;
             overflow-x: auto !important; 
+            
             white-space: nowrap !important; 
             gap: 12px !important;
-            border-bottom: 1px solid #F2F2F2; 
-            padding-bottom: 0px; 
-            margin-bottom: 24px;
-            margin-left: 0 !important; /* Remove auto margins */
-            margin-right: 0 !important;
+            border: none !important; /* Remove border from here (it's on parent now) */
+            padding: 0 !important;
+            margin: 0 auto !important; /* Auto margins to ensure centering */
         }
+
+        /* 3. Hide the circle icons */
         [data-testid="stRadio"] label > div:first-child { display: none !important; }
-        [data-testid="stRadio"] label { padding: 12px 0px !important; margin-right: 0px !important; border-bottom: 3px solid transparent; cursor: pointer; }
-        [data-testid="stRadio"] label p { font-size: 15px !important; font-weight: 600 !important; color: #717171 !important; margin: 0 !important; }
-        [data-testid="stRadio"] label:has(input:checked) { border-bottom-color: #FF385C !important; }
-        [data-testid="stRadio"] label:has(input:checked) p { color: #222222 !important; }
-        
+
+        /* 4. Clickable Label Styling */
+        [data-testid="stRadio"] label { 
+            padding: 12px 0px !important; 
+            margin-right: 0px !important; 
+            border-bottom: 3px solid transparent; 
+            cursor: pointer; 
+        }
+
+        /* 5. Text Styling */
+        [data-testid="stRadio"] label p { 
+            font-size: 15px !important; 
+            font-weight: 600 !important; 
+            color: #717171 !important; 
+            margin: 0 !important; 
+        }
+
+        /* 6. Active Tab Styling (Pink Underline) */
+        [data-testid="stRadio"] label:has(input:checked) { 
+            border-bottom-color: #FF385C !important; 
+        }
+        [data-testid="stRadio"] label:has(input:checked) p { 
+            color: #222222 !important; 
+        }        
         /* CARD STYLES */
         .airbnb-card {
             background-color: #FFFFFF; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
@@ -684,5 +712,6 @@ with st.popover("👤", use_container_width=True):
         st.rerun()
     if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
         pass
+
 
 
