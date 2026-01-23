@@ -29,7 +29,6 @@ if 'referral_captured' not in st.session_state: st.session_state.referral_captur
 if 'is_editing' not in st.session_state: st.session_state.is_editing = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
-# Captures ?ref=USER_ID from the URL and stores it in session state for Sign Up
 if not st.session_state.referral_captured:
     try:
         query_params = st.query_params
@@ -279,26 +278,6 @@ st.markdown("""
         .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
         
-        /* REFERRAL BOX */
-        .referral-box {
-            background-color: #F7F7F7;
-            border: 1px dashed #dddddd;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-        .referral-link {
-            font-family: monospace;
-            background: #ffffff;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #eee;
-            color: #FF385C;
-            font-weight: 600;
-            word-break: break-all;
-        }
-
         /* =========================================================
            INPUT FIELDS
            ========================================================= */
@@ -355,6 +334,13 @@ st.markdown("""
         .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
+        
+        /* CODE BLOCK OVERRIDE FOR REFERRAL LINK */
+        .stCodeBlock {
+            background-color: #F7F7F7 !important;
+            border-radius: 12px !important;
+            border: 1px dashed #dddddd !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -933,7 +919,8 @@ with st.popover("👤", use_container_width=True):
         """, unsafe_allow_html=True)
 
         st.caption("Your Referral Link")
-        st.markdown(f'<div class="referral-box"><div class="referral-link">{referral_link}</div></div>', unsafe_allow_html=True)
+        # [FIX] Use st.code so the user can easily copy/paste the link
+        st.code(referral_link, language="text")
         
         with st.form("payout_form"):
             new_paypal = st.text_input("PayPal Email", value=paypal_email, placeholder="you@example.com")
@@ -949,6 +936,8 @@ with st.popover("👤", use_container_width=True):
                 btn_label = "Request Payout"
             
             if st.form_submit_button("Update & Save Email"):
+                # This line was crashing because 'paypal_email' didn't exist in Supabase yet.
+                # Running the SQL command above fixes this.
                 supabase.table("profiles").update({"paypal_email": new_paypal}).eq("id", st.session_state.user.id).execute()
                 st.success("Email saved.")
                 st.rerun()
