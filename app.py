@@ -229,7 +229,12 @@ st.markdown("""
         div.element-container:has(.rolodex-marker) + div.element-container button {
             text-align: left !important;
             justify-content: flex-start !important;
-            font-weight: 800 !important; /* BOLD */
+            font-weight: 800 !important;
+        }
+        /* SPECIFIC: Target the text paragraph INSIDE the button to force bold */
+        div.element-container:has(.rolodex-marker) + div.element-container button p {
+            font-weight: 800 !important;
+            color: #222222 !important;
         }
         div.element-container:has(.rolodex-marker) + div.element-container button > div {
             justify-content: flex-start !important; 
@@ -252,6 +257,7 @@ st.markdown("""
             justify-content: flex-start !important;
             font-weight: 800 !important; /* Extra Bold */
         }
+        /* SPECIFIC: Target the text paragraph INSIDE the button to force bold */
         div.element-container:has(.bold-left-marker) + div.element-container button p {
             font-weight: 800 !important;
         }
