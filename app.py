@@ -4,7 +4,7 @@ from google.genai import types
 import os
 import json
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 import stripe
 import textwrap
@@ -196,14 +196,18 @@ st.markdown("""
             font-weight: 600 !important;
             transition: all 0.2s ease !important;
             color: #222222 !important;
+            
+            /* DEFAULT: Center Align (Good for Edit/Save buttons) */
             text-align: center !important;
             justify-content: center !important;
             display: flex !important;
             width: 100% !important;
         }
+
         div[data-testid="stButton"] > button p, div[data-testid="stDownloadButton"] > button p {
             color: #222222 !important;
         }
+        
         div[data-testid="stButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
@@ -217,6 +221,7 @@ st.markdown("""
         /* =========================================================
            ROLODEX SPECIFIC OVERRIDES
            ========================================================= */
+        
         /* Rolodex items use the .rolodex-marker to force LEFT alignment and BOLD */
         div.element-container:has(.rolodex-marker) + div.element-container button {
             text-align: left !important;
@@ -249,13 +254,13 @@ st.markdown("""
             justify-content: flex-start !important;
             font-weight: 800 !important; /* Extra Bold */
         }
-        /* SPECIFIC: Target the text paragraph INSIDE the button to force bold */
         div.element-container:has(.bold-left-marker) + div.element-container button p {
             font-weight: 800 !important;
         }
         div.element-container:has(.bold-left-marker) + div.element-container button > div {
             justify-content: flex-start !important; 
         }
+
 
         /* ANALYTICS */
         .analytics-card {
@@ -277,29 +282,9 @@ st.markdown("""
         .stat-title { font-size: 11px; font-weight: 800; color: #717171; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
         .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
-        
-        /* REFERRAL BOX */
-        .referral-box {
-            background-color: #F7F7F7;
-            border: 1px dashed #dddddd;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-        .referral-link {
-            font-family: monospace;
-            background: #ffffff;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #eee;
-            color: #FF385C;
-            font-weight: 600;
-            word-break: break-all;
-        }
 
         /* =========================================================
-           INPUT FIELDS
+           INPUT FIELDS - FIX DARK MODE & PLACEHOLDERS
            ========================================================= */
         div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
             background-color: #F7F7F7 !important;
@@ -307,21 +292,26 @@ st.markdown("""
             border: 1px solid transparent !important;
             border-radius: 12px !important;
         }
+        
         input, textarea, select {
             color: #222222 !important;
             background-color: transparent !important;
             font-weight: 500 !important; 
             caret-color: #FF385C !important; 
         }
+
+        /* PLACEHOLDER FIXES FOR MOBILE */
         input::placeholder, textarea::placeholder {
             color: #717171 !important;
             opacity: 1 !important;
             -webkit-text-fill-color: #717171 !important;
         }
+        
         div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within { 
             border: 1px solid #222222 !important; 
             background-color: #FFFFFF !important; 
         }
+        
         div[data-baseweb="select"] > div {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
@@ -355,6 +345,25 @@ st.markdown("""
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
+        /* REFERRAL BOX */
+        .referral-box {
+            background-color: #F7F7F7;
+            border: 1px dashed #dddddd;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .referral-link {
+            font-family: monospace;
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            color: #FF385C;
+            font-weight: 600;
+            word-break: break-all;
+        }
         /* CODE BLOCK OVERRIDE FOR REFERRAL LINK */
         .stCodeBlock {
             background-color: #F7F7F7 !important;
@@ -406,7 +415,6 @@ def ensure_referral_link(user_id, user_meta):
     """
     Called on login.
     Links the new user to their Direct Referrer (Tier 1) only.
-    The 'Infinity' logic calculates the chain dynamically, so we don't need to store upline_id anymore.
     """
     try:
         profile = fetch_user_profile(user_id)
@@ -430,7 +438,6 @@ def count_referrals(user_id):
     """
     try:
         # Count rows in profiles where referred_by == user_id
-        # Note: In production, you might want to filter by 'subscription_status=active' if you sync Stripe.
         res = supabase.table("profiles").select("id", count="exact").eq("referred_by", user_id).execute()
         return res.count
     except:
@@ -486,6 +493,50 @@ def process_subscription_commission(payer_user_id, payment_amount=15.00):
 
     except Exception as e:
         print(f"Commission Error: {e}")
+
+def check_and_process_commissions_on_login(user_id, email):
+    """
+    This is the TRIGGER.
+    When a user logs in (or the app loads), check if they owe a commission.
+    Logic:
+    1. Are they Active in Stripe?
+    2. Have we processed a commission for them in the last 28 days?
+    3. If active + overdue, run logic.
+    """
+    try:
+        # 1. Fetch Profile
+        profile = fetch_user_profile(user_id)
+        if not profile: return
+
+        # 2. Check Timeframe (Prevent double pay)
+        last_run = profile.get('last_commission_date')
+        should_run = True
+        
+        if last_run:
+            # Parse timestamp. Handle potential TZ issues loosely for MVP
+            try:
+                last_date = datetime.fromisoformat(str(last_run).replace('Z', '+00:00'))
+                # If processed within last 28 days, skip
+                if (datetime.now(timezone.utc) - last_date).days < 28:
+                    should_run = False
+            except:
+                # If parsing fails, default to running it to fix data
+                should_run = True
+        
+        if should_run:
+            # 3. Check Stripe Status (Only pay if they are actually paying us)
+            is_active = check_subscription_status(email)
+            
+            if is_active:
+                # 4. PAY THE UPLINE
+                process_subscription_commission(user_id)
+                
+                # 5. Log the run
+                now_iso = datetime.now().isoformat()
+                supabase.table("profiles").update({"last_commission_date": now_iso}).eq("id", user_id).execute()
+                
+    except Exception as e:
+        print(f"Auto-Commission Error: {e}")
 
 # --- INFINITY COMMISSION LOGIC END ---
 
@@ -896,8 +947,13 @@ if not st.session_state.user:
                 res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                 st.session_state.user = res.user
                 st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                
                 # [PRODUCTION CRITICAL] Ensure hierarchy is set on every login
                 ensure_referral_link(res.user.id, res.user.user_metadata)
+                
+                # [TRIGGER] Check commissions on Login
+                check_and_process_commissions_on_login(res.user.id, res.user.email)
+                
                 st.rerun()
             except Exception as e: st.error(str(e))
     
@@ -911,6 +967,10 @@ if not st.session_state.user:
                 if res.user: st.success("Account created! Log in."); 
             except Exception as e: st.error(str(e))
     st.stop()
+
+# [TRIGGER] Check commissions on Page Refresh (if already logged in)
+if st.session_state.user:
+    check_and_process_commissions_on_login(st.session_state.user.id, st.session_state.user.email)
 
 if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
