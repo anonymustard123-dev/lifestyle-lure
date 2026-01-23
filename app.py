@@ -70,7 +70,7 @@ st.markdown("""
         
         /* 1. FORCE LIGHT MODE & REMOVE PADDING */
         :root {
-            color-scheme: light; /* Forces browser native inputs to light mode */
+            color-scheme: light;
         }
         
         html, body, .stApp {
@@ -98,13 +98,15 @@ st.markdown("""
             height: 0px !important; 
         }
         
-        /* ADJUST MAIN CONTAINER PADDING TO REMOVE WHITE BAR */
+        /* AGGRESSIVE WHITE BAR REMOVAL */
         .main .block-container {
-            padding-top: 10px !important; /* Reduced from default */
+            padding-top: 0px !important;
+            margin-top: 0px !important;
             padding-bottom: 20px !important; 
             padding-left: 20px !important;
             padding-right: 20px !important;
             max-width: 100% !important;
+            gap: 0px !important;
         }
         
        /* TAB STYLES */
@@ -256,9 +258,8 @@ st.markdown("""
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
 
         /* =========================================================
-           INPUT FIELDS - FIX DARK MODE ILLEGIBILITY
+           INPUT FIELDS - FIX DARK MODE & PLACEHOLDERS
            ========================================================= */
-        /* Targets input wrappers, textareas, and inputs to force light theme colors */
         div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
@@ -266,7 +267,6 @@ st.markdown("""
             border-radius: 12px !important;
         }
         
-        /* Force Text Color inside inputs */
         input, textarea, select {
             color: #222222 !important;
             background-color: transparent !important;
@@ -274,22 +274,25 @@ st.markdown("""
             caret-color: #FF385C !important; 
         }
 
-        /* Focus State */
+        /* PLACEHOLDER FIXES FOR MOBILE */
+        input::placeholder, textarea::placeholder {
+            color: #717171 !important;
+            opacity: 1 !important;
+            -webkit-text-fill-color: #717171 !important;
+        }
+        
         div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within { 
             border: 1px solid #222222 !important; 
             background-color: #FFFFFF !important; 
         }
         
-        /* Fix Select Box / Dropdowns specifically */
         div[data-baseweb="select"] > div {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
         }
         div[data-baseweb="select"] svg {
-            fill: #222222 !important; /* Forces arrow icon to black */
+            fill: #222222 !important; 
         }
-        
-        /* Fix Dropdown Menu Items (Popups) */
         ul[data-baseweb="menu"] {
             background-color: #FFFFFF !important;
         }
@@ -678,7 +681,8 @@ def view_pipeline():
         render_executive_card(wrapped_data)
         return
 
-    st.markdown("<h2 style='padding:10px 0 0px 0;'>Rolodex</h2>", unsafe_allow_html=True)
+    # REMOVED EXTRA PADDING HERE
+    st.markdown("<h2 style='padding:0px 0 0px 0;'>Rolodex</h2>", unsafe_allow_html=True)
     
     if not st.session_state.user: return
 
@@ -758,8 +762,8 @@ def view_analytics():
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    # REMOVED PADDING-TOP HERE TO REMOVE WHITE BAR
-    st.markdown("<div style='text-align:center; padding-top:10px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
+    # ADDED NEGATIVE MARGIN TO PULL CONTENT UP AND REMOVE WHITE BAR
+    st.markdown("<div style='text-align:center; padding-top:0px; margin-top: -30px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
     st.markdown("<div class='airbnb-card'>", unsafe_allow_html=True)
     email = st.text_input("Email", placeholder="name@example.com")
     password = st.text_input("Password", type="password", placeholder="••••••••")
