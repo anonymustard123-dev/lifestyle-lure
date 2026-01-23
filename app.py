@@ -67,6 +67,12 @@ if STRIPE_SECRET_KEY:
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+        
+        /* 1. FORCE LIGHT MODE & REMOVE PADDING */
+        :root {
+            color-scheme: light; /* Forces browser native inputs to light mode */
+        }
+        
         html, body, .stApp {
             font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
             background-color: #FFFFFF !important;
@@ -75,30 +81,33 @@ st.markdown("""
             width: 100vw;
             margin: 0;
             padding: 0;
-            overflow: hidden !important;
+            overflow-x: hidden !important;
             overscroll-behavior: none;
             -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
+        
         h1, h2, h3 { font-weight: 800 !important; color: #222222 !important; letter-spacing: -0.5px; }
         p, label, span, div { color: #717171; }
         
-        /* HIDE FOOTER & HEADER AGGRESSIVELY */
-        [data-testid="stHeader"], footer, [data-testid="stFooter"] { display: none !important; visibility: hidden !important; height: 0px !important; }
+        /* HIDE HEADER & FOOTER COMPLETELY */
+        [data-testid="stHeader"], footer, [data-testid="stFooter"] { 
+            display: none !important; 
+            visibility: hidden !important; 
+            height: 0px !important; 
+        }
         
+        /* ADJUST MAIN CONTAINER PADDING TO REMOVE WHITE BAR */
         .main .block-container {
-            height: 100vh;
-            overflow-y: auto !important;
-            overflow-x: hidden;
-            padding-top: max(env(safe-area-inset-top), 20px) !important;
+            padding-top: 10px !important; /* Reduced from default */
             padding-bottom: 20px !important; 
             padding-left: 20px !important;
             padding-right: 20px !important;
-            -webkit-overflow-scrolling: touch;
+            max-width: 100% !important;
         }
         
-       /* TAB STYLES - FINAL CLEANUP */
+       /* TAB STYLES */
         [data-testid="stRadio"] {
             width: 100% !important;
             padding: 0 !important;
@@ -172,7 +181,7 @@ st.markdown("""
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
         /* =========================================================
-           ROLODEX & ACTION BUTTONS (INCLUDES DOWNLOAD BUTTON)
+           ROLODEX & ACTION BUTTONS
            ========================================================= */
         div.stButton > button, div.stDownloadButton > button {
             text-align: left !important;
@@ -181,7 +190,7 @@ st.markdown("""
             align-items: center !important;
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
-            border-left: 6px solid #FF385C !important; /* Default Pink */
+            border-left: 6px solid #FF385C !important;
             border-radius: 12px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
             width: 100% !important;
@@ -189,8 +198,7 @@ st.markdown("""
             margin-bottom: 0px !important;
             transition: all 0.2s ease !important;
         }
-
-        /* STRICT LEFT ALIGNMENT FIX */
+        
         div.stButton > button > div, div.stDownloadButton > button > div { 
             width: 100% !important; 
             justify-content: flex-start !important; 
@@ -207,7 +215,6 @@ st.markdown("""
             text-align: left !important; 
         }
 
-        /* Hover (Pink) */
         div.stButton > button:hover, div.stDownloadButton > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
@@ -248,7 +255,48 @@ st.markdown("""
         .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
 
-        /* GENERAL FORM ELEMENTS */
+        /* =========================================================
+           INPUT FIELDS - FIX DARK MODE ILLEGIBILITY
+           ========================================================= */
+        /* Targets input wrappers, textareas, and inputs to force light theme colors */
+        div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
+            background-color: #F7F7F7 !important;
+            color: #222222 !important;
+            border: 1px solid transparent !important;
+            border-radius: 12px !important;
+        }
+        
+        /* Force Text Color inside inputs */
+        input, textarea, select {
+            color: #222222 !important;
+            background-color: transparent !important;
+            font-weight: 500 !important; 
+            caret-color: #FF385C !important; 
+        }
+
+        /* Focus State */
+        div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within { 
+            border: 1px solid #222222 !important; 
+            background-color: #FFFFFF !important; 
+        }
+        
+        /* Fix Select Box / Dropdowns specifically */
+        div[data-baseweb="select"] > div {
+            background-color: #F7F7F7 !important;
+            color: #222222 !important;
+        }
+        div[data-baseweb="select"] svg {
+            fill: #222222 !important; /* Forces arrow icon to black */
+        }
+        
+        /* Fix Dropdown Menu Items (Popups) */
+        ul[data-baseweb="menu"] {
+            background-color: #FFFFFF !important;
+        }
+        li[data-baseweb="menu-item"] {
+            color: #222222 !important;
+        }
+        
         button[kind="primary"] { 
             background-color: #FF385C !important; color: white !important; border: none !important; 
             text-align: center !important; justify-content: center !important; padding: 12px 24px !important; border-left: none !important; 
@@ -256,18 +304,6 @@ st.markdown("""
         button[kind="primary"] p { color: white !important; text-align: center !important; width: 100% !important; justify-content: center !important; }
         button[kind="primary"] > div { justify-content: center !important; }
         button[kind="primary"]:hover { box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important; transform: none !important; }
-        
-        button[kind="secondaryFormSubmit"] {
-            border: none !important; background: transparent !important; color: #FF385C !important;
-            box-shadow: none !important; padding: 0 !important; text-align: left !important;
-            justify-content: flex-start !important; border-left: none !important;
-        }
-        
-        div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
-        div[data-baseweb="input"]:focus-within { border: 1px solid #222222 !important; background-color: #FFFFFF !important; }
-        input { color: #222222 !important; font-weight: 500 !important; caret-color: #FF385C !important; }
-        textarea { background-color: #F7F7F7 !important; border-radius: 12px !important; border: 1px solid transparent !important; }
-        textarea:focus { background-color: #FFFFFF !important; border: 1px solid #222222 !important; }
         
         [data-testid="stAudioInput"] { background-color: #F7F7F7 !important; border-radius: 50px !important; border: none !important; color: #222 !important; padding: 5px !important; }
         
@@ -484,17 +520,6 @@ def render_executive_card(data):
     with st.container():
         st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
         
-        # 1. HEADER ROW: Title (Left) + Edit Button (Right)
-        # We close the div temporarily to use st.columns, then reopen or manage inside columns?
-        # Streamlit columns are tricky inside HTML blocks.
-        # Better strategy: Use styles to make the container white, then standard Streamlit components.
-        # But for the "Airbnb" styling, we need the class.
-        # We will use st.container with a surrounding div via markdown is fragile. 
-        # Instead, we used a full HTML block for View Mode before.
-        # New Requirement: Inputs in Edit Mode.
-        
-        # Let's use a Hybrid approach.
-        
         c_head, c_edit_btn = st.columns([5, 1])
         with c_head:
             st.markdown(f"""
@@ -511,7 +536,7 @@ def render_executive_card(data):
                     st.session_state.is_editing = True
                     st.rerun()
 
-        # 2. BODY CONTENT (Toggle between View HTML and Edit Inputs)
+        # 2. BODY CONTENT
         if st.session_state.is_editing:
             st.markdown("<br>", unsafe_allow_html=True)
             new_name = st.text_input("Name", value=lead.get('name', ''))
@@ -526,7 +551,7 @@ def render_executive_card(data):
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # 3. FOOTER (EDIT MODE) - Cancel / Save
+            # 3. FOOTER (EDIT MODE)
             cf1, cf2 = st.columns(2)
             with cf1:
                 if st.button("Cancel", key="cancel_edit", use_container_width=True):
@@ -555,7 +580,7 @@ def render_executive_card(data):
                         st.error("Missing ID")
                         
         else:
-            # VIEW MODE HTML BODY
+            # VIEW MODE BODY
             st.markdown(f"""
                 <div class="stat-grid">
                     <div class="stat-item">
@@ -580,8 +605,7 @@ def render_executive_card(data):
                 <div style="margin-bottom: 24px;"></div>
             """, unsafe_allow_html=True)
             
-            # 3. FOOTER (VIEW MODE) - Single "Add Contact" button
-            # Note: We rely on CSS targeting 'div.stDownloadButton > button' to give this the white/red-border style.
+            # 3. FOOTER (VIEW MODE)
             if lead.get('name'):
                 vcf = create_vcard(data)
                 safe_name = lead.get('name').strip().replace(" ", "_")
@@ -593,17 +617,9 @@ def render_executive_card(data):
                     use_container_width=True
                 )
 
-        st.markdown('</div>', unsafe_allow_html=True) # End airbnb-card div (note: raw div closure matching start is imperfect across streamlit blocks but works for containment visual if CSS is applied to inner blocks or we just rely on the 'div.airbnb-card' block wrapper which we actually didn't strictly close properly if we used st.markdown start. 
-        # Correct approach:
-        # Since we broke the HTML block to insert Streamlit widgets (inputs/buttons), we can't wrap the whole thing in one HTML div tag easily.
-        # Instead, we'll wrap the CONTENT in the card style.
-        # The CSS `.airbnb-card` applies padding/border.
-        # I'll apply a wrapper div that ends here.
-        # Actually, st.container(border=True) is an option, but we have custom CSS.
-        # I will inject the closing div here.
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def view_omni():
-    # If a result exists, show the card + A "Close/Reset" button at the top
     if st.session_state.omni_result:
         if st.button("← New Search", type="secondary"):
             st.session_state.omni_result = None
@@ -623,7 +639,6 @@ def view_omni():
             existing_leads = load_leads_summary()
             result = process_omni_voice(audio_val.read(), existing_leads)
             
-            # FIX: HANDLE LIST RESPONSE
             if isinstance(result, list):
                 if len(result) > 0:
                     result = result[0]
@@ -743,7 +758,8 @@ def view_analytics():
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    st.markdown("<div style='text-align:center; padding-top:40px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
+    # REMOVED PADDING-TOP HERE TO REMOVE WHITE BAR
+    st.markdown("<div style='text-align:center; padding-top:10px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
     st.markdown("<div class='airbnb-card'>", unsafe_allow_html=True)
     email = st.text_input("Email", placeholder="name@example.com")
     password = st.text_input("Password", type="password", placeholder="••••••••")
