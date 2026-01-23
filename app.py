@@ -559,6 +559,14 @@ def view_omni():
             existing_leads = load_leads_summary()
             result = process_omni_voice(audio_val.read(), existing_leads)
             
+            # --- FIX: Handle List Response vs Dict Response ---
+            if isinstance(result, list):
+                if len(result) > 0:
+                    result = result[0]
+                else:
+                    result = {"error": "AI returned empty list."}
+            # --------------------------------------------------
+
             if "error" in result: 
                 st.error(result['error'])
             else:
