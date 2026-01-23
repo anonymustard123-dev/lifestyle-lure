@@ -91,18 +91,13 @@ st.markdown("""
             overflow-y: auto !important;
             overflow-x: hidden;
             padding-top: max(env(safe-area-inset-top), 20px) !important;
-            
-            /* REMOVE THE WHITE BAR: Reduced padding from 80px to 20px */
             padding-bottom: 20px !important; 
-            
             padding-left: 20px !important;
             padding-right: 20px !important;
             -webkit-overflow-scrolling: touch;
         }
         
        /* TAB STYLES - FINAL CLEANUP */
-        
-        /* 1. OUTER CONTAINER: Draws the full-width grey line */
         [data-testid="stRadio"] {
             width: 100% !important;
             padding: 0 !important;
@@ -112,12 +107,11 @@ st.markdown("""
             display: block !important;
         }
 
-        /* 2. INNER GROUP: Spans 100% width and centers the buttons */
         [data-testid="stRadio"] div[role="radiogroup"] {
             width: 100% !important;
             display: flex !important;
             flex-direction: row !important;
-            justify-content: center !important; /* Centers the buttons */
+            justify-content: center !important; 
             align-items: center !important;
             gap: 24px !important; 
             overflow-x: auto !important;
@@ -127,10 +121,8 @@ st.markdown("""
             margin: 0 !important;
         }
 
-        /* 3. Hide Radio Circles */
         [data-testid="stRadio"] label > div:first-child { display: none !important; }
 
-        /* 4. Clickable Label Styling (SCOPED TO RADIOGROUP ONLY) */
         [data-testid="stRadio"] div[role="radiogroup"] label {
             cursor: pointer;
             padding: 12px 16px !important;
@@ -141,7 +133,6 @@ st.markdown("""
             justify-content: center !important;
         }
         
-        /* 5. Text Styling */
         [data-testid="stRadio"] div[role="radiogroup"] label p {
             font-size: 15px !important;
             font-weight: 600 !important;
@@ -149,42 +140,44 @@ st.markdown("""
             margin: 0 !important;
         }
 
-        /* 6. Active Tab Styling */
         [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
             border-bottom-color: #FF385C !important;
         }
         [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
             color: #222222 !important;
         }        
+        
         /* CARD STYLES */
         .airbnb-card {
             background-color: #FFFFFF; border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             border: 1px solid #dddddd; padding: 24px; margin-bottom: 24px;
         }
+        
+        /* FORM CONTAINER - MATCHING AIRBNB CARD FOR EDITABLE VIEWS */
+        [data-testid="stForm"] {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border: 1px solid #dddddd;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
         .status-badge {
             background-color: #FF385C; color: white; font-size: 10px; font-weight: 800;
-            padding: 6px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: inline-block;
-        }
-        .card-title {
-            font-size: 22px; font-weight: 800; color: #222222; margin: 0; line-height: 1.2;
-            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+            padding: 6px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: inline-block;
         }
         .meta-bubble {
             font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px;
             border: 1px solid #EBEBEB; white-space: nowrap; vertical-align: middle; display: inline-flex; align-items: center;
         }
         
-        /* BUBBLE COLORS - UPDATED LEAD TO MATCH RED/PINK ACCENT */
+        /* BUBBLE COLORS */
         .bubble-client { background-color: #E6FFFA; color: #008a73; border-color: #008a73; }
-        .bubble-lead { background-color: #FFF5F7; color: #FF385C; border-color: #FF385C; } /* Updated to Red/Pink */
+        .bubble-lead { background-color: #FFF5F7; color: #FF385C; border-color: #FF385C; } 
         .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
         
-        .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
-        .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
-        
-        /* =========================================================
-           ROLODEX CARD BUTTONS (DEFAULT = LEAD/PINK)
-           ========================================================= */
+        /* ROLODEX CARD BUTTONS */
         div.stButton > button {
             text-align: left !important;
             display: flex !important;
@@ -192,7 +185,7 @@ st.markdown("""
             align-items: center !important;
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
-            border-left: 6px solid #FF385C !important; /* Default Pink */
+            border-left: 6px solid #FF385C !important; 
             border-radius: 12px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
             width: 100% !important;
@@ -201,10 +194,9 @@ st.markdown("""
             transition: all 0.2s ease !important;
         }
 
-        /* STRICT LEFT ALIGNMENT FIX */
         div.stButton > button > div { 
             width: 100% !important; 
-            justify-content: flex-start !important; /* Forces internal flex container to left */
+            justify-content: flex-start !important; 
         }
 
         div.stButton > button p {
@@ -215,10 +207,9 @@ st.markdown("""
             margin: 0 !important;
             line-height: 1.2 !important;
             width: 100% !important;
-            text-align: left !important; /* Forces text to left */
+            text-align: left !important; 
         }
 
-        /* Hover (Pink) */
         div.stButton > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
@@ -228,33 +219,17 @@ st.markdown("""
         div.stButton > button:hover p { color: #FF385C !important; }
         div.stButton > button:active { transform: scale(0.98); background-color: #FAFAFA !important; }
 
-        /* =========================================================
-           CLIENT OVERRIDE (GREEN ACCENT + SPACING FIX)
-           ========================================================= */
-        
-        /* 1. Hide the container holding the marker to kill the spacing gap */
-        div.element-container:has(.client-marker) {
-            display: none !important;
-        }
-
-        /* 2. Target the button in the NEXT container (The Sibling) */
-        div.element-container:has(.client-marker) + div.element-container button {
-            border-left-color: #008a73 !important;
-        }
-        
+        /* CLIENT OVERRIDE */
+        div.element-container:has(.client-marker) { display: none !important; }
+        div.element-container:has(.client-marker) + div.element-container button { border-left-color: #008a73 !important; }
         div.element-container:has(.client-marker) + div.element-container button:hover {
             border-color: #008a73 !important;
             color: #008a73 !important;
             box-shadow: 0 8px 15px rgba(0, 138, 115, 0.15) !important;
         }
+        div.element-container:has(.client-marker) + div.element-container button:hover p { color: #008a73 !important; }
 
-        div.element-container:has(.client-marker) + div.element-container button:hover p {
-            color: #008a73 !important;
-        }
-
-        /* =========================================================
-           ANALYTICS CARD STYLES (MATCHING ROLODEX)
-           ========================================================= */
+        /* ANALYTICS */
         .analytics-card {
             background-color: #FFFFFF;
             border: 1px solid #EBEBEB;
@@ -268,32 +243,12 @@ st.markdown("""
             justify-content: center;
             align-items: flex-start;
         }
-        /* Red accent for Hustle (Lead color) */
         .analytics-card-red { border-left: 6px solid #FF385C; }
-        /* Green accent for Money/Funnel (Client color) */
         .analytics-card-green { border-left: 6px solid #008a73; }
         
-        .stat-title { 
-            font-size: 11px; 
-            font-weight: 800; 
-            color: #717171; 
-            text-transform: uppercase; 
-            letter-spacing: 0.8px; 
-            margin-bottom: 6px; 
-        }
-        .stat-metric { 
-            font-size: 26px; 
-            font-weight: 900; 
-            color: #222222; 
-            margin: 0; 
-            line-height: 1.1; 
-        }
-        .stat-sub { 
-            font-size: 14px; 
-            font-weight: 500; 
-            color: #717171; 
-            margin-top: 4px; 
-        }
+        .stat-title { font-size: 11px; font-weight: 800; color: #717171; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+        .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
+        .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
 
         /* GENERAL FORM ELEMENTS */
         button[kind="primary"] { 
@@ -313,11 +268,10 @@ st.markdown("""
         div[data-baseweb="input"] { background-color: #F7F7F7 !important; border: 1px solid transparent !important; border-radius: 12px !important; }
         div[data-baseweb="input"]:focus-within { border: 1px solid #222222 !important; background-color: #FFFFFF !important; }
         input { color: #222222 !important; font-weight: 500 !important; caret-color: #FF385C !important; }
+        textarea { background-color: #F7F7F7 !important; border-radius: 12px !important; border: 1px solid transparent !important; }
+        textarea:focus { background-color: #FFFFFF !important; border: 1px solid #222222 !important; }
+        
         [data-testid="stAudioInput"] { background-color: #F7F7F7 !important; border-radius: 50px !important; border: none !important; color: #222 !important; padding: 5px !important; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
-        .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
-        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
-        .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -427,10 +381,11 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     except Exception as e: return {"error": str(e)}
 
 def save_new_lead(lead_data):
-    if not st.session_state.user: return "Not logged in"
+    if not st.session_state.user: return None
     lead_data['user_id'] = st.session_state.user.id
     lead_data['created_at'] = datetime.now().isoformat()
     if not lead_data.get('status'): lead_data['status'] = 'Lead'
+    
     # Clean temp field
     if 'transaction_item' in lead_data:
         if lead_data['transaction_item']:
@@ -439,6 +394,9 @@ def save_new_lead(lead_data):
         
     try: 
         res = supabase.table("leads").insert(lead_data).execute()
+        # RETURN THE FULL RECORD (INCLUDING ID)
+        if res.data:
+            return res.data[0]
         return None
     except Exception as e: return str(e)
 
@@ -452,8 +410,6 @@ def update_existing_lead(lead_id, new_data, existing_leads_context):
         return "Error: Could not find original record to update. Aborting to prevent data loss."
     
     # 2. SAFE MERGE
-    
-    # Handle Transactions: Append Logic
     current_tx = original.get('transactions') or ""
     new_item = new_data.get('transaction_item')
     final_tx = current_tx
@@ -466,28 +422,23 @@ def update_existing_lead(lead_id, new_data, existing_leads_context):
         else:
             final_tx = entry
             
-    # Handle Status: Auto-promote if transaction occurred
     final_status = "Client" if new_item else (new_data.get('status') or original.get('status'))
 
     final_data = {
         "name": new_data.get('name') or original.get('name'),
         "contact_info": new_data.get('contact_info') or original.get('contact_info'),
-        
-        # FIX: Only update product_pitch if AI explicitly sent a new one. 
-        # If AI sent None/Empty (per new prompt rules), keep the original.
         "product_pitch": new_data.get('product_pitch') if new_data.get('product_pitch') else original.get('product_pitch'),
-        
-        # Only overwrite background if AI provided a non-empty string
         "background": new_data.get('background') if new_data.get('background') else original.get('background'),
-        
         "status": final_status,
-        "next_outreach": new_data.get('next_outreach'), # Allow clearing this if needed
+        "next_outreach": new_data.get('next_outreach'), 
         "transactions": final_tx
     }
 
     try:
         supabase.table("leads").update(final_data).eq("id", lead_id).execute()
-        return final_data # Return the merged object for display
+        # Merge ID back in for UI consistency
+        final_data['id'] = lead_id
+        return final_data 
     except Exception as e: return str(e)
 
 def create_vcard(data):
@@ -506,9 +457,14 @@ def create_vcard(data):
 # ==========================================
 
 def render_executive_card(data, show_close=True):
-    lead = data.get('lead_data', {})
+    # EXTRACT DATA
+    lead = data.get('lead_data', data)
     action = data.get('action', 'QUERY')
     
+    # FETCH ID (Crucial for Edit)
+    lead_id = lead.get('id') or data.get('match_id')
+    
+    # VISUAL HEADER LOGIC
     badge_text = "INTELLIGENCE REPORT"
     if action == "CREATE": badge_text = "NEW ASSET"
     elif action == "UPDATE": badge_text = "UPDATED"
@@ -516,57 +472,72 @@ def render_executive_card(data, show_close=True):
     status = lead.get('status', 'Lead')
     outreach = lead.get('next_outreach')
     
-    # CSS handles the color for bubble-lead (Red) and bubble-client (Green)
     status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
     
     bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
     if outreach:
         bubbles_html += f' <span class="meta-bubble bubble-outreach">⏰ {outreach}</span>'
 
-    html_content = f"""
-        <div class="airbnb-card">
-            <div class="card-header">
-                <div>
-                    <span class="status-badge">{badge_text}</span>
-                    <div class="card-title">
-                        {lead.get('name') or 'Rolodex Query'}
-                        {bubbles_html}
-                    </div>
+    # RENDER FORM (This acts as the "Card Container" thanks to CSS styling on [data-testid="stForm"])
+    with st.form(key=f"card_edit_{lead_id}"):
+        
+        # 1. HEADER (Status & Badges - Static HTML)
+        st.markdown(f"""
+            <div style="margin-bottom:12px;">
+                <span class="status-badge">{badge_text}</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    {bubbles_html}
                 </div>
             </div>
-            
-            <div class="stat-grid">
-                <div class="stat-item">
-                    <div class="stat-label">Product Fit</div>
-                    <div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Contact</div>
-                    <div class="stat-value">{lead.get('contact_info') or '-'}</div>
-                </div>
-            </div>
-            
-            <div class="report-bubble">
-                <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
-                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
-            </div>
+        """, unsafe_allow_html=True)
 
-            <div class="transaction-bubble">
-                <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
-                <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
-            </div>
-        </div>
-    """.replace("\n", " ")
-    
-    st.markdown(html_content, unsafe_allow_html=True)
-    
+        # 2. EDITABLE FIELDS
+        # Title/Name
+        new_name = st.text_input("Full Name", value=lead.get('name') or '', placeholder="Enter Name")
+        
+        # Grid Stats
+        c1, c2 = st.columns(2)
+        with c1:
+            new_pitch = st.text_input("Product Fit", value=lead.get('product_pitch') or '', placeholder="e.g. Iodine Supplements")
+        with c2:
+            new_contact = st.text_input("Contact Info", value=lead.get('contact_info') or '', placeholder="Phone or Email")
+            
+        # Large Text Areas
+        new_background = st.text_area("Background / Notes", value=lead.get('background') or '', height=100, placeholder="Notes about the client...")
+        new_tx = st.text_area("Purchase History", value=lead.get('transactions') or '', height=80, placeholder="No transactions recorded.")
+
+        # 3. SAVE ACTION
+        # This button is inside the form, so it triggers a submit
+        if st.form_submit_button("Save Changes", type="primary", use_container_width=True):
+            if lead_id:
+                updates = {
+                    "name": new_name,
+                    "product_pitch": new_pitch,
+                    "contact_info": new_contact,
+                    "background": new_background,
+                    "transactions": new_tx
+                }
+                
+                try:
+                    supabase.table("leads").update(updates).eq("id", lead_id).execute()
+                    
+                    # Update Local State to reflect changes immediately
+                    lead.update(updates)
+                    st.success("Record updated successfully.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Save failed: {str(e)}")
+            else:
+                st.error("Error: Cannot save (Missing Record ID).")
+
+    # 4. EXTERNAL ACTIONS (Close / Download) - Outside the form
     if show_close:
         c1, c2 = st.columns(2)
         with c1:
             if lead.get('name'):
                 vcf = create_vcard(data)
                 safe_name = lead.get('name').strip().replace(" ", "_")
-                st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="primary")
+                st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="secondary")
         with c2:
             if st.button("Close File", use_container_width=True, type="secondary"):
                 st.session_state.omni_result = None
@@ -595,16 +566,18 @@ def view_omni():
                 lead_data = result.get('lead_data', {})
                 
                 if action == "CREATE": 
-                    save_new_lead(lead_data)
+                    # SAVE IMMEDIATELY AND CAPTURE ID
+                    saved_record = save_new_lead(lead_data)
+                    if saved_record and isinstance(saved_record, dict):
+                         # Inject the generated ID into the result so we can edit it
+                         result['lead_data']['id'] = saved_record.get('id')
+                         
                 elif action == "UPDATE" and result.get('match_id'): 
-                    # Pass full existing_leads context to Python function
                     saved_data = update_existing_lead(result['match_id'], lead_data, existing_leads)
                     
                     if isinstance(saved_data, dict):
-                        # SUCCESS: Update the display data to match what was saved
                         result['lead_data'] = saved_data
                     else:
-                        # FAIL: Show error (likely ID mismatch)
                         st.error(saved_data)
                         return
 
@@ -612,13 +585,13 @@ def view_omni():
                 st.rerun()
 
 def view_pipeline():
-    # 1. DETAIL VIEW (Unchanged)
+    # 1. DETAIL VIEW (Now Editable via render_executive_card)
     if st.session_state.selected_lead:
-        # Use a "Back" button that looks like a link
         if st.button("← Back to List", key="back_to_list", type="secondary"):
             st.session_state.selected_lead = None
             st.rerun()
         
+        # Wrap straight dict into the format render expects
         wrapped_data = {'lead_data': st.session_state.selected_lead, 'action': 'QUERY'}
         render_executive_card(wrapped_data, show_close=False)
         return
@@ -658,17 +631,11 @@ def view_pipeline():
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
         name = lead.get('name', 'Unknown')
-        
-        # Check if they are a client (case insensitive)
         is_client = str(status).strip().lower() == "client"
 
-        # INJECT MARKER FOR CLIENTS
-        # The CSS hides this container (display:none) so it takes up 0 space, 
-        # but uses it to style the *next* button green.
         if is_client:
             st.markdown('<div class="client-marker"></div>', unsafe_allow_html=True)
         
-        # RENDER BUTTON (Just the name, no extra text)
         if st.button(name, key=f"card_{lead['id']}", use_container_width=True):
             st.session_state.selected_lead = lead
             st.rerun()
@@ -677,7 +644,6 @@ def view_analytics():
     st.markdown("<h2 style='padding:10px 0 20px 0;'>Performance</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
     
-    # Fetch Data
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).execute().data
     if not leads: 
         st.info("Start adding leads to see your stats!")
@@ -685,23 +651,17 @@ def view_analytics():
         
     df = pd.DataFrame(leads)
     
-    # 1. FUNNEL CALC (Green Card - Money)
     total_leads = len(df)
-    # CORRECTED SYNTAX: .str accessor repeated for both strip() and lower()
     clients = len(df[df['status'].astype(str).str.strip().str.lower() == 'client'])
     conversion_rate = int((clients / total_leads) * 100) if total_leads > 0 else 0
     
-    # 2. HUSTLE CALC (Red Card - Action)
-    # Ensure created_at is datetime
     if 'created_at' in df.columns:
         df['created_at'] = pd.to_datetime(df['created_at'])
-        # Filter for last 30 days
         thirty_days_ago = pd.Timestamp.now(tz=df['created_at'].dt.tz) - pd.Timedelta(days=30)
         recent_leads = len(df[df['created_at'] >= thirty_days_ago])
     else:
         recent_leads = 0
 
-    # HTML RENDER - Designed to match Rolodex Cards exactly
     st.markdown(f"""
     <div class="analytics-card analytics-card-green">
         <div class="stat-title">CONVERSION RATE</div>
@@ -779,7 +739,6 @@ if st.session_state.active_tab == "omni": view_omni()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
-# Cleaned up: Removed the separator line to remove 'white bar' artifact
 with st.popover("👤", use_container_width=True):
     if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
         supabase.auth.sign_out()
