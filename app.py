@@ -26,6 +26,7 @@ if 'active_tab' not in st.session_state: st.session_state.active_tab = "omni"
 if 'omni_result' not in st.session_state: st.session_state.omni_result = None
 if 'selected_lead' not in st.session_state: st.session_state.selected_lead = None
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
+if 'is_editing' not in st.session_state: st.session_state.is_editing = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
 if not st.session_state.referral_captured:
@@ -153,16 +154,6 @@ st.markdown("""
             border: 1px solid #dddddd; padding: 24px; margin-bottom: 24px;
         }
         
-        /* FORM CONTAINER - MATCHING AIRBNB CARD FOR EDITABLE VIEWS */
-        [data-testid="stForm"] {
-            background-color: #FFFFFF;
-            border-radius: 16px;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-            border: 1px solid #dddddd;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
         .status-badge {
             background-color: #FF385C; color: white; font-size: 10px; font-weight: 800;
             padding: 6px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: inline-block;
@@ -177,15 +168,20 @@ st.markdown("""
         .bubble-lead { background-color: #FFF5F7; color: #FF385C; border-color: #FF385C; } 
         .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
         
-        /* ROLODEX CARD BUTTONS */
-        div.stButton > button {
+        .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
+        .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
+        
+        /* =========================================================
+           ROLODEX & ACTION BUTTONS (INCLUDES DOWNLOAD BUTTON)
+           ========================================================= */
+        div.stButton > button, div.stDownloadButton > button {
             text-align: left !important;
             display: flex !important;
             justify-content: flex-start !important;
             align-items: center !important;
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
-            border-left: 6px solid #FF385C !important; 
+            border-left: 6px solid #FF385C !important; /* Default Pink */
             border-radius: 12px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
             width: 100% !important;
@@ -194,12 +190,13 @@ st.markdown("""
             transition: all 0.2s ease !important;
         }
 
-        div.stButton > button > div { 
+        /* STRICT LEFT ALIGNMENT FIX */
+        div.stButton > button > div, div.stDownloadButton > button > div { 
             width: 100% !important; 
             justify-content: flex-start !important; 
         }
 
-        div.stButton > button p {
+        div.stButton > button p, div.stDownloadButton > button p {
             font-family: 'Circular', sans-serif !important;
             font-size: 16px !important;
             font-weight: 600 !important;
@@ -210,14 +207,15 @@ st.markdown("""
             text-align: left !important; 
         }
 
-        div.stButton > button:hover {
+        /* Hover (Pink) */
+        div.stButton > button:hover, div.stDownloadButton > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
             color: #FF385C !important;
         }
-        div.stButton > button:hover p { color: #FF385C !important; }
-        div.stButton > button:active { transform: scale(0.98); background-color: #FAFAFA !important; }
+        div.stButton > button:hover p, div.stDownloadButton > button:hover p { color: #FF385C !important; }
+        div.stButton > button:active, div.stDownloadButton > button:active { transform: scale(0.98); background-color: #FAFAFA !important; }
 
         /* CLIENT OVERRIDE */
         div.element-container:has(.client-marker) { display: none !important; }
@@ -272,6 +270,15 @@ st.markdown("""
         textarea:focus { background-color: #FFFFFF !important; border: 1px solid #222222 !important; }
         
         [data-testid="stAudioInput"] { background-color: #F7F7F7 !important; border-radius: 50px !important; border: none !important; color: #222 !important; padding: 5px !important; }
+        
+        .card-title {
+            font-size: 22px; font-weight: 800; color: #222222; margin: 0; line-height: 1.2;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+        .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
+        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
+        .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -394,7 +401,6 @@ def save_new_lead(lead_data):
         
     try: 
         res = supabase.table("leads").insert(lead_data).execute()
-        # RETURN THE FULL RECORD (INCLUDING ID)
         if res.data:
             return res.data[0]
         return None
@@ -436,7 +442,6 @@ def update_existing_lead(lead_id, new_data, existing_leads_context):
 
     try:
         supabase.table("leads").update(final_data).eq("id", lead_id).execute()
-        # Merge ID back in for UI consistency
         final_data['id'] = lead_id
         return final_data 
     except Exception as e: return str(e)
@@ -456,12 +461,10 @@ def create_vcard(data):
 # 6. APP VIEWS
 # ==========================================
 
-def render_executive_card(data, show_close=True):
+def render_executive_card(data):
     # EXTRACT DATA
     lead = data.get('lead_data', data)
     action = data.get('action', 'QUERY')
-    
-    # FETCH ID (Crucial for Edit)
     lead_id = lead.get('id') or data.get('match_id')
     
     # VISUAL HEADER LOGIC
@@ -471,82 +474,143 @@ def render_executive_card(data, show_close=True):
     
     status = lead.get('status', 'Lead')
     outreach = lead.get('next_outreach')
-    
     status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
     
     bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
     if outreach:
         bubbles_html += f' <span class="meta-bubble bubble-outreach">⏰ {outreach}</span>'
 
-    # RENDER FORM (This acts as the "Card Container" thanks to CSS styling on [data-testid="stForm"])
-    with st.form(key=f"card_edit_{lead_id}"):
+    # CARD CONTAINER
+    with st.container():
+        st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
         
-        # 1. HEADER (Status & Badges - Static HTML)
-        st.markdown(f"""
-            <div style="margin-bottom:12px;">
+        # 1. HEADER ROW: Title (Left) + Edit Button (Right)
+        # We close the div temporarily to use st.columns, then reopen or manage inside columns?
+        # Streamlit columns are tricky inside HTML blocks.
+        # Better strategy: Use styles to make the container white, then standard Streamlit components.
+        # But for the "Airbnb" styling, we need the class.
+        # We will use st.container with a surrounding div via markdown is fragile. 
+        # Instead, we used a full HTML block for View Mode before.
+        # New Requirement: Inputs in Edit Mode.
+        
+        # Let's use a Hybrid approach.
+        
+        c_head, c_edit_btn = st.columns([5, 1])
+        with c_head:
+            st.markdown(f"""
                 <span class="status-badge">{badge_text}</span>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="card-title">
+                    {lead.get('name') or 'Rolodex Query'}
                     {bubbles_html}
                 </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # 2. EDITABLE FIELDS
-        # Title/Name
-        new_name = st.text_input("Full Name", value=lead.get('name') or '', placeholder="Enter Name")
-        
-        # Grid Stats
-        c1, c2 = st.columns(2)
-        with c1:
-            new_pitch = st.text_input("Product Fit", value=lead.get('product_pitch') or '', placeholder="e.g. Iodine Supplements")
-        with c2:
-            new_contact = st.text_input("Contact Info", value=lead.get('contact_info') or '', placeholder="Phone or Email")
+            """, unsafe_allow_html=True)
             
-        # Large Text Areas
-        new_background = st.text_area("Background / Notes", value=lead.get('background') or '', height=100, placeholder="Notes about the client...")
-        new_tx = st.text_area("Purchase History", value=lead.get('transactions') or '', height=80, placeholder="No transactions recorded.")
-
-        # 3. SAVE ACTION
-        # This button is inside the form, so it triggers a submit
-        if st.form_submit_button("Save Changes", type="primary", use_container_width=True):
-            if lead_id:
-                updates = {
-                    "name": new_name,
-                    "product_pitch": new_pitch,
-                    "contact_info": new_contact,
-                    "background": new_background,
-                    "transactions": new_tx
-                }
-                
-                try:
-                    supabase.table("leads").update(updates).eq("id", lead_id).execute()
-                    
-                    # Update Local State to reflect changes immediately
-                    lead.update(updates)
-                    st.success("Record updated successfully.")
+        with c_edit_btn:
+            if not st.session_state.is_editing:
+                if st.button("Edit", key=f"edit_btn_{lead_id}"):
+                    st.session_state.is_editing = True
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Save failed: {str(e)}")
-            else:
-                st.error("Error: Cannot save (Missing Record ID).")
 
-    # 4. EXTERNAL ACTIONS (Close / Download) - Outside the form
-    if show_close:
-        c1, c2 = st.columns(2)
-        with c1:
+        # 2. BODY CONTENT (Toggle between View HTML and Edit Inputs)
+        if st.session_state.is_editing:
+            st.markdown("<br>", unsafe_allow_html=True)
+            new_name = st.text_input("Name", value=lead.get('name', ''))
+            new_status = st.selectbox("Status", ["Lead", "Client"], index=0 if status == "Lead" else 1)
+            
+            c_e1, c_e2 = st.columns(2)
+            new_pitch = c_e1.text_input("Product Fit", value=lead.get('product_pitch', ''))
+            new_contact = c_e2.text_input("Contact", value=lead.get('contact_info', ''))
+            
+            new_bg = st.text_area("Background / Notes", value=lead.get('background', ''))
+            new_tx = st.text_area("Purchase History", value=lead.get('transactions', ''))
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # 3. FOOTER (EDIT MODE) - Cancel / Save
+            cf1, cf2 = st.columns(2)
+            with cf1:
+                if st.button("Cancel", key="cancel_edit", use_container_width=True):
+                    st.session_state.is_editing = False
+                    st.rerun()
+            with cf2:
+                if st.button("Save Changes", key="save_edit", type="primary", use_container_width=True):
+                    if lead_id:
+                        updates = {
+                            "name": new_name,
+                            "status": new_status,
+                            "product_pitch": new_pitch,
+                            "contact_info": new_contact,
+                            "background": new_bg,
+                            "transactions": new_tx
+                        }
+                        try:
+                            supabase.table("leads").update(updates).eq("id", lead_id).execute()
+                            lead.update(updates)
+                            st.session_state.is_editing = False
+                            st.success("Saved.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                    else:
+                        st.error("Missing ID")
+                        
+        else:
+            # VIEW MODE HTML BODY
+            st.markdown(f"""
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Product Fit</div>
+                        <div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Contact</div>
+                        <div class="stat-value">{lead.get('contact_info') or '-'}</div>
+                    </div>
+                </div>
+                
+                <div class="report-bubble">
+                    <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
+                    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
+                </div>
+
+                <div class="transaction-bubble">
+                    <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
+                    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
+                </div>
+                <div style="margin-bottom: 24px;"></div>
+            """, unsafe_allow_html=True)
+            
+            # 3. FOOTER (VIEW MODE) - Single "Add Contact" button
+            # Note: We rely on CSS targeting 'div.stDownloadButton > button' to give this the white/red-border style.
             if lead.get('name'):
                 vcf = create_vcard(data)
                 safe_name = lead.get('name').strip().replace(" ", "_")
-                st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True, type="secondary")
-        with c2:
-            if st.button("Close File", use_container_width=True, type="secondary"):
-                st.session_state.omni_result = None
-                st.session_state.selected_lead = None
-                st.rerun()
+                st.download_button(
+                    label="Add Contact",
+                    data=vcf,
+                    file_name=f"{safe_name}.vcf",
+                    mime="text/vcard",
+                    use_container_width=True
+                )
+
+        st.markdown('</div>', unsafe_allow_html=True) # End airbnb-card div (note: raw div closure matching start is imperfect across streamlit blocks but works for containment visual if CSS is applied to inner blocks or we just rely on the 'div.airbnb-card' block wrapper which we actually didn't strictly close properly if we used st.markdown start. 
+        # Correct approach:
+        # Since we broke the HTML block to insert Streamlit widgets (inputs/buttons), we can't wrap the whole thing in one HTML div tag easily.
+        # Instead, we'll wrap the CONTENT in the card style.
+        # The CSS `.airbnb-card` applies padding/border.
+        # I'll apply a wrapper div that ends here.
+        # Actually, st.container(border=True) is an option, but we have custom CSS.
+        # I will inject the closing div here.
 
 def view_omni():
+    # If a result exists, show the card + A "Close/Reset" button at the top
     if st.session_state.omni_result:
-        render_executive_card(st.session_state.omni_result, show_close=True)
+        if st.button("← New Search", type="secondary"):
+            st.session_state.omni_result = None
+            st.session_state.is_editing = False
+            st.rerun()
+            
+        render_executive_card(st.session_state.omni_result)
         return
 
     st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
@@ -559,13 +623,12 @@ def view_omni():
             existing_leads = load_leads_summary()
             result = process_omni_voice(audio_val.read(), existing_leads)
             
-            # --- FIX: Handle List Response vs Dict Response ---
+            # FIX: HANDLE LIST RESPONSE
             if isinstance(result, list):
                 if len(result) > 0:
                     result = result[0]
                 else:
                     result = {"error": "AI returned empty list."}
-            # --------------------------------------------------
 
             if "error" in result: 
                 st.error(result['error'])
@@ -574,15 +637,12 @@ def view_omni():
                 lead_data = result.get('lead_data', {})
                 
                 if action == "CREATE": 
-                    # SAVE IMMEDIATELY AND CAPTURE ID
                     saved_record = save_new_lead(lead_data)
                     if saved_record and isinstance(saved_record, dict):
-                         # Inject the generated ID into the result so we can edit it
                          result['lead_data']['id'] = saved_record.get('id')
                          
                 elif action == "UPDATE" and result.get('match_id'): 
                     saved_data = update_existing_lead(result['match_id'], lead_data, existing_leads)
-                    
                     if isinstance(saved_data, dict):
                         result['lead_data'] = saved_data
                     else:
@@ -593,18 +653,16 @@ def view_omni():
                 st.rerun()
 
 def view_pipeline():
-    # 1. DETAIL VIEW (Now Editable via render_executive_card)
     if st.session_state.selected_lead:
         if st.button("← Back to List", key="back_to_list", type="secondary"):
             st.session_state.selected_lead = None
+            st.session_state.is_editing = False
             st.rerun()
         
-        # Wrap straight dict into the format render expects
         wrapped_data = {'lead_data': st.session_state.selected_lead, 'action': 'QUERY'}
-        render_executive_card(wrapped_data, show_close=False)
+        render_executive_card(wrapped_data)
         return
 
-    # 2. LIST VIEW HEADER
     st.markdown("<h2 style='padding:10px 0 0px 0;'>Rolodex</h2>", unsafe_allow_html=True)
     
     if not st.session_state.user: return
@@ -617,14 +675,12 @@ def view_pipeline():
 
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-    # 3. FETCH DATA
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
     
     if not leads:
         st.info("Rolodex is empty.")
         return
 
-    # 4. FILTER LOGIC
     filtered_leads = []
     for l in leads:
         if search_query and search_query.lower() not in (l.get('name') or '').lower(): continue
@@ -635,7 +691,6 @@ def view_pipeline():
         st.caption("No matching contacts found.")
         return
 
-    # 5. RENDER "RICH CARD BUTTONS"
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
         name = lead.get('name', 'Unknown')
@@ -741,6 +796,7 @@ selected_label = st.radio(
 )
 if tabs[selected_label] != st.session_state.active_tab:
     st.session_state.active_tab = tabs[selected_label]
+    st.session_state.is_editing = False
     st.rerun()
 
 if st.session_state.active_tab == "omni": view_omni()
