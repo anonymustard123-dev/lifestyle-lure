@@ -29,6 +29,7 @@ if 'referral_captured' not in st.session_state: st.session_state.referral_captur
 if 'is_editing' not in st.session_state: st.session_state.is_editing = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
+# Captures ?ref=USER_ID from the URL and stores it in session state for Sign Up
 if not st.session_state.referral_captured:
     try:
         query_params = st.query_params
@@ -186,7 +187,6 @@ st.markdown("""
            BUTTONS & ACTIONS
            ========================================================= */
         
-        /* 1. Target ALL buttons more specifically to override dark themes */
         div[data-testid="stButton"] > button, div[data-testid="stDownloadButton"] > button {
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
@@ -197,20 +197,14 @@ st.markdown("""
             font-weight: 600 !important;
             transition: all 0.2s ease !important;
             color: #222222 !important;
-            
-            /* DEFAULT: Center Align (Good for Edit/Save buttons) */
             text-align: center !important;
             justify-content: center !important;
             display: flex !important;
             width: 100% !important;
         }
-
-        /* 2. Force text color inside buttons */
         div[data-testid="stButton"] > button p, div[data-testid="stDownloadButton"] > button p {
             color: #222222 !important;
         }
-        
-        /* 3. Hover Effects */
         div[data-testid="stButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
@@ -224,7 +218,6 @@ st.markdown("""
         /* =========================================================
            ROLODEX SPECIFIC OVERRIDES
            ========================================================= */
-        
         /* Rolodex items use the .rolodex-marker to force LEFT alignment and BOLD */
         div.element-container:has(.rolodex-marker) + div.element-container button {
             text-align: left !important;
@@ -265,7 +258,6 @@ st.markdown("""
             justify-content: flex-start !important; 
         }
 
-
         /* ANALYTICS */
         .analytics-card {
             background-color: #FFFFFF;
@@ -286,9 +278,29 @@ st.markdown("""
         .stat-title { font-size: 11px; font-weight: 800; color: #717171; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
         .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
+        
+        /* REFERRAL BOX */
+        .referral-box {
+            background-color: #F7F7F7;
+            border: 1px dashed #dddddd;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .referral-link {
+            font-family: monospace;
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            color: #FF385C;
+            font-weight: 600;
+            word-break: break-all;
+        }
 
         /* =========================================================
-           INPUT FIELDS - FIX DARK MODE & PLACEHOLDERS
+           INPUT FIELDS
            ========================================================= */
         div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
             background-color: #F7F7F7 !important;
@@ -296,26 +308,21 @@ st.markdown("""
             border: 1px solid transparent !important;
             border-radius: 12px !important;
         }
-        
         input, textarea, select {
             color: #222222 !important;
             background-color: transparent !important;
             font-weight: 500 !important; 
             caret-color: #FF385C !important; 
         }
-
-        /* PLACEHOLDER FIXES FOR MOBILE */
         input::placeholder, textarea::placeholder {
             color: #717171 !important;
             opacity: 1 !important;
             -webkit-text-fill-color: #717171 !important;
         }
-        
         div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within { 
             border: 1px solid #222222 !important; 
             background-color: #FFFFFF !important; 
         }
-        
         div[data-baseweb="select"] > div {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
@@ -387,6 +394,69 @@ def create_checkout_session(email, user_id):
         return session.url
     except: return None
 
+# --- REFERRAL & COMMISSION LOGIC ---
+
+def ensure_referral_hierarchy(user_id, user_meta):
+    """
+    Ensures the user is linked to their Tier 1 (Direct) and Tier 2 (Upline) referrers.
+    Run this on Login.
+    """
+    try:
+        profile = fetch_user_profile(user_id)
+        if not profile: return
+        
+        # 1. Check if hierarchy is already set
+        if profile.get('upline_id'): return
+
+        # 2. Get Direct Referrer (from Profile or Auth Metadata)
+        referrer_id = profile.get('referred_by') or user_meta.get('referred_by')
+        
+        if referrer_id:
+            updates = {}
+            # Sync metadata to profile if missing
+            if not profile.get('referred_by'):
+                updates['referred_by'] = referrer_id
+            
+            # 3. Find the Tier 2 Upline (The person who referred the referrer)
+            referrer_profile = fetch_user_profile(referrer_id)
+            if referrer_profile and referrer_profile.get('referred_by'):
+                updates['upline_id'] = referrer_profile.get('referred_by')
+            
+            if updates:
+                supabase.table("profiles").update(updates).eq("id", user_id).execute()
+    except Exception as e:
+        print(f"Hierarchy Error: {e}")
+
+def process_subscription_commission(payer_user_id, payment_amount=15.00):
+    """
+    Calculates and credits commissions (15% Tier 1, 5% Tier 2).
+    In production, call this via Stripe Webhook (invoice.payment_succeeded).
+    """
+    try:
+        profile = fetch_user_profile(payer_user_id)
+        if not profile: return
+
+        # Tier 1: Direct Referrer (15%)
+        referrer_id = profile.get('referred_by')
+        if referrer_id:
+            tier1_payout = payment_amount * 0.15
+            r_prof = fetch_user_profile(referrer_id)
+            if r_prof:
+                new_bal = (r_prof.get('commission_balance') or 0.0) + tier1_payout
+                supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", referrer_id).execute()
+
+        # Tier 2: Indirect Upline (5%)
+        upline_id = profile.get('upline_id')
+        if upline_id:
+            tier2_payout = payment_amount * 0.05
+            u_prof = fetch_user_profile(upline_id)
+            if u_prof:
+                new_bal = (u_prof.get('commission_balance') or 0.0) + tier2_payout
+                supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", upline_id).execute()
+                
+    except Exception as e:
+        print(f"Commission Error: {e}")
+
 # ==========================================
 # 5. OMNI-TOOL BACKEND (AI CORE)
 # ==========================================
@@ -410,8 +480,6 @@ def load_leads_summary():
 
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
-    # [FIX] Timezone Shift: Subtract 5 hours to approximate US Eastern/Central time
-    # This prevents UTC "Tomorrow" (which is early morning next day) from shifting dates for US evening users.
     est_now = datetime.now() - timedelta(hours=5)
     current_date_str = est_now.strftime("%Y-%m-%d %H:%M")
     
@@ -485,13 +553,11 @@ def save_new_lead(lead_data):
 def update_existing_lead(lead_id, new_data, existing_leads_context):
     if not st.session_state.user: return "Not logged in"
     
-    # 1. ROBUST FIND
     original = next((item for item in existing_leads_context if str(item["id"]) == str(lead_id)), None)
     
     if not original:
-        return "Error: Could not find original record to update. Aborting to prevent data loss."
+        return "Error: Could not find original record to update."
     
-    # 2. SAFE MERGE
     current_tx = original.get('transactions') or ""
     new_item = new_data.get('transaction_item')
     final_tx = current_tx
@@ -534,9 +600,7 @@ def create_vcard(data):
     return "\n".join(vcard)
 
 def create_ics_string(event_name, dt, description):
-    # Simple manual ICS generation
     try:
-        # Format: YYYYMMDDTHHMMSS
         dt_str = dt.strftime("%Y%m%dT%H%M%S")
         now_str = datetime.now().strftime("%Y%m%dT%H%M%S")
         clean_name = event_name.replace(' ', '')
@@ -561,12 +625,10 @@ END:VCALENDAR"""
 # ==========================================
 
 def render_executive_card(data):
-    # EXTRACT DATA
     lead = data.get('lead_data', data)
     action = data.get('action', 'QUERY')
     lead_id = lead.get('id') or data.get('match_id')
     
-    # VISUAL HEADER LOGIC
     badge_text = "INTELLIGENCE REPORT"
     if action == "CREATE": badge_text = "NEW ASSET"
     elif action == "UPDATE": badge_text = "UPDATED"
@@ -575,49 +637,28 @@ def render_executive_card(data):
     outreach = lead.get('next_outreach')
     status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
     
-    # SMART COUNTDOWN & CALENDAR LOGIC
     display_outreach = outreach
     ics_file = None
     if outreach:
         try:
-            # Attempt to parse ISO
             outreach_dt = datetime.fromisoformat(str(outreach))
-            
-            # [FIX] Compare DATES ONLY (strip time) to prevent rounding errors
             est_now = datetime.now() - timedelta(hours=5)
-            
-            # Using .date() ensures we count strictly by calendar days
             delta_days = (outreach_dt.date() - est_now.date()).days
             
-            # [FIX] AM/PM Formatting
-            if delta_days < 0:
-                display_outreach = f"Overdue ({abs(delta_days)}d)"
-            elif delta_days == 0:
-                display_outreach = f"Today {outreach_dt.strftime('%I:%M %p')}"
-            elif delta_days == 1:
-                display_outreach = f"Tomorrow {outreach_dt.strftime('%I:%M %p')}"
-            else:
-                # "Month DD HH:MM AM/PM" format
-                display_outreach = outreach_dt.strftime("%b %d %I:%M %p")
+            if delta_days < 0: display_outreach = f"Overdue ({abs(delta_days)}d)"
+            elif delta_days == 0: display_outreach = f"Today {outreach_dt.strftime('%I:%M %p')}"
+            elif delta_days == 1: display_outreach = f"Tomorrow {outreach_dt.strftime('%I:%M %p')}"
+            else: display_outreach = outreach_dt.strftime("%b %d %I:%M %p")
                 
-            # 2. Generate ICS
-            ics_file = create_ics_string(
-                lead.get('name', 'Client'), 
-                outreach_dt, 
-                lead.get('background', '')
-            )
-        except ValueError:
-            pass
+            ics_file = create_ics_string(lead.get('name', 'Client'), outreach_dt, lead.get('background', ''))
+        except ValueError: pass
 
     bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
     if display_outreach:
         bubbles_html += f' <span class="meta-bubble bubble-outreach">⏰ {display_outreach}</span>'
 
-    # CARD CONTAINER
     with st.container():
         st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
-        
-        # [FIX] Layout: [5, 1] puts button on right. vertical_alignment="top" ensures alignment.
         c_head, c_edit_btn = st.columns([5, 1], vertical_alignment="top")
         
         with c_head:
@@ -630,13 +671,11 @@ def render_executive_card(data):
             """, unsafe_allow_html=True)
             
         with c_edit_btn:
-            # [FIX] Standard button styling (will inherit Global Red Border/Centered text)
             if not st.session_state.is_editing:
                 if st.button("Edit", key=f"edit_btn_{lead_id}", use_container_width=True):
                     st.session_state.is_editing = True
                     st.rerun()
 
-        # 2. BODY CONTENT
         if st.session_state.is_editing:
             st.markdown("<br>", unsafe_allow_html=True)
             new_name = st.text_input("Name", value=lead.get('name', ''))
@@ -652,7 +691,6 @@ def render_executive_card(data):
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # 3. FOOTER (EDIT MODE)
             cf1, cf2 = st.columns(2)
             with cf1:
                 if st.button("Cancel", key="cancel_edit", use_container_width=True):
@@ -662,13 +700,9 @@ def render_executive_card(data):
                 if st.button("Save Changes", key="save_edit", type="primary", use_container_width=True):
                     if lead_id:
                         updates = {
-                            "name": new_name,
-                            "status": new_status,
-                            "product_pitch": new_pitch,
-                            "contact_info": new_contact,
-                            "background": new_bg,
-                            "transactions": new_tx,
-                            "next_outreach": new_outreach
+                            "name": new_name, "status": new_status, "product_pitch": new_pitch,
+                            "contact_info": new_contact, "background": new_bg,
+                            "transactions": new_tx, "next_outreach": new_outreach
                         }
                         try:
                             supabase.table("leads").update(updates).eq("id", lead_id).execute()
@@ -676,69 +710,33 @@ def render_executive_card(data):
                             st.session_state.is_editing = False
                             st.success("Saved.")
                             st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                    else:
-                        st.error("Missing ID")
+                        except Exception as e: st.error(f"Error: {e}")
+                    else: st.error("Missing ID")
                         
         else:
-            # VIEW MODE BODY
             html_body = f"""
 <div class="stat-grid">
-    <div class="stat-item">
-        <div class="stat-label">Product Fit</div>
-        <div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div>
-    </div>
-    <div class="stat-item">
-        <div class="stat-label">Contact</div>
-        <div class="stat-value">{lead.get('contact_info') or '-'}</div>
-    </div>
+    <div class="stat-item"><div class="stat-label">Product Fit</div><div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div></div>
+    <div class="stat-item"><div class="stat-label">Contact</div><div class="stat-value">{lead.get('contact_info') or '-'}</div></div>
 </div>
-
-<div class="report-bubble">
-    <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
-    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
-</div>
-
-<div class="transaction-bubble">
-    <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
-    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
-</div>
+<div class="report-bubble"><div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div><p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p></div>
+<div class="transaction-bubble"><div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div><p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p></div>
 <div style="margin-bottom: 24px;"></div>
 """
             st.markdown(html_body, unsafe_allow_html=True)
             
-            # 3. FOOTER (VIEW MODE)
             if lead.get('name'):
-                # Download Buttons Layout
                 c_dl1, c_dl2 = st.columns(2)
-                
                 vcf = create_vcard(data)
                 safe_name = lead.get('name').strip().replace(" ", "_")
                 
                 with c_dl1:
-                    # Inject CSS marker for Bold Left Button
                     st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-                    st.download_button(
-                        label="Save Contact",
-                        data=vcf,
-                        file_name=f"{safe_name}.vcf",
-                        mime="text/vcard",
-                        use_container_width=True
-                    )
-                
+                    st.download_button("Save Contact", data=vcf, file_name=f"{safe_name}.vcf", mime="text/vcard", use_container_width=True)
                 with c_dl2:
                     if ics_file:
-                        # Inject CSS marker for Bold Left Button
                         st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-                        st.download_button(
-                            label="Add to Calendar",
-                            data=ics_file,
-                            file_name=f"Meeting_{safe_name}.ics",
-                            mime="text/calendar",
-                            use_container_width=True
-                        )
-
+                        st.download_button("Add to Calendar", data=ics_file, file_name=f"Meeting_{safe_name}.ics", mime="text/calendar", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 def view_omni():
@@ -747,7 +745,6 @@ def view_omni():
             st.session_state.omni_result = None
             st.session_state.is_editing = False
             st.rerun()
-            
         render_executive_card(st.session_state.omni_result)
         return
 
@@ -762,34 +759,25 @@ def view_omni():
             result = process_omni_voice(audio_val.read(), existing_leads)
             
             if isinstance(result, list):
-                if len(result) > 0:
-                    result = result[0]
-                else:
-                    result = {"error": "AI returned empty list."}
+                result = result[0] if len(result) > 0 else {"error": "AI returned empty list."}
 
             if "error" in result: 
                 st.error(result['error'])
             else:
                 action = result.get('action')
                 lead_data = result.get('lead_data', {})
-                
-                # [FIX] GUARDRAIL FOR GHOST QUERIES
                 if action == "QUERY" and not lead_data.get('name'):
                     st.error("Audio unclear. Please try again.")
                     return
 
                 if action == "CREATE": 
                     saved_record = save_new_lead(lead_data)
-                    if saved_record and isinstance(saved_record, dict):
-                         result['lead_data']['id'] = saved_record.get('id')
+                    if saved_record and isinstance(saved_record, dict): result['lead_data']['id'] = saved_record.get('id')
                          
                 elif action == "UPDATE" and result.get('match_id'): 
                     saved_data = update_existing_lead(result['match_id'], lead_data, existing_leads)
-                    if isinstance(saved_data, dict):
-                        result['lead_data'] = saved_data
-                    else:
-                        st.error(saved_data)
-                        return
+                    if isinstance(saved_data, dict): result['lead_data'] = saved_data
+                    else: st.error(saved_data); return
 
                 st.session_state.omni_result = result
                 st.rerun()
@@ -800,29 +788,20 @@ def view_pipeline():
             st.session_state.selected_lead = None
             st.session_state.is_editing = False
             st.rerun()
-        
-        wrapped_data = {'lead_data': st.session_state.selected_lead, 'action': 'QUERY'}
-        render_executive_card(wrapped_data)
+        render_executive_card({'lead_data': st.session_state.selected_lead, 'action': 'QUERY'})
         return
 
-    # REMOVED EXTRA PADDING HERE
     st.markdown("<h2 style='padding:0px 0 0px 0;'>Rolodex</h2>", unsafe_allow_html=True)
-    
     if not st.session_state.user: return
 
     c_search, c_filter = st.columns([2, 1])
-    with c_search:
-        search_query = st.text_input("Search", placeholder="Find a name...", label_visibility="collapsed")
-    with c_filter:
-        filter_status = st.pills("Status", ["All", "Lead", "Client"], default="All", selection_mode="single", label_visibility="collapsed")
+    with c_search: search_query = st.text_input("Search", placeholder="Find a name...", label_visibility="collapsed")
+    with c_filter: filter_status = st.pills("Status", ["All", "Lead", "Client"], default="All", selection_mode="single", label_visibility="collapsed")
 
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
-
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
     
-    if not leads:
-        st.info("Rolodex is empty.")
-        return
+    if not leads: st.info("Rolodex is empty."); return
 
     filtered_leads = []
     for l in leads:
@@ -830,19 +809,14 @@ def view_pipeline():
         if filter_status and filter_status != "All" and (l.get('status') or 'Lead').lower() != filter_status.lower(): continue
         filtered_leads.append(l)
 
-    if not filtered_leads:
-        st.caption("No matching contacts found.")
-        return
+    if not filtered_leads: st.caption("No matching contacts found."); return
 
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
         name = lead.get('name', 'Unknown')
         is_client = str(status).strip().lower() == "client"
-
-        # [FIX] INJECT MARKERS FOR CSS TARGETING
         markers = '<div class="rolodex-marker"></div>'
-        if is_client:
-            markers += '<div class="client-marker"></div>'
+        if is_client: markers += '<div class="client-marker"></div>'
         st.markdown(markers, unsafe_allow_html=True)
         
         if st.button(name, key=f"card_{lead['id']}", use_container_width=True):
@@ -854,12 +828,9 @@ def view_analytics():
     if not st.session_state.user: return
     
     leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).execute().data
-    if not leads: 
-        st.info("Start adding leads to see your stats!")
-        return
+    if not leads: st.info("Start adding leads to see your stats!"); return
         
     df = pd.DataFrame(leads)
-    
     total_leads = len(df)
     clients = len(df[df['status'].astype(str).str.strip().str.lower() == 'client'])
     conversion_rate = int((clients / total_leads) * 100) if total_leads > 0 else 0
@@ -868,28 +839,17 @@ def view_analytics():
         df['created_at'] = pd.to_datetime(df['created_at'])
         thirty_days_ago = pd.Timestamp.now(tz=df['created_at'].dt.tz) - pd.Timedelta(days=30)
         recent_leads = len(df[df['created_at'] >= thirty_days_ago])
-    else:
-        recent_leads = 0
+    else: recent_leads = 0
 
     st.markdown(f"""
-    <div class="analytics-card analytics-card-green">
-        <div class="stat-title">CONVERSION RATE</div>
-        <div class="stat-metric">{conversion_rate}%</div>
-        <div class="stat-sub">{clients} Clients / {total_leads} Total Network</div>
-    </div>
-    
-    <div class="analytics-card analytics-card-red">
-        <div class="stat-title">30-DAY HUSTLE</div>
-        <div class="stat-metric">+{recent_leads}</div>
-        <div class="stat-sub">New leads added recently</div>
-    </div>
+    <div class="analytics-card analytics-card-green"><div class="stat-title">CONVERSION RATE</div><div class="stat-metric">{conversion_rate}%</div><div class="stat-sub">{clients} Clients / {total_leads} Total Network</div></div>
+    <div class="analytics-card analytics-card-red"><div class="stat-title">30-DAY HUSTLE</div><div class="stat-metric">+{recent_leads}</div><div class="stat-sub">New leads added recently</div></div>
     """, unsafe_allow_html=True)
 
 # ==========================================
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    # ADDED NEGATIVE MARGIN TO PULL CONTENT UP AND REMOVE WHITE BAR
     st.markdown("<div style='text-align:center; padding-top:0px; margin-top: -30px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
     st.markdown("<div class='airbnb-card'>", unsafe_allow_html=True)
     email = st.text_input("Email", placeholder="name@example.com")
@@ -897,8 +857,6 @@ if not st.session_state.user:
     st.markdown("</div>", unsafe_allow_html=True)
     
     c1, c2 = st.columns(2)
-    
-    # INJECT BOLD LEFT MARKER
     with c1:
         st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
         if st.button("Log In", type="primary", use_container_width=True):
@@ -906,14 +864,16 @@ if not st.session_state.user:
                 res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                 st.session_state.user = res.user
                 st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                # [PRODUCTION CRITICAL] Ensure hierarchy is set on every login
+                ensure_referral_hierarchy(res.user.id, res.user.user_metadata)
                 st.rerun()
             except Exception as e: st.error(str(e))
     
-    # INJECT BOLD LEFT MARKER
     with c2:
         st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
         if st.button("Sign Up", type="secondary", use_container_width=True):
             try:
+                # Capture the referral code during sign up
                 meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
                 res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
                 if res.user: st.success("Account created! Log in."); 
@@ -924,15 +884,7 @@ if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed: st.rerun()
-    st.markdown("""
-        <div style="text-align:center; padding: 40px 20px;">
-            <h1>Upgrade Plan</h1>
-            <p>Unlock unlimited leads and pipeline storage.</p>
-            <div class="airbnb-card" style="margin-top:20px;">
-                <h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div style="text-align:center; padding: 40px 20px;"><h1>Upgrade Plan</h1><p>Unlock unlimited leads and pipeline storage.</p><div class="airbnb-card" style="margin-top:20px;"><h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2></div></div>""", unsafe_allow_html=True)
     if st.button("Subscribe Now", type="primary", use_container_width=True):
         url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
         if url: st.link_button("Go to Checkout", url, type="primary")
@@ -941,14 +893,7 @@ if not st.session_state.is_subscribed:
 tabs = { "🎙️ Assistant": "omni", "📇 Rolodex": "pipeline", "📊 Analytics": "analytics" }
 rev_tabs = {v: k for k, v in tabs.items()}
 current_label = rev_tabs.get(st.session_state.active_tab, "🎙️ Assistant")
-selected_label = st.radio(
-    "Navigation",
-    options=list(tabs.keys()),
-    index=list(tabs.keys()).index(current_label),
-    label_visibility="collapsed",
-    horizontal=True,
-    key="nav_radio"
-)
+selected_label = st.radio("Navigation", options=list(tabs.keys()), index=list(tabs.keys()).index(current_label), label_visibility="collapsed", horizontal=True, key="nav_radio")
 if tabs[selected_label] != st.session_state.active_tab:
     st.session_state.active_tab = tabs[selected_label]
     st.session_state.is_editing = False
@@ -959,9 +904,58 @@ elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
 with st.popover("👤", use_container_width=True):
+    st.subheader("Profile")
     if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
         supabase.auth.sign_out()
         st.session_state.user = None
         st.rerun()
-    if st.button("Refer a Friend (Coming Soon)", key="refer_btn", disabled=True, use_container_width=True):
-        pass
+
+    st.markdown("---")
+    
+    # --- REFERRAL HUB UI ---
+    st.subheader("Referral Hub")
+    
+    my_profile = fetch_user_profile(st.session_state.user.id)
+    if my_profile:
+        balance = my_profile.get('commission_balance') or 0.00
+        paypal_email = my_profile.get('paypal_email') or ""
+        # If user has already requested a payout, show that status
+        payout_req_time = my_profile.get('payout_requested_at')
+        
+        referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
+
+        st.markdown(f"""
+            <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
+                <div class="stat-title">WALLET BALANCE</div>
+                <div class="stat-metric">${balance:,.2f}</div>
+                <div class="stat-sub">Minimum payout: $50.00</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.caption("Your Referral Link")
+        st.markdown(f'<div class="referral-box"><div class="referral-link">{referral_link}</div></div>', unsafe_allow_html=True)
+        
+        with st.form("payout_form"):
+            new_paypal = st.text_input("PayPal Email", value=paypal_email, placeholder="you@example.com")
+            
+            # Logic: Can withdraw if > $50 AND no pending request
+            can_withdraw = (balance >= 50.00) and (payout_req_time is None)
+            
+            if payout_req_time:
+                btn_label = "Payout Pending..."
+            elif balance < 50.00:
+                btn_label = "Reach $50 to Withdraw"
+            else:
+                btn_label = "Request Payout"
+            
+            if st.form_submit_button("Update & Save Email"):
+                supabase.table("profiles").update({"paypal_email": new_paypal}).eq("id", st.session_state.user.id).execute()
+                st.success("Email saved.")
+                st.rerun()
+
+        if st.button(btn_label, disabled=not can_withdraw, type="primary", use_container_width=True):
+            # MARK AS REQUESTED IN DB
+            now_iso = datetime.now().isoformat()
+            supabase.table("profiles").update({"payout_requested_at": now_iso}).eq("id", st.session_state.user.id).execute()
+            st.success("Payout requested! Check your PayPal in 24-48h.")
+            st.rerun()
