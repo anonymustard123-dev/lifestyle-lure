@@ -185,28 +185,35 @@ st.markdown("""
         /* =========================================================
            ROLODEX & ACTION BUTTONS
            ========================================================= */
+        
+        /* DEFAULT BUTTON (EDIT, SAVE, ETC) */
         div.stButton > button, div.stDownloadButton > button {
+            border-radius: 12px !important;
+            border: 1px solid #EBEBEB !important; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+            padding: 10px 20px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        /* ROLODEX CARD STYLE - TARGETED VIA MARKER */
+        div.element-container:has(.rolodex-marker) + div.element-container button {
             text-align: left !important;
             display: flex !important;
             justify-content: flex-start !important;
-            align-items: center !important;
             background-color: #FFFFFF !important;
-            border: 1px solid #EBEBEB !important; 
             border-left: 6px solid #FF385C !important;
-            border-radius: 12px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
             width: 100% !important;
             padding: 16px 20px !important;
             margin-bottom: 0px !important;
-            transition: all 0.2s ease !important;
         }
         
-        div.stButton > button > div, div.stDownloadButton > button > div { 
+        div.element-container:has(.rolodex-marker) + div.element-container button > div { 
             width: 100% !important; 
             justify-content: flex-start !important; 
         }
 
-        div.stButton > button p, div.stDownloadButton > button p {
+        div.element-container:has(.rolodex-marker) + div.element-container button p {
             font-family: 'Circular', sans-serif !important;
             font-size: 16px !important;
             font-weight: 600 !important;
@@ -217,18 +224,18 @@ st.markdown("""
             text-align: left !important; 
         }
 
-        div.stButton > button:hover, div.stDownloadButton > button:hover {
+        /* HOVER EFFECTS FOR ROLODEX */
+        div.element-container:has(.rolodex-marker) + div.element-container button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
             color: #FF385C !important;
         }
-        div.stButton > button:hover p, div.stDownloadButton > button:hover p { color: #FF385C !important; }
-        div.stButton > button:active, div.stDownloadButton > button:active { transform: scale(0.98); background-color: #FAFAFA !important; }
+        div.element-container:has(.rolodex-marker) + div.element-container button:hover p { color: #FF385C !important; }
 
         /* CLIENT OVERRIDE */
-        div.element-container:has(.client-marker) { display: none !important; }
         div.element-container:has(.client-marker) + div.element-container button { border-left-color: #008a73 !important; }
+        
         div.element-container:has(.client-marker) + div.element-container button:hover {
             border-color: #008a73 !important;
             color: #008a73 !important;
@@ -561,14 +568,16 @@ def render_executive_card(data):
             # Using .date() ensures we count strictly by calendar days
             delta_days = (outreach_dt.date() - est_now.date()).days
             
+            # [FIX] Strict Date Formatting
             if delta_days < 0:
                 display_outreach = f"Overdue ({abs(delta_days)}d)"
             elif delta_days == 0:
-                display_outreach = f"Today at {outreach_dt.strftime('%H:%M')}"
+                display_outreach = f"Today {outreach_dt.strftime('%H:%M')}"
             elif delta_days == 1:
-                display_outreach = f"Tomorrow at {outreach_dt.strftime('%H:%M')}"
+                display_outreach = f"Tomorrow {outreach_dt.strftime('%H:%M')}"
             else:
-                display_outreach = f"In {delta_days} days"
+                # "Month DD XX:XX" format
+                display_outreach = outreach_dt.strftime("%b %d %H:%M")
                 
             # 2. Generate ICS
             ics_file = create_ics_string(
@@ -600,8 +609,9 @@ def render_executive_card(data):
             """, unsafe_allow_html=True)
             
         with c_edit_btn:
+            # [FIX] Standard button styling, forced to fill the small right column
             if not st.session_state.is_editing:
-                if st.button("Edit", key=f"edit_btn_{lead_id}"):
+                if st.button("Edit", key=f"edit_btn_{lead_id}", use_container_width=True):
                     st.session_state.is_editing = True
                     st.rerun()
 
@@ -804,8 +814,11 @@ def view_pipeline():
         name = lead.get('name', 'Unknown')
         is_client = str(status).strip().lower() == "client"
 
+        # [FIX] INJECT MARKERS FOR CSS TARGETING
+        markers = '<div class="rolodex-marker"></div>'
         if is_client:
-            st.markdown('<div class="client-marker"></div>', unsafe_allow_html=True)
+            markers += '<div class="client-marker"></div>'
+        st.markdown(markers, unsafe_allow_html=True)
         
         if st.button(name, key=f"card_{lead['id']}", use_container_width=True):
             st.session_state.selected_lead = lead
