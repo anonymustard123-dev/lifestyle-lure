@@ -380,6 +380,7 @@ def load_leads_summary():
 
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
+    # [FIX] Added logic to handle silence explicitly to prevent hallucinations
     prompt = f"""
     You are 'The Closer', an expert Executive Assistant. 
     Here is the user's Rolodex (Existing Leads): {leads_json}
@@ -392,16 +393,14 @@ def process_omni_voice(audio_bytes, existing_leads_context):
        - "UPDATE": Adding info to existing.
        - "QUERY": Asking questions.
     
-    CRITICAL UPDATING RULES (To prevent data loss):
+    CRITICAL RULES:
     - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. 
-    - **Product Fit (product_pitch) Preservation**: 
-        - If the user bought an item, that does NOT automatically change their 'product_pitch' (Product Fit).
-        - **Rule**: Do NOT return a value for 'product_pitch' unless the user EXPLICITLY says "Change their interest to X" or "They are now looking for Y".
-        - If they just bought something, leave 'product_pitch' as NULL so the original value is preserved.
-    - **Background Safety**: Only return a 'background' string if the user explicitly adds narrative notes. If they only mention a sale, leave 'background' null.
+    - **Product Fit Preservation**: Do NOT change 'product_pitch' unless explicitly told to.
     - **Status**: If a sale occurred, set "status" to "Client".
-    
-    RETURN ONLY RAW JSON:
+    - **SILENCE / NOISE**: If the audio is silent, background noise only, or unintelligible, you MUST return:
+      {{ "error": "No clear speech detected. Please try again." }}
+
+    RETURN ONLY RAW JSON (or the error JSON above):
     {{
         "action": "CREATE" | "UPDATE" | "QUERY",
         "match_id": (Integer/String ID from Rolodex if UPDATE matches),
@@ -584,7 +583,8 @@ def render_executive_card(data):
                         
         else:
             # VIEW MODE BODY
-            st.markdown(f"""
+            # [FIX] Wrapped in dedent to prevent Markdown code block rendering error
+            html_body = f"""
                 <div class="stat-grid">
                     <div class="stat-item">
                         <div class="stat-label">Product Fit</div>
@@ -606,7 +606,8 @@ def render_executive_card(data):
                     <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
                 </div>
                 <div style="margin-bottom: 24px;"></div>
-            """, unsafe_allow_html=True)
+            """
+            st.markdown(textwrap.dedent(html_body), unsafe_allow_html=True)
             
             # 3. FOOTER (VIEW MODE)
             if lead.get('name'):
