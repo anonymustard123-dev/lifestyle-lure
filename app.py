@@ -183,7 +183,7 @@ st.markdown("""
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
         /* =========================================================
-           BUTTONS & ACTIONS (FIXED FOR RED/WHITE STYLE)
+           BUTTONS & ACTIONS
            ========================================================= */
         
         /* 1. Target ALL buttons more specifically to override dark themes */
@@ -225,10 +225,11 @@ st.markdown("""
            ROLODEX SPECIFIC OVERRIDES
            ========================================================= */
         
-        /* Rolodex items use the .rolodex-marker to force LEFT alignment */
+        /* Rolodex items use the .rolodex-marker to force LEFT alignment and BOLD */
         div.element-container:has(.rolodex-marker) + div.element-container button {
             text-align: left !important;
             justify-content: flex-start !important;
+            font-weight: 800 !important; /* BOLD */
         }
         div.element-container:has(.rolodex-marker) + div.element-container button > div {
             justify-content: flex-start !important; 
@@ -242,6 +243,22 @@ st.markdown("""
             box-shadow: 0 8px 15px rgba(0, 138, 115, 0.15) !important;
         }
         div.element-container:has(.client-marker) + div.element-container button:hover p { color: #008a73 !important; }
+
+        /* =========================================================
+           BOLD LEFT BUTTON OVERRIDES (Login, Signup, Downloads)
+           ========================================================= */
+        div.element-container:has(.bold-left-marker) + div.element-container button {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            font-weight: 800 !important; /* Extra Bold */
+        }
+        div.element-container:has(.bold-left-marker) + div.element-container button p {
+            font-weight: 800 !important;
+        }
+        div.element-container:has(.bold-left-marker) + div.element-container button > div {
+            justify-content: flex-start !important; 
+        }
+
 
         /* ANALYTICS */
         .analytics-card {
@@ -694,6 +711,8 @@ def render_executive_card(data):
                 safe_name = lead.get('name').strip().replace(" ", "_")
                 
                 with c_dl1:
+                    # Inject CSS marker for Bold Left Button
+                    st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
                     st.download_button(
                         label="Save Contact",
                         data=vcf,
@@ -704,6 +723,8 @@ def render_executive_card(data):
                 
                 with c_dl2:
                     if ics_file:
+                        # Inject CSS marker for Bold Left Button
+                        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
                         st.download_button(
                             label="Add to Calendar",
                             data=ics_file,
@@ -870,19 +891,27 @@ if not st.session_state.user:
     st.markdown("</div>", unsafe_allow_html=True)
     
     c1, c2 = st.columns(2)
-    if c1.button("Log In", type="primary", use_container_width=True):
-        try:
-            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-            st.session_state.user = res.user
-            st.session_state.is_subscribed = check_subscription_status(res.user.email)
-            st.rerun()
-        except Exception as e: st.error(str(e))
-    if c2.button("Sign Up", type="secondary", use_container_width=True):
-        try:
-            meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
-            res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
-            if res.user: st.success("Account created! Log in."); 
-        except Exception as e: st.error(str(e))
+    
+    # INJECT BOLD LEFT MARKER
+    with c1:
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+        if st.button("Log In", type="primary", use_container_width=True):
+            try:
+                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                st.session_state.user = res.user
+                st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                st.rerun()
+            except Exception as e: st.error(str(e))
+    
+    # INJECT BOLD LEFT MARKER
+    with c2:
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+        if st.button("Sign Up", type="secondary", use_container_width=True):
+            try:
+                meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
+                res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
+                if res.user: st.success("Account created! Log in."); 
+            except Exception as e: st.error(str(e))
     st.stop()
 
 if not st.session_state.is_subscribed:
