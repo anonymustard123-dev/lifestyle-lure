@@ -278,6 +278,26 @@ st.markdown("""
         .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
         
+        /* REFERRAL BOX */
+        .referral-box {
+            background-color: #F7F7F7;
+            border: 1px dashed #dddddd;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .referral-link {
+            font-family: monospace;
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            color: #FF385C;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
         /* =========================================================
            INPUT FIELDS
            ========================================================= */
@@ -380,68 +400,94 @@ def create_checkout_session(email, user_id):
         return session.url
     except: return None
 
-# --- REFERRAL & COMMISSION LOGIC ---
+# --- INFINITY COMMISSION LOGIC START ---
 
-def ensure_referral_hierarchy(user_id, user_meta):
+def ensure_referral_link(user_id, user_meta):
     """
-    Ensures the user is linked to their Tier 1 (Direct) and Tier 2 (Upline) referrers.
-    Run this on Login.
+    Called on login.
+    Links the new user to their Direct Referrer (Tier 1) only.
+    The 'Infinity' logic calculates the chain dynamically, so we don't need to store upline_id anymore.
     """
     try:
         profile = fetch_user_profile(user_id)
         if not profile: return
         
-        # 1. Check if hierarchy is already set
-        if profile.get('upline_id'): return
+        # Check if already linked
+        if profile.get('referred_by'): return
 
-        # 2. Get Direct Referrer (from Profile or Auth Metadata)
-        referrer_id = profile.get('referred_by') or user_meta.get('referred_by')
+        # Get Direct Referrer from metadata
+        referrer_id = user_meta.get('referred_by')
         
         if referrer_id:
-            updates = {}
-            # Sync metadata to profile if missing
-            if not profile.get('referred_by'):
-                updates['referred_by'] = referrer_id
-            
-            # 3. Find the Tier 2 Upline (The person who referred the referrer)
-            referrer_profile = fetch_user_profile(referrer_id)
-            if referrer_profile and referrer_profile.get('referred_by'):
-                updates['upline_id'] = referrer_profile.get('referred_by')
-            
-            if updates:
-                supabase.table("profiles").update(updates).eq("id", user_id).execute()
+             supabase.table("profiles").update({'referred_by': referrer_id}).eq("id", user_id).execute()
     except Exception as e:
         print(f"Hierarchy Error: {e}")
 
+def count_referrals(user_id):
+    """
+    Returns the number of people who have listed this user as their 'referred_by'.
+    Used to determine if they are a 'Leader' (10+).
+    """
+    try:
+        # Count rows in profiles where referred_by == user_id
+        # Note: In production, you might want to filter by 'subscription_status=active' if you sync Stripe.
+        res = supabase.table("profiles").select("id", count="exact").eq("referred_by", user_id).execute()
+        return res.count
+    except:
+        return 0
+
 def process_subscription_commission(payer_user_id, payment_amount=15.00):
     """
-    Calculates and credits commissions (15% Tier 1, 5% Tier 2).
-    In production, call this via Stripe Webhook (invoice.payment_succeeded).
+    THE INFINITY ALGORITHM
+    1. Direct Referrer gets 15% ($2.25).
+    2. Override (5% / $0.75) rolls up until it finds a Leader (10+ referrals).
     """
     try:
         profile = fetch_user_profile(payer_user_id)
         if not profile: return
 
-        # Tier 1: Direct Referrer (15%)
+        # 1. PAY DIRECT REFERRER (15%)
         referrer_id = profile.get('referred_by')
-        if referrer_id:
-            tier1_payout = payment_amount * 0.15
-            r_prof = fetch_user_profile(referrer_id)
-            if r_prof:
-                new_bal = (r_prof.get('commission_balance') or 0.0) + tier1_payout
-                supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", referrer_id).execute()
+        if not referrer_id: return # No referrer, company keeps 100%
 
-        # Tier 2: Indirect Upline (5%)
-        upline_id = profile.get('upline_id')
-        if upline_id:
-            tier2_payout = payment_amount * 0.05
-            u_prof = fetch_user_profile(upline_id)
-            if u_prof:
-                new_bal = (u_prof.get('commission_balance') or 0.0) + tier2_payout
-                supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", upline_id).execute()
-                
+        # Credit Tier 1
+        tier1_amt = payment_amount * 0.15
+        r_prof = fetch_user_profile(referrer_id)
+        if r_prof:
+            new_bal = (r_prof.get('commission_balance') or 0.0) + tier1_amt
+            supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", referrer_id).execute()
+
+        # 2. FIND THE LEADER (5% Override)
+        # We start searching from the Direct Referrer's parent (Grandparent)
+        current_user_id = r_prof.get('referred_by')
+        
+        override_amt = payment_amount * 0.05
+        max_depth = 20 # Safety break to prevent infinite loops
+        
+        for _ in range(max_depth):
+            if not current_user_id: 
+                break # Reached top of chain, Company keeps breakage
+
+            # Check this user's stats
+            u_prof = fetch_user_profile(current_user_id)
+            if not u_prof: break
+            
+            # THE QUALIFYING CHECK: Do they have 10+ referrals?
+            ref_count = count_referrals(current_user_id)
+            
+            if ref_count >= 10:
+                # FOUND LEADER! Pay them and STOP.
+                new_bal = (u_prof.get('commission_balance') or 0.0) + override_amt
+                supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", current_user_id).execute()
+                break
+            
+            # If not a leader, skip them and move up
+            current_user_id = u_prof.get('referred_by')
+
     except Exception as e:
         print(f"Commission Error: {e}")
+
+# --- INFINITY COMMISSION LOGIC END ---
 
 # ==========================================
 # 5. OMNI-TOOL BACKEND (AI CORE)
@@ -851,7 +897,7 @@ if not st.session_state.user:
                 st.session_state.user = res.user
                 st.session_state.is_subscribed = check_subscription_status(res.user.email)
                 # [PRODUCTION CRITICAL] Ensure hierarchy is set on every login
-                ensure_referral_hierarchy(res.user.id, res.user.user_metadata)
+                ensure_referral_link(res.user.id, res.user.user_metadata)
                 st.rerun()
             except Exception as e: st.error(str(e))
     
@@ -889,6 +935,7 @@ if st.session_state.active_tab == "omni": view_omni()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
 
+# --- REPLACED: REFERRAL HUB UI (CREATOR WALLET EDITION) ---
 with st.popover("👤", use_container_width=True):
     st.subheader("Profile")
     if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
@@ -898,54 +945,83 @@ with st.popover("👤", use_container_width=True):
 
     st.markdown("---")
     
-    # --- REFERRAL HUB UI ---
     st.subheader("Referral Hub")
     
     my_profile = fetch_user_profile(st.session_state.user.id)
     if my_profile:
         balance = my_profile.get('commission_balance') or 0.00
-        paypal_email = my_profile.get('paypal_email') or ""
-        # If user has already requested a payout, show that status
+        
+        # Fetch existing settings
+        saved_method = my_profile.get('payout_method') or "Venmo"
+        saved_handle = my_profile.get('payout_handle') or ""
         payout_req_time = my_profile.get('payout_requested_at')
         
         referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
 
+        # 1. BALANCE CARD
         st.markdown(f"""
             <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
                 <div class="stat-title">WALLET BALANCE</div>
                 <div class="stat-metric">${balance:,.2f}</div>
-                <div class="stat-sub">Minimum payout: $50.00</div>
+                <div class="stat-sub">Available for payout</div>
             </div>
         """, unsafe_allow_html=True)
 
+        # 2. REFERRAL LINK
         st.caption("Your Referral Link")
-        # [FIX] Use st.code so the user can easily copy/paste the link
         st.code(referral_link, language="text")
         
+        # 3. PAYOUT SETTINGS (FLEXIBLE WALLET)
+        st.markdown("### Payout Settings")
+        
         with st.form("payout_form"):
-            new_paypal = st.text_input("PayPal Email", value=paypal_email, placeholder="you@example.com")
+            # Select Method
+            method_opts = ["Venmo", "CashApp", "PayPal", "Zelle"]
+            # specific index logic to handle defaults if saved_method is not in list
+            try:
+                idx = method_opts.index(saved_method)
+            except:
+                idx = 0
+                
+            new_method = st.selectbox("Preferred Method", method_opts, index=idx)
             
-            # Logic: Can withdraw if > $0 AND no pending request
+            # Dynamic Placeholder based on selection
+            placeholders = {
+                "Venmo": "@username", 
+                "CashApp": "$cashtag", 
+                "PayPal": "name@example.com", 
+                "Zelle": "Phone or Email"
+            }
+            new_handle = st.text_input(f"Your {new_method} Handle", value=saved_handle, placeholder=placeholders.get(new_method, ""))
+            
+            # LOGIC: Can withdraw if POSITIVE balance and NO pending request
             can_withdraw = (balance > 0.00) and (payout_req_time is None)
             
+            # Dynamic Button Label
             if payout_req_time:
                 btn_label = "Payout Pending..."
             elif balance <= 0.00:
                 btn_label = "No Balance to Withdraw"
             else:
-                btn_label = "Request Payout"
+                btn_label = f"Cash Out ${balance:,.2f} to {new_method}"
             
-            if st.form_submit_button("Update & Save Email"):
-                # This line was crashing because 'paypal_email' didn't exist in Supabase yet.
-                # Running the SQL command above fixes this.
-                supabase.table("profiles").update({"paypal_email": new_paypal}).eq("id", st.session_state.user.id).execute()
-                st.success("Email saved.")
+            # Save Details Logic
+            if st.form_submit_button("Update Details"):
+                supabase.table("profiles").update({
+                    "payout_method": new_method, 
+                    "payout_handle": new_handle
+                }).eq("id", st.session_state.user.id).execute()
+                st.success("Details saved.")
                 st.rerun()
 
+        # 4. WITHDRAW ACTION (Outside form to prevent double-submit)
         if st.button(btn_label, disabled=not can_withdraw, type="primary", use_container_width=True):
-            # MARK AS REQUESTED IN DB
-            now_iso = datetime.now().isoformat()
-            supabase.table("profiles").update({"payout_requested_at": now_iso}).eq("id", st.session_state.user.id).execute()
-            st.success("Payout requested! Check your PayPal in 24-48h.")
-            st.rerun()
-
+            if not saved_handle:
+                st.error("Please save your payout details above first.")
+            else:
+                # Mark as requested
+                now_iso = datetime.now().isoformat()
+                supabase.table("profiles").update({"payout_requested_at": now_iso}).eq("id", st.session_state.user.id).execute()
+                st.balloons()
+                st.success(f"Request sent! We will {saved_method} you shortly.")
+                st.rerun()
