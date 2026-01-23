@@ -380,8 +380,11 @@ def load_leads_summary():
 
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
+    current_date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
     prompt = f"""
     You are 'The Closer', an expert Executive Assistant. 
+    Current Date/Time: {current_date_str}
     Here is the user's Rolodex (Existing Leads): {leads_json}
     User Audio Provided. Listen carefully.
     
@@ -396,7 +399,9 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. 
     - **Product Fit Preservation**: Do NOT change 'product_pitch' unless explicitly told to.
     - **Status**: If a sale occurred, set "status" to "Client".
-    - **Meeting/Outreach**: If a specific meeting date/time is mentioned, set 'next_outreach' to strict ISO 8601 format (YYYY-MM-DDTHH:MM:SS). If vague (e.g., "next week"), use text.
+    - **Meeting/Outreach**: If a specific meeting date/time is mentioned, set 'next_outreach' to strict ISO 8601 format (YYYY-MM-DDTHH:MM:SS). 
+      - Calculate relative dates (e.g., "in 5 days", "next week") starting from TODAY ({current_date_str}), NOT from any existing meeting date.
+      - The new date MUST REPLACE the old one. If vague, use text.
     - **SILENCE / NOISE / UNINTELLIGIBLE**: If the audio is silent, background noise, mumbling, or lacks a clear name/intent, you MUST return:
       {{ "error": "No clear speech detected. Please try again." }}
 
@@ -474,7 +479,7 @@ def update_existing_lead(lead_id, new_data, existing_leads_context):
         "product_pitch": new_data.get('product_pitch') if new_data.get('product_pitch') else original.get('product_pitch'),
         "background": new_data.get('background') if new_data.get('background') else original.get('background'),
         "status": final_status,
-        "next_outreach": new_data.get('next_outreach'), 
+        "next_outreach": new_data.get('next_outreach') or original.get('next_outreach'), 
         "transactions": final_tx
     }
 
