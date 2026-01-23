@@ -638,30 +638,31 @@ def render_executive_card(data):
                         
         else:
             # VIEW MODE BODY
+            # [FIX] FLAT HTML STRUCTURE TO PREVENT MARKDOWN CODE BLOCK RENDERING
             html_body = f"""
-                <div class="stat-grid">
-                    <div class="stat-item">
-                        <div class="stat-label">Product Fit</div>
-                        <div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">Contact</div>
-                        <div class="stat-value">{lead.get('contact_info') or '-'}</div>
-                    </div>
-                </div>
-                
-                <div class="report-bubble">
-                    <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
-                    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
-                </div>
+<div class="stat-grid">
+    <div class="stat-item">
+        <div class="stat-label">Product Fit</div>
+        <div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-label">Contact</div>
+        <div class="stat-value">{lead.get('contact_info') or '-'}</div>
+    </div>
+</div>
 
-                <div class="transaction-bubble">
-                    <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
-                    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
-                </div>
-                <div style="margin-bottom: 24px;"></div>
-            """
-            st.markdown(textwrap.dedent(html_body), unsafe_allow_html=True)
+<div class="report-bubble">
+    <div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div>
+    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p>
+</div>
+
+<div class="transaction-bubble">
+    <div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div>
+    <p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p>
+</div>
+<div style="margin-bottom: 24px;"></div>
+"""
+            st.markdown(html_body, unsafe_allow_html=True)
             
             # 3. FOOTER (VIEW MODE)
             if lead.get('name'):
