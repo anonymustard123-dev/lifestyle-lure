@@ -925,13 +925,13 @@ with st.popover("👤", use_container_width=True):
         with st.form("payout_form"):
             new_paypal = st.text_input("PayPal Email", value=paypal_email, placeholder="you@example.com")
             
-            # Logic: Can withdraw if > $50 AND no pending request
-            can_withdraw = (balance >= 50.00) and (payout_req_time is None)
+            # Logic: Can withdraw if > $0 AND no pending request
+            can_withdraw = (balance > 0.00) and (payout_req_time is None)
             
             if payout_req_time:
                 btn_label = "Payout Pending..."
-            elif balance < 50.00:
-                btn_label = "Reach $50 to Withdraw"
+            elif balance <= 0.00:
+                btn_label = "No Balance to Withdraw"
             else:
                 btn_label = "Request Payout"
             
@@ -948,3 +948,4 @@ with st.popover("👤", use_container_width=True):
             supabase.table("profiles").update({"payout_requested_at": now_iso}).eq("id", st.session_state.user.id).execute()
             st.success("Payout requested! Check your PayPal in 24-48h.")
             st.rerun()
+
