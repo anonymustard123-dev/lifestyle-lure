@@ -183,59 +183,59 @@ st.markdown("""
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
         /* =========================================================
-           ROLODEX & ACTION BUTTONS
+           BUTTONS & ACTIONS (FIXED FOR RED/WHITE STYLE)
            ========================================================= */
         
-        /* DEFAULT BUTTON (EDIT, SAVE, ETC) */
-        div.stButton > button, div.stDownloadButton > button {
-            border-radius: 12px !important;
+        /* 1. Target ALL buttons more specifically to override dark themes */
+        div[data-testid="stButton"] > button, div[data-testid="stDownloadButton"] > button {
+            background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
-            padding: 10px 20px !important;
+            border-left: 6px solid #FF385C !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+            padding: 12px 20px !important;
             font-weight: 600 !important;
             transition: all 0.2s ease !important;
+            color: #222222 !important;
+            
+            /* DEFAULT: Center Align (Good for Edit/Save buttons) */
+            text-align: center !important;
+            justify-content: center !important;
+            display: flex !important;
+            width: 100% !important;
         }
 
-        /* ROLODEX CARD STYLE - TARGETED VIA MARKER */
-        div.element-container:has(.rolodex-marker) + div.element-container button {
-            text-align: left !important;
-            display: flex !important;
-            justify-content: flex-start !important;
-            background-color: #FFFFFF !important;
-            border-left: 6px solid #FF385C !important;
-            width: 100% !important;
-            padding: 16px 20px !important;
-            margin-bottom: 0px !important;
+        /* 2. Force text color inside buttons */
+        div[data-testid="stButton"] > button p, div[data-testid="stDownloadButton"] > button p {
+            color: #222222 !important;
         }
         
-        div.element-container:has(.rolodex-marker) + div.element-container button > div { 
-            width: 100% !important; 
-            justify-content: flex-start !important; 
-        }
-
-        div.element-container:has(.rolodex-marker) + div.element-container button p {
-            font-family: 'Circular', sans-serif !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-            color: #222222 !important;
-            margin: 0 !important;
-            line-height: 1.2 !important;
-            width: 100% !important;
-            text-align: left !important; 
-        }
-
-        /* HOVER EFFECTS FOR ROLODEX */
-        div.element-container:has(.rolodex-marker) + div.element-container button:hover {
+        /* 3. Hover Effects */
+        div[data-testid="stButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover {
             border-color: #FF385C !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
             color: #FF385C !important;
         }
-        div.element-container:has(.rolodex-marker) + div.element-container button:hover p { color: #FF385C !important; }
+        div[data-testid="stButton"] > button:hover p, div[data-testid="stDownloadButton"] > button:hover p { 
+            color: #FF385C !important; 
+        }
 
-        /* CLIENT OVERRIDE */
-        div.element-container:has(.client-marker) + div.element-container button { border-left-color: #008a73 !important; }
+        /* =========================================================
+           ROLODEX SPECIFIC OVERRIDES
+           ========================================================= */
         
+        /* Rolodex items use the .rolodex-marker to force LEFT alignment */
+        div.element-container:has(.rolodex-marker) + div.element-container button {
+            text-align: left !important;
+            justify-content: flex-start !important;
+        }
+        div.element-container:has(.rolodex-marker) + div.element-container button > div {
+            justify-content: flex-start !important; 
+        }
+
+        /* Rolodex Client Marker (Green) */
+        div.element-container:has(.client-marker) + div.element-container button { border-left-color: #008a73 !important; }
         div.element-container:has(.client-marker) + div.element-container button:hover {
             border-color: #008a73 !important;
             color: #008a73 !important;
@@ -561,23 +561,21 @@ def render_executive_card(data):
             outreach_dt = datetime.fromisoformat(str(outreach))
             
             # [FIX] Compare DATES ONLY (strip time) to prevent rounding errors
-            # E.g. (Tomorrow 9am) - (Today 8pm) is 13 hours (0 days) -> "Today".
-            # By stripping time: (Date+1) - (Date) is 1 day -> "Tomorrow".
             est_now = datetime.now() - timedelta(hours=5)
             
             # Using .date() ensures we count strictly by calendar days
             delta_days = (outreach_dt.date() - est_now.date()).days
             
-            # [FIX] Strict Date Formatting
+            # [FIX] AM/PM Formatting
             if delta_days < 0:
                 display_outreach = f"Overdue ({abs(delta_days)}d)"
             elif delta_days == 0:
-                display_outreach = f"Today {outreach_dt.strftime('%H:%M')}"
+                display_outreach = f"Today {outreach_dt.strftime('%I:%M %p')}"
             elif delta_days == 1:
-                display_outreach = f"Tomorrow {outreach_dt.strftime('%H:%M')}"
+                display_outreach = f"Tomorrow {outreach_dt.strftime('%I:%M %p')}"
             else:
-                # "Month DD XX:XX" format
-                display_outreach = outreach_dt.strftime("%b %d %H:%M")
+                # "Month DD HH:MM AM/PM" format
+                display_outreach = outreach_dt.strftime("%b %d %I:%M %p")
                 
             # 2. Generate ICS
             ics_file = create_ics_string(
@@ -609,7 +607,7 @@ def render_executive_card(data):
             """, unsafe_allow_html=True)
             
         with c_edit_btn:
-            # [FIX] Standard button styling, forced to fill the small right column
+            # [FIX] Standard button styling (will inherit Global Red Border/Centered text)
             if not st.session_state.is_editing:
                 if st.button("Edit", key=f"edit_btn_{lead_id}", use_container_width=True):
                     st.session_state.is_editing = True
