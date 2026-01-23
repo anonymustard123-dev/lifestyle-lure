@@ -4,7 +4,7 @@ from google.genai import types
 import os
 import json
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client, Client
 import stripe
 import textwrap
@@ -380,7 +380,6 @@ def load_leads_summary():
 
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
-    # [FIX] Added 'or lacks a clear name/intent' to the error condition logic
     prompt = f"""
     You are 'The Closer', an expert Executive Assistant. 
     Here is the user's Rolodex (Existing Leads): {leads_json}
@@ -397,6 +396,7 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. 
     - **Product Fit Preservation**: Do NOT change 'product_pitch' unless explicitly told to.
     - **Status**: If a sale occurred, set "status" to "Client".
+    - **Meeting/Outreach**: If a specific meeting date/time is mentioned, set 'next_outreach' to strict ISO 8601 format (YYYY-MM-DDTHH:MM:SS). If vague (e.g., "next week"), use text.
     - **SILENCE / NOISE / UNINTELLIGIBLE**: If the audio is silent, background noise, mumbling, or lacks a clear name/intent, you MUST return:
       {{ "error": "No clear speech detected. Please try again." }}
 
@@ -410,7 +410,7 @@ def process_omni_voice(audio_bytes, existing_leads_context):
             "background": "Updated summary (OR NULL if no change)",
             "product_pitch": "Updated Product Fit (OR NULL if just a sale occurred)",
             "status": "Lead" | "Client",
-            "next_outreach": "Date/Timeframe" (or null),
+            "next_outreach": "ISO 8601 Date or Text" (or null),
             "transaction_item": "New item sold (OR NULL)" 
         }},
         "confidence": "High/Low"
@@ -495,6 +495,29 @@ def create_vcard(data):
     ]
     return "\n".join(vcard)
 
+def create_ics_string(event_name, dt, description):
+    # Simple manual ICS generation
+    try:
+        # Format: YYYYMMDDTHHMMSS
+        dt_str = dt.strftime("%Y%m%dT%H%M%S")
+        now_str = datetime.now().strftime("%Y%m%dT%H%M%S")
+        clean_name = event_name.replace(' ', '')
+        
+        ics_content = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//The Closer//EN
+BEGIN:VEVENT
+UID:{dt_str}-{clean_name}@thecloser.app
+DTSTAMP:{now_str}
+DTSTART:{dt_str}
+SUMMARY:Meeting with {event_name}
+DESCRIPTION:{description}
+END:VEVENT
+END:VCALENDAR"""
+        return ics_content
+    except:
+        return None
+
 # ==========================================
 # 6. APP VIEWS
 # ==========================================
@@ -514,9 +537,39 @@ def render_executive_card(data):
     outreach = lead.get('next_outreach')
     status_class = "bubble-client" if str(status).lower() == "client" else "bubble-lead"
     
-    bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
+    # SMART COUNTDOWN & CALENDAR LOGIC
+    display_outreach = outreach
+    ics_file = None
     if outreach:
-        bubbles_html += f' <span class="meta-bubble bubble-outreach">⏰ {outreach}</span>'
+        try:
+            # Attempt to parse ISO
+            outreach_dt = datetime.fromisoformat(str(outreach))
+            
+            # 1. Countdown Text
+            now = datetime.now()
+            delta = outreach_dt - now
+            if delta.days < 0:
+                display_outreach = f"Overdue ({abs(delta.days)}d)"
+            elif delta.days == 0:
+                display_outreach = f"Today at {outreach_dt.strftime('%H:%M')}"
+            elif delta.days == 1:
+                display_outreach = f"Tomorrow at {outreach_dt.strftime('%H:%M')}"
+            else:
+                display_outreach = f"In {delta.days} days"
+                
+            # 2. Generate ICS
+            ics_file = create_ics_string(
+                lead.get('name', 'Client'), 
+                outreach_dt, 
+                lead.get('background', '')
+            )
+        except ValueError:
+            # Fallback if AI returns vague text like "Next Tuesday"
+            pass
+
+    bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
+    if display_outreach:
+        bubbles_html += f' <span class="meta-bubble bubble-outreach">⏰ {display_outreach}</span>'
 
     # CARD CONTAINER
     with st.container():
@@ -550,6 +603,7 @@ def render_executive_card(data):
             
             new_bg = st.text_area("Background / Notes", value=lead.get('background', ''))
             new_tx = st.text_area("Purchase History", value=lead.get('transactions', ''))
+            new_outreach = st.text_input("Next Outreach", value=lead.get('next_outreach', ''))
             
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -568,7 +622,8 @@ def render_executive_card(data):
                             "product_pitch": new_pitch,
                             "contact_info": new_contact,
                             "background": new_bg,
-                            "transactions": new_tx
+                            "transactions": new_tx,
+                            "next_outreach": new_outreach
                         }
                         try:
                             supabase.table("leads").update(updates).eq("id", lead_id).execute()
@@ -610,15 +665,30 @@ def render_executive_card(data):
             
             # 3. FOOTER (VIEW MODE)
             if lead.get('name'):
+                # Download Buttons Layout
+                c_dl1, c_dl2 = st.columns(2)
+                
                 vcf = create_vcard(data)
                 safe_name = lead.get('name').strip().replace(" ", "_")
-                st.download_button(
-                    label="Add Contact",
-                    data=vcf,
-                    file_name=f"{safe_name}.vcf",
-                    mime="text/vcard",
-                    use_container_width=True
-                )
+                
+                with c_dl1:
+                    st.download_button(
+                        label="Save Contact",
+                        data=vcf,
+                        file_name=f"{safe_name}.vcf",
+                        mime="text/vcard",
+                        use_container_width=True
+                    )
+                
+                with c_dl2:
+                    if ics_file:
+                        st.download_button(
+                            label="Add to Calendar",
+                            data=ics_file,
+                            file_name=f"Meeting_{safe_name}.ics",
+                            mime="text/calendar",
+                            use_container_width=True
+                        )
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -655,7 +725,6 @@ def view_omni():
                 lead_data = result.get('lead_data', {})
                 
                 # [FIX] GUARDRAIL FOR GHOST QUERIES
-                # If action is QUERY but no name is identified, it's a hallucination/noise.
                 if action == "QUERY" and not lead_data.get('name'):
                     st.error("Audio unclear. Please try again.")
                     return
