@@ -380,11 +380,14 @@ def load_leads_summary():
 
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
-    current_date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # [FIX] Timezone Shift: Subtract 5 hours to approximate US Eastern/Central time
+    # This prevents UTC "Tomorrow" (which is early morning next day) from shifting dates for US evening users.
+    est_now = datetime.now() - timedelta(hours=5)
+    current_date_str = est_now.strftime("%Y-%m-%d %H:%M")
     
     prompt = f"""
     You are 'The Closer', an expert Executive Assistant. 
-    Current Date/Time: {current_date_str}
+    Current Date/Time (User's Timezone): {current_date_str}
     Here is the user's Rolodex (Existing Leads): {leads_json}
     User Audio Provided. Listen carefully.
     
@@ -550,17 +553,22 @@ def render_executive_card(data):
             # Attempt to parse ISO
             outreach_dt = datetime.fromisoformat(str(outreach))
             
-            # 1. Countdown Text
-            now = datetime.now()
-            delta = outreach_dt - now
-            if delta.days < 0:
-                display_outreach = f"Overdue ({abs(delta.days)}d)"
-            elif delta.days == 0:
+            # [FIX] Compare DATES ONLY (strip time) to prevent rounding errors
+            # E.g. (Tomorrow 9am) - (Today 8pm) is 13 hours (0 days) -> "Today".
+            # By stripping time: (Date+1) - (Date) is 1 day -> "Tomorrow".
+            est_now = datetime.now() - timedelta(hours=5)
+            
+            # Using .date() ensures we count strictly by calendar days
+            delta_days = (outreach_dt.date() - est_now.date()).days
+            
+            if delta_days < 0:
+                display_outreach = f"Overdue ({abs(delta_days)}d)"
+            elif delta_days == 0:
                 display_outreach = f"Today at {outreach_dt.strftime('%H:%M')}"
-            elif delta.days == 1:
+            elif delta_days == 1:
                 display_outreach = f"Tomorrow at {outreach_dt.strftime('%H:%M')}"
             else:
-                display_outreach = f"In {delta.days} days"
+                display_outreach = f"In {delta_days} days"
                 
             # 2. Generate ICS
             ics_file = create_ics_string(
@@ -569,7 +577,6 @@ def render_executive_card(data):
                 lead.get('background', '')
             )
         except ValueError:
-            # Fallback if AI returns vague text like "Next Tuesday"
             pass
 
     bubbles_html = f'<span class="meta-bubble {status_class}">{status}</span>'
@@ -580,7 +587,9 @@ def render_executive_card(data):
     with st.container():
         st.markdown('<div class="airbnb-card">', unsafe_allow_html=True)
         
-        c_head, c_edit_btn = st.columns([5, 1])
+        # [FIX] Layout: [5, 1] puts button on right. vertical_alignment="top" ensures alignment.
+        c_head, c_edit_btn = st.columns([5, 1], vertical_alignment="top")
+        
         with c_head:
             st.markdown(f"""
                 <span class="status-badge">{badge_text}</span>
@@ -643,7 +652,6 @@ def render_executive_card(data):
                         
         else:
             # VIEW MODE BODY
-            # [FIX] FLAT HTML STRUCTURE TO PREVENT MARKDOWN CODE BLOCK RENDERING
             html_body = f"""
 <div class="stat-grid">
     <div class="stat-item">
