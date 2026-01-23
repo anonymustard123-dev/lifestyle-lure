@@ -380,7 +380,7 @@ def load_leads_summary():
 
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
-    # [FIX] Added logic to handle silence explicitly to prevent hallucinations
+    # [FIX] Added 'or lacks a clear name/intent' to the error condition logic
     prompt = f"""
     You are 'The Closer', an expert Executive Assistant. 
     Here is the user's Rolodex (Existing Leads): {leads_json}
@@ -397,7 +397,7 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     - **Transaction Logic**: If a sale/deal occurred, set 'transaction_item' to the specific item sold. 
     - **Product Fit Preservation**: Do NOT change 'product_pitch' unless explicitly told to.
     - **Status**: If a sale occurred, set "status" to "Client".
-    - **SILENCE / NOISE**: If the audio is silent, background noise only, or unintelligible, you MUST return:
+    - **SILENCE / NOISE / UNINTELLIGIBLE**: If the audio is silent, background noise, mumbling, or lacks a clear name/intent, you MUST return:
       {{ "error": "No clear speech detected. Please try again." }}
 
     RETURN ONLY RAW JSON (or the error JSON above):
@@ -583,7 +583,6 @@ def render_executive_card(data):
                         
         else:
             # VIEW MODE BODY
-            # [FIX] Wrapped in dedent to prevent Markdown code block rendering error
             html_body = f"""
                 <div class="stat-grid">
                     <div class="stat-item">
@@ -655,6 +654,12 @@ def view_omni():
                 action = result.get('action')
                 lead_data = result.get('lead_data', {})
                 
+                # [FIX] GUARDRAIL FOR GHOST QUERIES
+                # If action is QUERY but no name is identified, it's a hallucination/noise.
+                if action == "QUERY" and not lead_data.get('name'):
+                    st.error("Audio unclear. Please try again.")
+                    return
+
                 if action == "CREATE": 
                     saved_record = save_new_lead(lead_data)
                     if saved_record and isinstance(saved_record, dict):
