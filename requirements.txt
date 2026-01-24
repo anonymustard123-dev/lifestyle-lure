@@ -6,3 +6,4 @@ supabase
 stripe
 gotrue
 st-click-detector
+flask
