@@ -388,7 +388,8 @@ def check_subscription_status(email):
         customers = stripe.Customer.list(email=email).data
         if not customers: return False
         subscriptions = stripe.Subscription.list(customer=customers[0].id, status='active').data
-        return True
+        # --- FIX: CHECK IF LIST IS NOT EMPTY ---
+        return len(subscriptions) > 0
     except: return False
 
 def create_checkout_session(email, user_id):
@@ -461,7 +462,9 @@ def process_subscription_commission(payer_user_id, payment_amount=15.00):
         tier1_amt = payment_amount * 0.15
         r_prof = fetch_user_profile(referrer_id)
         if r_prof:
-            new_bal = (r_prof.get('commission_balance') or 0.0) + tier1_amt
+            # --- FIX: CAST TO FLOAT TO PREVENT CRASH ---
+            current_bal = float(r_prof.get('commission_balance') or 0.0)
+            new_bal = current_bal + tier1_amt
             supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", referrer_id).execute()
 
         # 2. FIND THE LEADER (5% Override)
@@ -484,7 +487,9 @@ def process_subscription_commission(payer_user_id, payment_amount=15.00):
             
             if ref_count >= 10:
                 # FOUND LEADER! Pay them and STOP.
-                new_bal = (u_prof.get('commission_balance') or 0.0) + override_amt
+                # --- FIX: CAST TO FLOAT TO PREVENT CRASH ---
+                current_bal = float(u_prof.get('commission_balance') or 0.0)
+                new_bal = current_bal + override_amt
                 supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", current_user_id).execute()
                 break
             
@@ -1085,4 +1090,3 @@ with st.popover("👤", use_container_width=True):
                 st.balloons()
                 st.success(f"Request sent! We will {saved_method} you shortly.")
                 st.rerun()
-
