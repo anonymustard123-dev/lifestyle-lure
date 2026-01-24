@@ -284,20 +284,30 @@ st.markdown("""
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
 
         /* =========================================================
-           INPUT FIELDS - FIX DARK MODE & PLACEHOLDERS
+           INPUT FIELDS - FIX DARK MODE & PLACEHOLDERS & ALIGNMENT
            ========================================================= */
-        div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
+        
+        /* 1. APPLY STYLE TO OUTER WRAPPER ONLY (Fixes Double Box Issue) */
+        div[data-baseweb="input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
             border: 1px solid transparent !important;
             border-radius: 12px !important;
         }
         
+        /* 2. MAKE INNER CONTAINER TRANSPARENT (Fixes smaller text field issue) */
+        div[data-baseweb="base-input"] {
+            background-color: transparent !important;
+            border: none !important;
+            width: 100% !important;
+        }
+
         input, textarea, select {
             color: #222222 !important;
             background-color: transparent !important;
             font-weight: 500 !important; 
             caret-color: #FF385C !important; 
+            width: 100% !important;
         }
 
         /* PLACEHOLDER FIXES FOR MOBILE */
@@ -881,10 +891,10 @@ def confirm_cancellation_dialog(email):
 # ==========================================
 if not st.session_state.user:
     st.markdown("<div style='text-align:center; padding-top:0px; margin-top: -30px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
-    st.markdown("<div class='airbnb-card'>", unsafe_allow_html=True)
+    
+    # [FIX] Removed the wrapping <div class='airbnb-card'> which caused the empty white bar.
     email = st.text_input("Email", placeholder="name@example.com")
     password = st.text_input("Password", type="password", placeholder="••••••••")
-    st.markdown("</div>", unsafe_allow_html=True)
     
     c1, c2 = st.columns(2)
     with c1:
