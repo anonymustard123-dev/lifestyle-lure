@@ -683,6 +683,7 @@ def render_executive_card(data):
             
         with c_edit_btn:
             if not st.session_state.is_editing:
+                st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
                 if st.button("Edit", key=f"edit_btn_{lead_id}", use_container_width=True):
                     st.session_state.is_editing = True
                     st.rerun()
@@ -795,6 +796,7 @@ def view_omni():
 
 def view_pipeline():
     if st.session_state.selected_lead:
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
         if st.button("← Back to List", key="back_to_list", type="secondary"):
             st.session_state.selected_lead = None
             st.session_state.is_editing = False
@@ -942,6 +944,7 @@ elif st.session_state.active_tab == "analytics": view_analytics()
 # --- REPLACED: REFERRAL HUB UI (CREATOR WALLET EDITION) ---
 with st.popover("👤", use_container_width=True):
     st.subheader("Profile")
+    st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
     if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
         supabase.auth.sign_out()
         st.session_state.user = None
@@ -949,6 +952,7 @@ with st.popover("👤", use_container_width=True):
 
     # NEW: Cancel Subscription with Confirmation Dialog
     if st.session_state.get('is_subscribed', False):
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
         if st.button("Cancel Subscription", key="cancel_sub_btn", type="primary", use_container_width=True):
             confirm_cancellation_dialog(st.session_state.user.email)
 
@@ -1032,6 +1036,7 @@ with st.popover("👤", use_container_width=True):
                 st.rerun()
 
         # 4. WITHDRAW ACTION (Outside form to prevent double-submit)
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
         if st.button(btn_label, disabled=not can_withdraw, type="primary", use_container_width=True):
             if not saved_handle:
                 st.error("Please save your payout details above first.")
