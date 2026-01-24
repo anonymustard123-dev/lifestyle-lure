@@ -382,7 +382,6 @@ def fetch_user_profile(user_id):
         if response.data: return response.data[0]
     except: return None
 
-# [NEW] ADDED THIS HELPER FUNCTION
 def count_user_referrals(user_id):
     """Counts how many users have this user_id as their referrer"""
     try:
@@ -858,6 +857,23 @@ def view_analytics():
     <div class="analytics-card analytics-card-red"><div class="stat-title">30-DAY HUSTLE</div><div class="stat-metric">+{recent_leads}</div><div class="stat-sub">New leads added recently</div></div>
     """, unsafe_allow_html=True)
 
+@st.dialog("Cancel Subscription")
+def confirm_cancellation_dialog(email):
+    st.write("Are you sure you want to cancel? You will lose access to premium features at the end of your billing cycle.")
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Confirm Cancellation", type="primary", use_container_width=True):
+            success, msg = cancel_active_subscription(email)
+            if success:
+                st.success(msg)
+                # We don't rerun immediately so the user can read the success message.
+            else:
+                st.error(msg)
+    with col2:
+        if st.button("Close", type="secondary", use_container_width=True):
+            st.rerun()
+
 # ==========================================
 # 7. MAIN ROUTER
 # ==========================================
@@ -925,13 +941,10 @@ with st.popover("👤", use_container_width=True):
         st.session_state.user = None
         st.rerun()
 
+    # NEW: Cancel Subscription with Confirmation Dialog
     if st.session_state.get('is_subscribed', False):
         if st.button("Cancel Subscription", key="cancel_sub_btn", type="primary", use_container_width=True):
-            success, msg = cancel_active_subscription(st.session_state.user.email)
-            if success:
-                st.success(msg)
-            else:
-                st.error(msg)
+            confirm_cancellation_dialog(st.session_state.user.email)
 
     st.markdown("---")
     
