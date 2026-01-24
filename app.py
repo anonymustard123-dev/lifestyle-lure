@@ -15,7 +15,7 @@ import textwrap
 st.set_page_config(
     page_title="The Closer", 
     page_icon="🎙️", 
-    layout="wide",
+    layout="centered", # Changed to centered for better Login UI, switches to wide internally if needed
     initial_sidebar_state="collapsed"
 )
 
@@ -77,10 +77,6 @@ st.markdown("""
             font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
             background-color: #FFFFFF !important;
             color: #222222;
-            height: 100vh;
-            width: 100vw;
-            margin: 0;
-            padding: 0;
             overflow-x: hidden !important;
             overscroll-behavior: none;
             -webkit-user-select: none;
@@ -88,7 +84,7 @@ st.markdown("""
             -webkit-tap-highlight-color: transparent;
         }
         
-        h1, h2, h3 { font-weight: 800 !important; color: #222222 !important; letter-spacing: -0.5px; }
+        h1, h2, h3 { font-weight: 800 !important; color: #4F4F4F !important; letter-spacing: -0.5px; text-align: center; }
         p, label, span, div { color: #717171; }
         
         /* HIDE HEADER & FOOTER COMPLETELY */
@@ -100,8 +96,7 @@ st.markdown("""
         
         /* AGGRESSIVE WHITE BAR REMOVAL */
         .main .block-container {
-            padding-top: 0px !important;
-            margin-top: 0px !important;
+            padding-top: 40px !important;
             padding-bottom: 20px !important; 
             padding-left: 20px !important;
             padding-right: 20px !important;
@@ -109,7 +104,61 @@ st.markdown("""
             gap: 0px !important;
         }
         
-       /* TAB STYLES */
+        /* =========================================================
+           LOGIN & INPUT STYLING (The "The Closer" Look)
+           ========================================================= */
+           
+        /* Round Inputs */
+        .stTextInput > div > div > input {
+            border-radius: 25px !important;
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+            padding-left: 20px !important;
+            border: 1px solid #E0E0E0 !important;
+            background-color: #F8F9FA !important;
+            color: #222222 !important;
+        }
+        
+        /* Password Alignment Fix */
+        .stTextInput input[type="password"] {
+             line-height: 1.5 !important;
+        }
+
+        /* Input Focus */
+        .stTextInput > div > div > input:focus {
+            border-color: #FF4B6A !important;
+            box-shadow: 0 0 0 1px #FF4B6A !important;
+        }
+
+        /* Button Styling - Base */
+        .stButton > button {
+            border-radius: 25px !important;
+            width: 100% !important;
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+            font-weight: bold !important;
+            border: none !important;
+            transition: all 0.2s ease !important;
+        }
+
+        /* "Log In" Button (Primary - Pink) */
+        button[kind="primary"] {
+            background-color: #FF4B6A !important;
+            color: white !important;
+            border: none !important;
+        }
+        button[kind="primary"]:hover {
+             box-shadow: 0 4px 12px rgba(255, 75, 106, 0.4) !important;
+        }
+
+        /* "Sign Up" Button (Secondary) */
+        button[kind="secondary"] {
+            background-color: white !important;
+            color: #FF4B6A !important;
+            border: 2px solid #FF4B6A !important;
+        }
+
+       /*TAB STYLES */
         [data-testid="stRadio"] {
             width: 100% !important;
             padding: 0 !important;
@@ -153,7 +202,7 @@ st.markdown("""
         }
 
         [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-            border-bottom-color: #FF385C !important;
+            border-bottom-color: #FF4B6A !important;
         }
         [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
             color: #222222 !important;
@@ -166,7 +215,7 @@ st.markdown("""
         }
         
         .status-badge {
-            background-color: #FF385C; color: white; font-size: 10px; font-weight: 800;
+            background-color: #FF4B6A; color: white; font-size: 10px; font-weight: 800;
             padding: 6px 10px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: inline-block;
         }
         .meta-bubble {
@@ -176,91 +225,29 @@ st.markdown("""
         
         /* BUBBLE COLORS */
         .bubble-client { background-color: #E6FFFA; color: #008a73; border-color: #008a73; }
-        .bubble-lead { background-color: #FFF5F7; color: #FF385C; border-color: #FF385C; } 
+        .bubble-lead { background-color: #FFF5F7; color: #FF4B6A; border-color: #FF4B6A; } 
         .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
         
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* =========================================================
-           BUTTONS & ACTIONS
-           ========================================================= */
-        
-        div[data-testid="stButton"] > button, div[data-testid="stDownloadButton"] > button {
-            background-color: #FFFFFF !important;
-            border: 1px solid #EBEBEB !important; 
-            border-left: 6px solid #FF385C !important;
-            border-radius: 12px !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-            padding: 12px 20px !important;
-            font-weight: 600 !important;
-            transition: all 0.2s ease !important;
-            color: #222222 !important;
-            
-            /* DEFAULT: Center Align (Good for Edit/Save buttons) */
-            text-align: center !important;
-            justify-content: center !important;
-            display: flex !important;
-            width: 100% !important;
-        }
-
-        div[data-testid="stButton"] > button p, div[data-testid="stDownloadButton"] > button p {
-            color: #222222 !important;
-        }
-        
-        div[data-testid="stButton"] > button:hover, div[data-testid="stDownloadButton"] > button:hover {
-            border-color: #FF385C !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 8px 15px rgba(255, 56, 92, 0.15) !important;
-            color: #FF385C !important;
-        }
-        div[data-testid="stButton"] > button:hover p, div[data-testid="stDownloadButton"] > button:hover p { 
-            color: #FF385C !important; 
-        }
-
-        /* =========================================================
-           ROLODEX SPECIFIC OVERRIDES
-           ========================================================= */
-        
-        /* Rolodex items use the .rolodex-marker to force LEFT alignment and BOLD */
+        /* ROLODEX SPECIFIC OVERRIDES */
         div.element-container:has(.rolodex-marker) + div.element-container button {
             text-align: left !important;
             justify-content: flex-start !important;
             font-weight: 800 !important;
+            border-left: 6px solid #FF4B6A !important;
+            border-radius: 12px !important;
+            background-color: white !important;
+            color: #222 !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
         }
-        /* SPECIFIC: Target the text paragraph INSIDE the button to force bold */
-        div.element-container:has(.rolodex-marker) + div.element-container button p {
-            font-weight: 800 !important;
-            color: #222222 !important;
+        
+        div.element-container:has(.rolodex-marker) + div.element-container button:hover {
+             border-color: #FF4B6A !important;
+             transform: translateY(-2px) !important;
+             color: #FF4B6A !important;
         }
-        div.element-container:has(.rolodex-marker) + div.element-container button > div {
-            justify-content: flex-start !important; 
-        }
-
-        /* Rolodex Client Marker (Green) */
-        div.element-container:has(.client-marker) + div.element-container button { border-left-color: #008a73 !important; }
-        div.element-container:has(.client-marker) + div.element-container button:hover {
-            border-color: #008a73 !important;
-            color: #008a73 !important;
-            box-shadow: 0 8px 15px rgba(0, 138, 115, 0.15) !important;
-        }
-        div.element-container:has(.client-marker) + div.element-container button:hover p { color: #008a73 !important; }
-
-        /* =========================================================
-           BOLD LEFT BUTTON OVERRIDES (Login, Signup, Downloads)
-           ========================================================= */
-        div.element-container:has(.bold-left-marker) + div.element-container button {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            font-weight: 800 !important; /* Extra Bold */
-        }
-        div.element-container:has(.bold-left-marker) + div.element-container button p {
-            font-weight: 800 !important;
-        }
-        div.element-container:has(.bold-left-marker) + div.element-container button > div {
-            justify-content: flex-start !important; 
-        }
-
 
         /* ANALYTICS */
         .analytics-card {
@@ -276,75 +263,13 @@ st.markdown("""
             justify-content: center;
             align-items: flex-start;
         }
-        .analytics-card-red { border-left: 6px solid #FF385C; }
+        .analytics-card-red { border-left: 6px solid #FF4B6A; }
         .analytics-card-green { border-left: 6px solid #008a73; }
         
         .stat-title { font-size: 11px; font-weight: 800; color: #717171; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
         .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
 
-        /* =========================================================
-           INPUT FIELDS - FIX DARK MODE & PLACEHOLDERS
-           ========================================================= */
-        div[data-baseweb="input"], div[data-baseweb="base-input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
-            background-color: #F7F7F7 !important;
-            color: #222222 !important;
-            border: 1px solid transparent !important;
-            border-radius: 12px !important;
-        }
-        
-        input, textarea, select {
-            color: #222222 !important;
-            background-color: transparent !important;
-            font-weight: 500 !important; 
-            caret-color: #FF385C !important; 
-        }
-
-        /* PLACEHOLDER FIXES FOR MOBILE */
-        input::placeholder, textarea::placeholder {
-            color: #717171 !important;
-            opacity: 1 !important;
-            -webkit-text-fill-color: #717171 !important;
-        }
-        
-        div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within { 
-            border: 1px solid #222222 !important; 
-            background-color: #FFFFFF !important; 
-        }
-        
-        div[data-baseweb="select"] > div {
-            background-color: #F7F7F7 !important;
-            color: #222222 !important;
-        }
-        div[data-baseweb="select"] svg {
-            fill: #222222 !important; 
-        }
-        ul[data-baseweb="menu"] {
-            background-color: #FFFFFF !important;
-        }
-        li[data-baseweb="menu-item"] {
-            color: #222222 !important;
-        }
-        
-        button[kind="primary"] { 
-            background-color: #FF385C !important; color: white !important; border: none !important; 
-            text-align: center !important; justify-content: center !important; padding: 12px 24px !important; border-left: none !important; 
-        }
-        button[kind="primary"] p { color: white !important; text-align: center !important; width: 100% !important; justify-content: center !important; }
-        button[kind="primary"] > div { justify-content: center !important; }
-        button[kind="primary"]:hover { box-shadow: 0 4px 12px rgba(255, 56, 92, 0.4) !important; transform: none !important; }
-        
-        [data-testid="stAudioInput"] { background-color: #F7F7F7 !important; border-radius: 50px !important; border: none !important; color: #222 !important; padding: 5px !important; }
-        
-        .card-title {
-            font-size: 22px; font-weight: 800; color: #222222; margin: 0; line-height: 1.2;
-            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-        }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
-        .stat-item { background: #F7F7F7; padding: 12px; border-radius: 12px; }
-        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
-        .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
-        
         /* REFERRAL BOX */
         .referral-box {
             background-color: #F7F7F7;
@@ -360,15 +285,20 @@ st.markdown("""
             padding: 8px;
             border-radius: 6px;
             border: 1px solid #eee;
-            color: #FF385C;
+            color: #FF4B6A;
             font-weight: 600;
             word-break: break-all;
         }
-        /* CODE BLOCK OVERRIDE FOR REFERRAL LINK */
         .stCodeBlock {
             background-color: #F7F7F7 !important;
             border-radius: 12px !important;
             border: 1px dashed #dddddd !important;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #8F8F8F;
+            margin-bottom: 30px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -412,126 +342,75 @@ def create_checkout_session(email, user_id):
 # --- INFINITY COMMISSION LOGIC START ---
 
 def ensure_referral_link(user_id, user_meta):
-    """
-    Called on login.
-    Links the new user to their Direct Referrer (Tier 1) only.
-    """
     try:
         profile = fetch_user_profile(user_id)
         if not profile: return
-        
-        # Check if already linked
         if profile.get('referred_by'): return
-
-        # Get Direct Referrer from metadata
         referrer_id = user_meta.get('referred_by')
-        
         if referrer_id:
-             supabase.table("profiles").update({'referred_by': referrer_id}).eq("id", user_id).execute()
+              supabase.table("profiles").update({'referred_by': referrer_id}).eq("id", user_id).execute()
     except Exception as e:
         print(f"Hierarchy Error: {e}")
 
 def count_referrals(user_id):
-    """
-    Returns the number of people who have listed this user as their 'referred_by'.
-    Used to determine if they are a 'Leader' (10+).
-    """
     try:
-        # Count rows in profiles where referred_by == user_id
         res = supabase.table("profiles").select("id", count="exact").eq("referred_by", user_id).execute()
         return res.count
     except:
         return 0
 
 def process_subscription_commission(payer_user_id, payment_amount=15.00):
-    """
-    THE INFINITY ALGORITHM
-    1. Direct Referrer gets 15% ($2.25).
-    2. Override (5% / $0.75) rolls up until it finds a Leader (10+ referrals).
-    """
     try:
         profile = fetch_user_profile(payer_user_id)
         if not profile: return
-
-        # 1. PAY DIRECT REFERRER (15%)
         referrer_id = profile.get('referred_by')
-        if not referrer_id: return # No referrer, company keeps 100%
+        if not referrer_id: return 
 
-        # Credit Tier 1
         tier1_amt = payment_amount * 0.15
         r_prof = fetch_user_profile(referrer_id)
         if r_prof:
             new_bal = (r_prof.get('commission_balance') or 0.0) + tier1_amt
             supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", referrer_id).execute()
 
-        # 2. FIND THE LEADER (5% Override)
-        # We start searching from the Direct Referrer's parent (Grandparent)
         current_user_id = r_prof.get('referred_by')
-        
         override_amt = payment_amount * 0.05
-        max_depth = 20 # Safety break to prevent infinite loops
+        max_depth = 20 
         
         for _ in range(max_depth):
-            if not current_user_id: 
-                break # Reached top of chain, Company keeps breakage
-
-            # Check this user's stats
+            if not current_user_id: break 
             u_prof = fetch_user_profile(current_user_id)
             if not u_prof: break
             
-            # THE QUALIFYING CHECK: Do they have 10+ referrals?
             ref_count = count_referrals(current_user_id)
-            
             if ref_count >= 10:
-                # FOUND LEADER! Pay them and STOP.
                 new_bal = (u_prof.get('commission_balance') or 0.0) + override_amt
                 supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", current_user_id).execute()
                 break
             
-            # If not a leader, skip them and move up
             current_user_id = u_prof.get('referred_by')
 
     except Exception as e:
         print(f"Commission Error: {e}")
 
 def check_and_process_commissions_on_login(user_id, email):
-    """
-    This is the TRIGGER.
-    When a user logs in (or the app loads), check if they owe a commission.
-    Logic:
-    1. Are they Active in Stripe?
-    2. Have we processed a commission for them in the last 28 days?
-    3. If active + overdue, run logic.
-    """
     try:
-        # 1. Fetch Profile
         profile = fetch_user_profile(user_id)
         if not profile: return
-
-        # 2. Check Timeframe (Prevent double pay)
         last_run = profile.get('last_commission_date')
         should_run = True
         
         if last_run:
-            # Parse timestamp. Handle potential TZ issues loosely for MVP
             try:
                 last_date = datetime.fromisoformat(str(last_run).replace('Z', '+00:00'))
-                # If processed within last 28 days, skip
                 if (datetime.now(timezone.utc) - last_date).days < 28:
                     should_run = False
             except:
-                # If parsing fails, default to running it to fix data
                 should_run = True
         
         if should_run:
-            # 3. Check Stripe Status (Only pay if they are actually paying us)
             is_active = check_subscription_status(email)
-            
             if is_active:
-                # 4. PAY THE UPLINE
                 process_subscription_commission(user_id)
-                
-                # 5. Log the run
                 now_iso = datetime.now().isoformat()
                 supabase.table("profiles").update({"last_commission_date": now_iso}).eq("id", user_id).execute()
                 
@@ -856,7 +735,7 @@ def view_omni():
                 if action == "CREATE": 
                     saved_record = save_new_lead(lead_data)
                     if saved_record and isinstance(saved_record, dict): result['lead_data']['id'] = saved_record.get('id')
-                         
+                          
                 elif action == "UPDATE" and result.get('match_id'): 
                     saved_data = update_existing_lead(result['match_id'], lead_data, existing_leads)
                     if isinstance(saved_data, dict): result['lead_data'] = saved_data
@@ -933,38 +812,40 @@ def view_analytics():
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    st.markdown("<div style='text-align:center; padding-top:0px; margin-top: -30px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
-    st.markdown("<div class='airbnb-card'>", unsafe_allow_html=True)
-    email = st.text_input("Email", placeholder="name@example.com")
-    password = st.text_input("Password", type="password", placeholder="••••••••")
-    st.markdown("</div>", unsafe_allow_html=True)
+    # --- UPDATED LOGIN UI (Removed White Box & Fixed Alignment) ---
+    st.title("The Closer")
+    st.markdown('<p class="subtitle">Your AI Sales Companion</p>', unsafe_allow_html=True)
     
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Log In", type="primary", use_container_width=True):
+    with st.form("login_form", clear_on_submit=False):
+        # NOTE: Standard spacing is handled by the new CSS for .stTextInput
+        email = st.text_input("Email", placeholder="name@example.com")
+        password = st.text_input("Password", type="password", placeholder="••••••••")
+        
+        st.write("")
+        st.write("")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            # kind="primary" triggers the Pink CSS override
+            login_submitted = st.form_submit_button("Log In", type="primary", use_container_width=True)
+        with c2:
+            signup_submitted = st.form_submit_button("Sign Up", type="secondary", use_container_width=True)
+
+        if login_submitted:
             try:
                 res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                 st.session_state.user = res.user
                 st.session_state.is_subscribed = check_subscription_status(res.user.email)
-                
-                # [PRODUCTION CRITICAL] Ensure hierarchy is set on every login
                 ensure_referral_link(res.user.id, res.user.user_metadata)
-                
-                # [TRIGGER] Check commissions on Login
                 check_and_process_commissions_on_login(res.user.id, res.user.email)
-                
                 st.rerun()
             except Exception as e: st.error(str(e))
-    
-    with c2:
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Sign Up", type="secondary", use_container_width=True):
+            
+        if signup_submitted:
             try:
-                # Capture the referral code during sign up
                 meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
                 res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
-                if res.user: st.success("Account created! Log in."); 
+                if res.user: st.success("Account created! Log in.") 
             except Exception as e: st.error(str(e))
     st.stop()
 
