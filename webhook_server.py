@@ -167,5 +167,7 @@ def stripe_webhook():
     return jsonify(success=True)
 
 if __name__ == '__main__':
-    # Run on port 4242 (standard for Stripe CLI testing)
-    app.run(port=4242)
+    # Use the PORT environment variable provided by Railway, default to 4242 locally
+    port = int(os.environ.get("PORT", 4242))
+    # Listen on 0.0.0.0 so external requests can reach it
+    app.run(host='0.0.0.0', port=port)
