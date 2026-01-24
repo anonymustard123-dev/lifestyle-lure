@@ -417,6 +417,35 @@ def create_checkout_session(email, user_id):
         return session.url
     except: return None
 
+def cancel_active_subscription(email):
+    """
+    Cancels the user's subscription at the end of the current billing period.
+    Returns (Success: bool, Message: str).
+    """
+    if not STRIPE_SECRET_KEY: return False, "Stripe configuration missing."
+    
+    try:
+        # 1. Find the Stripe Customer by Email
+        customers = stripe.Customer.list(email=email).data
+        if not customers: 
+            return False, "No subscription account found."
+            
+        # 2. Find Active Subscriptions
+        subscriptions = stripe.Subscription.list(customer=customers[0].id, status='active').data
+        if not subscriptions: 
+            return False, "No active subscription found."
+            
+        # 3. Modify Subscription to Cancel at Period End
+        # We target the first active subscription found
+        stripe.Subscription.modify(
+            subscriptions[0].id,
+            cancel_at_period_end=True
+        )
+        return True, "Subscription canceled. Access remains until the end of your billing cycle."
+        
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+
 # --- HIERARCHY LOGIC START (Commission Logic Moved to Webhook) ---
 
 def ensure_referral_link(user_id, user_meta):
@@ -895,6 +924,14 @@ with st.popover("👤", use_container_width=True):
         supabase.auth.sign_out()
         st.session_state.user = None
         st.rerun()
+
+    if st.session_state.get('is_subscribed', False):
+        if st.button("Cancel Subscription", key="cancel_sub_btn", type="primary", use_container_width=True):
+            success, msg = cancel_active_subscription(st.session_state.user.email)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
 
     st.markdown("---")
     
