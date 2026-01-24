@@ -410,12 +410,13 @@ def create_checkout_session(email, user_id):
         return session.url
     except: return None
 
-# --- INFINITY COMMISSION LOGIC START ---
+# --- HIERARCHY LOGIC START (Commission Logic Moved to Webhook) ---
 
 def ensure_referral_link(user_id, user_meta):
     """
     Called on login.
     Links the new user to their Direct Referrer (Tier 1) only.
+    This MUST happen in the app so the DB is ready when the webhook fires.
     """
     try:
         profile = fetch_user_profile(user_id)
@@ -431,119 +432,6 @@ def ensure_referral_link(user_id, user_meta):
              supabase.table("profiles").update({'referred_by': referrer_id}).eq("id", user_id).execute()
     except Exception as e:
         print(f"Hierarchy Error: {e}")
-
-def count_referrals(user_id):
-    """
-    Returns the number of people who have listed this user as their 'referred_by'.
-    Used to determine if they are a 'Leader' (10+).
-    """
-    try:
-        # Count rows in profiles where referred_by == user_id
-        res = supabase.table("profiles").select("id", count="exact").eq("referred_by", user_id).execute()
-        return res.count
-    except:
-        return 0
-
-def process_subscription_commission(payer_user_id, payment_amount=15.00):
-    """
-    THE INFINITY ALGORITHM
-    1. Direct Referrer gets 15% ($2.25).
-    2. Override (5% / $0.75) rolls up until it finds a Leader (10+ referrals).
-    """
-    try:
-        profile = fetch_user_profile(payer_user_id)
-        if not profile: return
-
-        # 1. PAY DIRECT REFERRER (15%)
-        referrer_id = profile.get('referred_by')
-        if not referrer_id: return # No referrer, company keeps 100%
-
-        # Credit Tier 1
-        tier1_amt = payment_amount * 0.15
-        r_prof = fetch_user_profile(referrer_id)
-        if r_prof:
-            # --- FIX: CAST TO FLOAT TO PREVENT CRASH ---
-            current_bal = float(r_prof.get('commission_balance') or 0.0)
-            new_bal = current_bal + tier1_amt
-            supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", referrer_id).execute()
-
-        # 2. FIND THE LEADER (5% Override)
-        # We start searching from the Direct Referrer's parent (Grandparent)
-        current_user_id = r_prof.get('referred_by')
-        
-        override_amt = payment_amount * 0.05
-        max_depth = 20 # Safety break to prevent infinite loops
-        
-        for _ in range(max_depth):
-            if not current_user_id: 
-                break # Reached top of chain, Company keeps breakage
-
-            # Check this user's stats
-            u_prof = fetch_user_profile(current_user_id)
-            if not u_prof: break
-            
-            # THE QUALIFYING CHECK: Do they have 10+ referrals?
-            ref_count = count_referrals(current_user_id)
-            
-            if ref_count >= 10:
-                # FOUND LEADER! Pay them and STOP.
-                # --- FIX: CAST TO FLOAT TO PREVENT CRASH ---
-                current_bal = float(u_prof.get('commission_balance') or 0.0)
-                new_bal = current_bal + override_amt
-                supabase.table("profiles").update({'commission_balance': new_bal}).eq("id", current_user_id).execute()
-                break
-            
-            # If not a leader, skip them and move up
-            current_user_id = u_prof.get('referred_by')
-
-    except Exception as e:
-        print(f"Commission Error: {e}")
-
-def check_and_process_commissions_on_login(user_id, email):
-    """
-    This is the TRIGGER.
-    When a user logs in (or the app loads), check if they owe a commission.
-    Logic:
-    1. Are they Active in Stripe?
-    2. Have we processed a commission for them in the last 28 days?
-    3. If active + overdue, run logic.
-    """
-    try:
-        # 1. Fetch Profile
-        profile = fetch_user_profile(user_id)
-        if not profile: return
-
-        # 2. Check Timeframe (Prevent double pay)
-        last_run = profile.get('last_commission_date')
-        should_run = True
-        
-        if last_run:
-            # Parse timestamp. Handle potential TZ issues loosely for MVP
-            try:
-                last_date = datetime.fromisoformat(str(last_run).replace('Z', '+00:00'))
-                # If processed within last 28 days, skip
-                if (datetime.now(timezone.utc) - last_date).days < 28:
-                    should_run = False
-            except:
-                # If parsing fails, default to running it to fix data
-                should_run = True
-        
-        if should_run:
-            # 3. Check Stripe Status (Only pay if they are actually paying us)
-            is_active = check_subscription_status(email)
-            
-            if is_active:
-                # 4. PAY THE UPLINE
-                process_subscription_commission(user_id)
-                
-                # 5. Log the run
-                now_iso = datetime.now().isoformat()
-                supabase.table("profiles").update({"last_commission_date": now_iso}).eq("id", user_id).execute()
-                
-    except Exception as e:
-        print(f"Auto-Commission Error: {e}")
-
-# --- INFINITY COMMISSION LOGIC END ---
 
 # ==========================================
 # 5. OMNI-TOOL BACKEND (AI CORE)
@@ -956,9 +844,6 @@ if not st.session_state.user:
                 # [PRODUCTION CRITICAL] Ensure hierarchy is set on every login
                 ensure_referral_link(res.user.id, res.user.user_metadata)
                 
-                # [TRIGGER] Check commissions on Login
-                check_and_process_commissions_on_login(res.user.id, res.user.email)
-                
                 st.rerun()
             except Exception as e: st.error(str(e))
     
@@ -972,10 +857,6 @@ if not st.session_state.user:
                 if res.user: st.success("Account created! Log in."); 
             except Exception as e: st.error(str(e))
     st.stop()
-
-# [TRIGGER] Check commissions on Page Refresh (if already logged in)
-if st.session_state.user:
-    check_and_process_commissions_on_login(st.session_state.user.id, st.session_state.user.email)
 
 if not st.session_state.is_subscribed:
     if "session_id" in st.query_params:
