@@ -915,9 +915,15 @@ if not st.session_state.is_subscribed:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed: st.rerun()
     st.markdown("""<div style="text-align:center; padding: 40px 20px;"><h1>Upgrade Plan</h1><p>Unlock unlimited leads and pipeline storage.</p><div class="airbnb-card" style="margin-top:20px;"><h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2></div></div>""", unsafe_allow_html=True)
+    
+    # --- UPDATED CHECKOUT LOGIC WITH AUTO-REDIRECT ---
     if st.button("Subscribe Now", type="primary", use_container_width=True):
-        url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
-        if url: st.link_button("Go to Checkout", url, type="primary")
+        with st.spinner("Redirecting to checkout..."):
+            url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
+            if url:
+                 st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
+    # -------------------------------------------------
+    
     st.stop()
 
 tabs = { "🎙️ Assistant": "omni", "📇 Rolodex": "pipeline", "📊 Analytics": "analytics" }
