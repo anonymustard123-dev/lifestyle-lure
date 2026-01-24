@@ -382,13 +382,20 @@ def fetch_user_profile(user_id):
         if response.data: return response.data[0]
     except: return None
 
+# [NEW] ADDED THIS HELPER FUNCTION
+def count_user_referrals(user_id):
+    """Counts how many users have this user_id as their referrer"""
+    try:
+        res = supabase.table("profiles").select("id", count="exact").eq("referred_by", user_id).execute()
+        return res.count
+    except: return 0
+
 def check_subscription_status(email):
     if not STRIPE_SECRET_KEY: return True 
     try:
         customers = stripe.Customer.list(email=email).data
         if not customers: return False
         subscriptions = stripe.Subscription.list(customer=customers[0].id, status='active').data
-        # --- FIX: CHECK IF LIST IS NOT EMPTY ---
         return len(subscriptions) > 0
     except: return False
 
@@ -896,6 +903,8 @@ with st.popover("👤", use_container_width=True):
     my_profile = fetch_user_profile(st.session_state.user.id)
     if my_profile:
         balance = my_profile.get('commission_balance') or 0.00
+        # [NEW] GET REFERRAL COUNT
+        ref_count = count_user_referrals(st.session_state.user.id)
         
         # Fetch existing settings
         saved_method = my_profile.get('payout_method') or "Venmo"
@@ -904,12 +913,18 @@ with st.popover("👤", use_container_width=True):
         
         referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
 
-        # 1. BALANCE CARD
+        # 1. BALANCE CARD & REFERRAL COUNT
         st.markdown(f"""
             <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
                 <div class="stat-title">WALLET BALANCE</div>
                 <div class="stat-metric">${balance:,.2f}</div>
                 <div class="stat-sub">Available for payout</div>
+            </div>
+            
+            <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
+                <div class="stat-title">TOTAL REFERRALS</div>
+                <div class="stat-metric">{ref_count}</div>
+                <div class="stat-sub">Users signed up with your code</div>
             </div>
         """, unsafe_allow_html=True)
 
