@@ -13,7 +13,7 @@ import textwrap
 # 1. CONFIG & STATE
 # ==========================================
 st.set_page_config(
-    page_title="The Closer", 
+    page_title="NexusFlowAI", 
     page_icon="🎙️", 
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -505,7 +505,7 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     current_date_str = est_now.strftime("%Y-%m-%d %H:%M")
     
     prompt = f"""
-    You are 'The Closer', an expert Executive Assistant. 
+    You are 'NexusFlowAI', an expert Executive Assistant. 
     Current Date/Time (User's Timezone): {current_date_str}
     Here is the user's Rolodex (Existing Leads): {leads_json}
     User Audio Provided. Listen carefully.
@@ -628,9 +628,9 @@ def create_ics_string(event_name, dt, description):
         
         ics_content = f"""BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//The Closer//EN
+PRODID:-//NexusFlowAI//EN
 BEGIN:VEVENT
-UID:{dt_str}-{clean_name}@thecloser.app
+UID:{dt_str}-{clean_name}@nexusflow.ai
 DTSTAMP:{now_str}
 DTSTART:{dt_str}
 SUMMARY:Meeting with {event_name}
@@ -890,7 +890,21 @@ def confirm_cancellation_dialog(email):
 # 7. MAIN ROUTER
 # ==========================================
 if not st.session_state.user:
-    st.markdown("<div style='text-align:center; padding-top:0px; margin-top: -30px;'><h1>The Closer</h1><p>Your AI Sales Companion</p></div>", unsafe_allow_html=True)
+    # --- LOGO INTEGRATION START ---
+    # We use a 3-column layout to perfectly center the logo
+    c_logo_1, c_logo_2, c_logo_3 = st.columns([1, 1.5, 1])
+    with c_logo_2:
+        try:
+            # IMPORTANT: Rename your uploaded file to 'nexus_logo.jpg'
+            st.image("nexus_logo.jpg", use_container_width=True)
+        except:
+            # Fallback if image is missing
+            st.markdown("<h1 style='text-align: center; color: #FF385C;'>NexusFlowAI</h1>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center;'>Gravity for leads. Flow for deals.</p>", unsafe_allow_html=True)
+    
+    # Add spacing between logo and inputs
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+    # --- LOGO INTEGRATION END ---
     
     # [FIX] Removed the wrapping <div class='airbnb-card'> which caused the empty white bar.
     email = st.text_input("Email", placeholder="name@example.com")
