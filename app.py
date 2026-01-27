@@ -77,7 +77,8 @@ st.markdown("""
             font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
             background-color: #FFFFFF !important;
             color: #222222;
-            height: 100vh;
+            /* Use dynamic viewport height for mobile browsers */
+            min-height: 100dvh !important;
             width: 100vw;
             margin: 0;
             padding: 0;
@@ -97,17 +98,25 @@ st.markdown("""
             visibility: hidden !important; 
             height: 0px !important; 
             opacity: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
-        /* AGGRESSIVE WHITE BAR REMOVAL - FIXED BOTTOM PADDING */
+        /* AGGRESSIVE WHITE BAR REMOVAL */
         .main .block-container {
             padding-top: 20px !important;
             margin-top: 0px !important;
-            padding-bottom: 0px !important; /* CHANGED FROM 20px TO 0px */
+            padding-bottom: 0px !important;
             padding-left: 20px !important;
             padding-right: 20px !important;
             max-width: 100% !important;
             gap: 0px !important;
+        }
+        
+        /* Target the vertical block to ensure no internal bottom padding */
+        [data-testid="stVerticalBlock"] {
+            gap: 0rem !important;
+            padding-bottom: 0rem !important;
         }
         
        /* TAB STYLES */
@@ -840,8 +849,7 @@ if not st.session_state.is_subscribed:
             if url:
                  st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
     
-    # 4. PROFILE BUTTON (Moved below Subscribe button)
-    st.markdown("<div style='margin-bottom: 24px;'></div>", unsafe_allow_html=True)
+    # 4. PROFILE BUTTON (Moved below Subscribe button) - spacer removed
     render_profile_hub()
     
     st.stop()
