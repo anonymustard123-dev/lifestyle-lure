@@ -715,7 +715,6 @@ def render_profile_view_overlay():
         referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
 
         # 1. BALANCE CARD & REFERRAL COUNT
-        # [CHANGE] Text updated to "Payouts disbursed monthly"
         st.markdown(f"""
             <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
                 <div class="stat-title">WALLET BALANCE</div>
@@ -759,8 +758,6 @@ def render_profile_view_overlay():
                 }).eq("id", st.session_state.user.id).execute()
                 st.success("Details saved.")
                 st.rerun()
-        
-        # [CHANGE] Removed the manual withdraw button logic entirely
 
 # --- INTERCEPTOR: If Profile Mode is active, render it and stop ---
 if st.session_state.show_profile and st.session_state.user:
@@ -1028,7 +1025,8 @@ def view_pipeline():
         render_executive_card({'lead_data': st.session_state.selected_lead, 'action': 'QUERY'})
         return
 
-    st.markdown("<h2 style='padding:0px 0 0px 0;'>Rolodex</h2>", unsafe_allow_html=True)
+    # [FIX] INCREASED TOP PADDING TO PREVENT OVERLAP WITH TABS
+    st.markdown("<h2 style='padding: 24px 0 12px 0;'>Rolodex</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
 
     c_search, c_filter = st.columns([2, 1])
