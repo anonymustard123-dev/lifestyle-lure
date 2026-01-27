@@ -27,6 +27,8 @@ if 'omni_result' not in st.session_state: st.session_state.omni_result = None
 if 'selected_lead' not in st.session_state: st.session_state.selected_lead = None
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'is_editing' not in st.session_state: st.session_state.is_editing = False
+# NEW: State to track if Profile Menu is open
+if 'show_profile' not in st.session_state: st.session_state.show_profile = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
 if not st.session_state.referral_captured:
@@ -674,110 +676,99 @@ def confirm_cancellation_dialog(email):
         if st.button("Close", type="secondary", use_container_width=True):
             st.rerun()
 
-def render_profile_hub():
-    """Renders the Profile/Referral Popover. Can be used in both Paid and Free views."""
-    if not st.session_state.user:
-        return
-
-    with st.popover("👤", use_container_width=True):
-        # --- NEW: BACK ARROW TO CLOSE ---
-        # Clicking this reruns the app, which collapses the popover
-        if st.button("← Back", key="close_menu_btn", type="tertiary"):
+def render_profile_view_overlay():
+    """Renders the Full Page Profile Overlay to ensure closing works."""
+    # Top Bar: Back Button
+    c_back, c_void = st.columns([1, 5])
+    with c_back:
+        # This button acts as the "Close" trigger
+        if st.button("← Back", key="back_from_profile_overlay", type="tertiary"):
+            st.session_state.show_profile = False
             st.rerun()
-            
-        st.subheader("Profile")
+
+    st.subheader("Profile")
+    st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+    if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
+        supabase.auth.sign_out()
+        st.session_state.user = None
+        st.session_state.show_profile = False
+        st.rerun()
+
+    # Cancel Subscription with Confirmation Dialog
+    if st.session_state.get('is_subscribed', False):
         st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
-            supabase.auth.sign_out()
-            st.session_state.user = None
-            st.rerun()
+        if st.button("Cancel Subscription", key="cancel_sub_btn", type="primary", use_container_width=True):
+            confirm_cancellation_dialog(st.session_state.user.email)
 
-        # Cancel Subscription with Confirmation Dialog
-        if st.session_state.get('is_subscribed', False):
-            st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-            if st.button("Cancel Subscription", key="cancel_sub_btn", type="primary", use_container_width=True):
-                confirm_cancellation_dialog(st.session_state.user.email)
-
-        st.markdown("---")
+    st.markdown("---")
+    
+    st.subheader("Referral Hub")
+    
+    my_profile = fetch_user_profile(st.session_state.user.id)
+    if my_profile:
+        balance = my_profile.get('commission_balance') or 0.00
+        ref_count = count_user_referrals(st.session_state.user.id)
         
-        st.subheader("Referral Hub")
+        saved_method = my_profile.get('payout_method') or "Venmo"
+        saved_handle = my_profile.get('payout_handle') or ""
         
-        my_profile = fetch_user_profile(st.session_state.user.id)
-        if my_profile:
-            balance = my_profile.get('commission_balance') or 0.00
-            ref_count = count_user_referrals(st.session_state.user.id)
-            
-            saved_method = my_profile.get('payout_method') or "Venmo"
-            saved_handle = my_profile.get('payout_handle') or ""
-            payout_req_time = my_profile.get('payout_requested_at')
-            
-            referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
+        referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
 
-            # 1. BALANCE CARD & REFERRAL COUNT
-            st.markdown(f"""
-                <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
-                    <div class="stat-title">WALLET BALANCE</div>
-                    <div class="stat-metric">${balance:,.2f}</div>
-                    <div class="stat-sub">Available for payout</div>
-                </div>
-                
-                <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
-                    <div class="stat-title">TOTAL REFERRALS</div>
-                    <div class="stat-metric">{ref_count}</div>
-                    <div class="stat-sub">Users signed up with your code</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            # 2. REFERRAL LINK
-            st.caption("Your Referral Link")
-            st.code(referral_link, language="text")
+        # 1. BALANCE CARD & REFERRAL COUNT
+        # [CHANGE] Text updated to "Payouts disbursed monthly"
+        st.markdown(f"""
+            <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
+                <div class="stat-title">WALLET BALANCE</div>
+                <div class="stat-metric">${balance:,.2f}</div>
+                <div class="stat-sub">Payouts disbursed monthly</div>
+            </div>
             
-            # 3. PAYOUT SETTINGS
-            st.markdown("### Payout Settings")
-            
-            with st.form("payout_form"):
-                method_opts = ["Venmo", "CashApp", "PayPal", "Zelle"]
-                try: idx = method_opts.index(saved_method)
-                except: idx = 0
-                    
-                new_method = st.selectbox("Preferred Method", method_opts, index=idx)
-                
-                placeholders = {
-                    "Venmo": "@username", 
-                    "CashApp": "$cashtag", 
-                    "PayPal": "name@example.com", 
-                    "Zelle": "Phone or Email"
-                }
-                new_handle = st.text_input(f"Your {new_method} Handle", value=saved_handle, placeholder=placeholders.get(new_method, ""))
-                
-                can_withdraw = (balance > 0.00) and (payout_req_time is None)
-                
-                if payout_req_time: btn_label = "Payout Pending..."
-                elif balance <= 0.00: btn_label = "No Balance to Withdraw"
-                else: btn_label = f"Cash Out ${balance:,.2f} to {new_method}"
-                
-                if st.form_submit_button("Update Details"):
-                    supabase.table("profiles").update({
-                        "payout_method": new_method, 
-                        "payout_handle": new_handle
-                    }).eq("id", st.session_state.user.id).execute()
-                    st.success("Details saved.")
-                    st.rerun()
+            <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
+                <div class="stat-title">TOTAL REFERRALS</div>
+                <div class="stat-metric">{ref_count}</div>
+                <div class="stat-sub">Users signed up with your code</div>
+            </div>
+        """, unsafe_allow_html=True)
 
-            # 4. WITHDRAW ACTION
-            st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-            if st.button(btn_label, disabled=not can_withdraw, type="primary", use_container_width=True):
-                if not saved_handle:
-                    st.error("Please save your payout details above first.")
-                else:
-                    now_iso = datetime.now().isoformat()
-                    supabase.table("profiles").update({"payout_requested_at": now_iso}).eq("id", st.session_state.user.id).execute()
-                    st.balloons()
-                    st.success(f"Request sent! We will {saved_method} you shortly.")
-                    st.rerun()
+        # 2. REFERRAL LINK
+        st.caption("Your Referral Link")
+        st.code(referral_link, language="text")
+        
+        # 3. PAYOUT SETTINGS
+        st.markdown("### Payout Settings")
+        
+        with st.form("payout_form"):
+            method_opts = ["Venmo", "CashApp", "PayPal", "Zelle"]
+            try: idx = method_opts.index(saved_method)
+            except: idx = 0
+                
+            new_method = st.selectbox("Preferred Method", method_opts, index=idx)
+            
+            placeholders = {
+                "Venmo": "@username", 
+                "CashApp": "$cashtag", 
+                "PayPal": "name@example.com", 
+                "Zelle": "Phone or Email"
+            }
+            new_handle = st.text_input(f"Your {new_method} Handle", value=saved_handle, placeholder=placeholders.get(new_method, ""))
+            
+            if st.form_submit_button("Update Details"):
+                supabase.table("profiles").update({
+                    "payout_method": new_method, 
+                    "payout_handle": new_handle
+                }).eq("id", st.session_state.user.id).execute()
+                st.success("Details saved.")
+                st.rerun()
+        
+        # [CHANGE] Removed the manual withdraw button logic entirely
+
+# --- INTERCEPTOR: If Profile Mode is active, render it and stop ---
+if st.session_state.show_profile and st.session_state.user:
+    render_profile_view_overlay()
+    st.stop()
 
 def render_header():
-    """Renders the standard header with Logo (Left/Center) and Profile (Right)."""
+    """Renders the standard header with Logo (Left/Center) and Profile Button (Right)."""
     # Grid: Logo Area | Spacer | Profile Area
     c1, c2, c3 = st.columns([1, 2, 1], vertical_alignment="center")
     
@@ -791,9 +782,10 @@ def render_header():
     with c3:
         # Only show profile button if user is logged in
         if st.session_state.user:
-            # We use a container to push it to the right if possible, or just place it.
-            # st.popover naturally creates a button.
-            render_profile_hub()
+            # Trigger Profile Overlay
+            if st.button("👤", key="header_profile_btn"):
+                st.session_state.show_profile = True
+                st.rerun()
 
 # ==========================================
 # 7. MAIN ROUTER
@@ -855,9 +847,11 @@ if not st.session_state.is_subscribed:
                  st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
     
     # 4. PROFILE BUTTON (Moved below Subscribe button with MORE SPACING)
-    # [FIX] Added height spacer to separate buttons
     st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
-    render_profile_hub()
+    # Replaced render_profile_hub with simple button that triggers the overlay
+    if st.button("👤", key="upgrade_profile_btn"):
+        st.session_state.show_profile = True
+        st.rerun()
     
     st.stop()
 
