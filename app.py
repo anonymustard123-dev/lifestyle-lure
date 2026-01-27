@@ -96,13 +96,14 @@ st.markdown("""
             display: none !important; 
             visibility: hidden !important; 
             height: 0px !important; 
+            opacity: 0 !important;
         }
         
-        /* AGGRESSIVE WHITE BAR REMOVAL */
+        /* AGGRESSIVE WHITE BAR REMOVAL - FIXED BOTTOM PADDING */
         .main .block-container {
             padding-top: 20px !important;
             margin-top: 0px !important;
-            padding-bottom: 20px !important; 
+            padding-bottom: 0px !important; /* CHANGED FROM 20px TO 0px */
             padding-left: 20px !important;
             padding-right: 20px !important;
             max-width: 100% !important;
@@ -820,15 +821,28 @@ if not st.session_state.is_subscribed:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed: st.rerun()
 
-    render_header() # Shows Logo + Profile Button (Referral Hub accessible!)
+    # 1. RENDER LOGO (Centered, manual column layout to match header style)
+    c1, c2, c3 = st.columns([1, 2, 1], vertical_alignment="center")
+    with c2:
+        try:
+            st.image("nexus_logo.jpg", use_container_width=True)
+        except:
+            st.markdown("<h1 style='text-align: center; color: #FF385C;'>NexusFlowAI</h1>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center;'>Gravity for leads. Flow for deals.</p>", unsafe_allow_html=True)
     
+    # 2. RENDER UPGRADE CARD
     st.markdown("""<div style="text-align:center; padding: 20px 20px;"><h1>Upgrade Plan</h1><p>Unlock unlimited leads and pipeline storage.</p><div class="airbnb-card" style="margin-top:20px;"><h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2></div></div>""", unsafe_allow_html=True)
     
+    # 3. SUBSCRIBE BUTTON
     if st.button("Subscribe Now", type="primary", use_container_width=True):
         with st.spinner("Redirecting to checkout..."):
             url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
             if url:
                  st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
+    
+    # 4. PROFILE BUTTON (Moved below Subscribe button)
+    st.markdown("<div style='margin-bottom: 24px;'></div>", unsafe_allow_html=True)
+    render_profile_hub()
     
     st.stop()
 
