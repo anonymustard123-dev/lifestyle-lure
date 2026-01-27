@@ -100,7 +100,7 @@ st.markdown("""
         
         /* AGGRESSIVE WHITE BAR REMOVAL */
         .main .block-container {
-            padding-top: 0px !important;
+            padding-top: 20px !important;
             margin-top: 0px !important;
             padding-bottom: 20px !important; 
             padding-left: 20px !important;
@@ -380,6 +380,12 @@ st.markdown("""
             border-radius: 12px !important;
             border: 1px dashed #dddddd !important;
         }
+        
+        /* PROFILE BUTTON ALIGNMENT */
+        .profile-container {
+            display: flex;
+            justify-content: flex-end;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -445,7 +451,6 @@ def cancel_active_subscription(email):
             return False, "No active subscription found."
             
         # 3. Modify Subscription to Cancel at Period End
-        # We target the first active subscription found
         stripe.Subscription.modify(
             subscriptions[0].id,
             cancel_at_period_end=True
@@ -455,13 +460,11 @@ def cancel_active_subscription(email):
     except Exception as e:
         return False, f"Error: {str(e)}"
 
-# --- HIERARCHY LOGIC START (Commission Logic Moved to Webhook) ---
-
+# --- HIERARCHY LOGIC ---
 def ensure_referral_link(user_id, user_meta):
     """
     Called on login.
     Links the new user to their Direct Referrer (Tier 1) only.
-    This MUST happen in the app so the DB is ready when the webhook fires.
     """
     try:
         profile = fetch_user_profile(user_id)
@@ -642,9 +645,197 @@ END:VCALENDAR"""
         return None
 
 # ==========================================
-# 6. APP VIEWS
+# 6. APP VIEWS (SHARED)
 # ==========================================
 
+@st.dialog("Cancel Subscription")
+def confirm_cancellation_dialog(email):
+    st.write("Are you sure you want to cancel? You will lose access to premium features at the end of your billing cycle.")
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("Confirm Cancellation", type="primary", use_container_width=True):
+            success, msg = cancel_active_subscription(email)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
+    with col2:
+        if st.button("Close", type="secondary", use_container_width=True):
+            st.rerun()
+
+def render_profile_hub():
+    """Renders the Profile/Referral Popover. Can be used in both Paid and Free views."""
+    if not st.session_state.user:
+        return
+
+    with st.popover("👤", use_container_width=True):
+        st.subheader("Profile")
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+        if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
+            supabase.auth.sign_out()
+            st.session_state.user = None
+            st.rerun()
+
+        # Cancel Subscription with Confirmation Dialog
+        if st.session_state.get('is_subscribed', False):
+            st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+            if st.button("Cancel Subscription", key="cancel_sub_btn", type="primary", use_container_width=True):
+                confirm_cancellation_dialog(st.session_state.user.email)
+
+        st.markdown("---")
+        
+        st.subheader("Referral Hub")
+        
+        my_profile = fetch_user_profile(st.session_state.user.id)
+        if my_profile:
+            balance = my_profile.get('commission_balance') or 0.00
+            ref_count = count_user_referrals(st.session_state.user.id)
+            
+            saved_method = my_profile.get('payout_method') or "Venmo"
+            saved_handle = my_profile.get('payout_handle') or ""
+            payout_req_time = my_profile.get('payout_requested_at')
+            
+            referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
+
+            # 1. BALANCE CARD & REFERRAL COUNT
+            st.markdown(f"""
+                <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
+                    <div class="stat-title">WALLET BALANCE</div>
+                    <div class="stat-metric">${balance:,.2f}</div>
+                    <div class="stat-sub">Available for payout</div>
+                </div>
+                
+                <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
+                    <div class="stat-title">TOTAL REFERRALS</div>
+                    <div class="stat-metric">{ref_count}</div>
+                    <div class="stat-sub">Users signed up with your code</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # 2. REFERRAL LINK
+            st.caption("Your Referral Link")
+            st.code(referral_link, language="text")
+            
+            # 3. PAYOUT SETTINGS
+            st.markdown("### Payout Settings")
+            
+            with st.form("payout_form"):
+                method_opts = ["Venmo", "CashApp", "PayPal", "Zelle"]
+                try: idx = method_opts.index(saved_method)
+                except: idx = 0
+                    
+                new_method = st.selectbox("Preferred Method", method_opts, index=idx)
+                
+                placeholders = {
+                    "Venmo": "@username", 
+                    "CashApp": "$cashtag", 
+                    "PayPal": "name@example.com", 
+                    "Zelle": "Phone or Email"
+                }
+                new_handle = st.text_input(f"Your {new_method} Handle", value=saved_handle, placeholder=placeholders.get(new_method, ""))
+                
+                can_withdraw = (balance > 0.00) and (payout_req_time is None)
+                
+                if payout_req_time: btn_label = "Payout Pending..."
+                elif balance <= 0.00: btn_label = "No Balance to Withdraw"
+                else: btn_label = f"Cash Out ${balance:,.2f} to {new_method}"
+                
+                if st.form_submit_button("Update Details"):
+                    supabase.table("profiles").update({
+                        "payout_method": new_method, 
+                        "payout_handle": new_handle
+                    }).eq("id", st.session_state.user.id).execute()
+                    st.success("Details saved.")
+                    st.rerun()
+
+            # 4. WITHDRAW ACTION
+            st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+            if st.button(btn_label, disabled=not can_withdraw, type="primary", use_container_width=True):
+                if not saved_handle:
+                    st.error("Please save your payout details above first.")
+                else:
+                    now_iso = datetime.now().isoformat()
+                    supabase.table("profiles").update({"payout_requested_at": now_iso}).eq("id", st.session_state.user.id).execute()
+                    st.balloons()
+                    st.success(f"Request sent! We will {saved_method} you shortly.")
+                    st.rerun()
+
+def render_header():
+    """Renders the standard header with Logo (Left/Center) and Profile (Right)."""
+    # Grid: Logo Area | Spacer | Profile Area
+    c1, c2, c3 = st.columns([1, 2, 1], vertical_alignment="center")
+    
+    with c2:
+        try:
+            st.image("nexus_logo.jpg", use_container_width=True)
+        except:
+            st.markdown("<h1 style='text-align: center; color: #FF385C;'>NexusFlowAI</h1>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center;'>Gravity for leads. Flow for deals.</p>", unsafe_allow_html=True)
+
+    with c3:
+        # Only show profile button if user is logged in
+        if st.session_state.user:
+            # We use a container to push it to the right if possible, or just place it.
+            # st.popover naturally creates a button.
+            render_profile_hub()
+
+# ==========================================
+# 7. MAIN ROUTER
+# ==========================================
+if not st.session_state.user:
+    # --- LOGIN SCREEN ---
+    render_header() # Shows Logo Only
+    
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+    
+    email = st.text_input("Email", placeholder="name@example.com")
+    password = st.text_input("Password", type="password", placeholder="••••••••")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+        if st.button("Log In", type="primary", use_container_width=True):
+            try:
+                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                st.session_state.user = res.user
+                st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                ensure_referral_link(res.user.id, res.user.user_metadata)
+                st.rerun()
+            except Exception as e: st.error(str(e))
+    
+    with c2:
+        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+        if st.button("Sign Up", type="secondary", use_container_width=True):
+            try:
+                meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
+                res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
+                if res.user: st.success("Account created! Log in."); 
+            except Exception as e: st.error(str(e))
+    st.stop()
+
+if not st.session_state.is_subscribed:
+    # --- UPGRADE / PAYWALL SCREEN ---
+    if "session_id" in st.query_params:
+        st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
+        if st.session_state.is_subscribed: st.rerun()
+
+    render_header() # Shows Logo + Profile Button (Referral Hub accessible!)
+    
+    st.markdown("""<div style="text-align:center; padding: 20px 20px;"><h1>Upgrade Plan</h1><p>Unlock unlimited leads and pipeline storage.</p><div class="airbnb-card" style="margin-top:20px;"><h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2></div></div>""", unsafe_allow_html=True)
+    
+    if st.button("Subscribe Now", type="primary", use_container_width=True):
+        with st.spinner("Redirecting to checkout..."):
+            url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
+            if url:
+                 st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
+    
+    st.stop()
+
+# --- MAIN APP (SUBSCRIBED) ---
+render_header() # Shows Logo + Profile Button
+
+# MAIN APP LOGIC FOR TABS (Assistant, Rolodex, Analytics)
 def render_executive_card(data):
     lead = data.get('lead_data', data)
     action = data.get('action', 'QUERY')
@@ -869,89 +1060,6 @@ def view_analytics():
     <div class="analytics-card analytics-card-red"><div class="stat-title">30-DAY HUSTLE</div><div class="stat-metric">+{recent_leads}</div><div class="stat-sub">New leads added recently</div></div>
     """, unsafe_allow_html=True)
 
-@st.dialog("Cancel Subscription")
-def confirm_cancellation_dialog(email):
-    st.write("Are you sure you want to cancel? You will lose access to premium features at the end of your billing cycle.")
-    
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("Confirm Cancellation", type="primary", use_container_width=True):
-            success, msg = cancel_active_subscription(email)
-            if success:
-                st.success(msg)
-                # We don't rerun immediately so the user can read the success message.
-            else:
-                st.error(msg)
-    with col2:
-        if st.button("Close", type="secondary", use_container_width=True):
-            st.rerun()
-
-# ==========================================
-# 7. MAIN ROUTER
-# ==========================================
-if not st.session_state.user:
-    # --- LOGO INTEGRATION START ---
-    # We use a 3-column layout to perfectly center the logo
-    c_logo_1, c_logo_2, c_logo_3 = st.columns([1, 1.5, 1])
-    with c_logo_2:
-        try:
-            # IMPORTANT: Rename your uploaded file to 'nexus_logo.jpg'
-            st.image("nexus_logo.jpg", use_container_width=True)
-        except:
-            # Fallback if image is missing
-            st.markdown("<h1 style='text-align: center; color: #FF385C;'>NexusFlowAI</h1>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center;'>Gravity for leads. Flow for deals.</p>", unsafe_allow_html=True)
-    
-    # Add spacing between logo and inputs
-    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
-    # --- LOGO INTEGRATION END ---
-    
-    # [FIX] Removed the wrapping <div class='airbnb-card'> which caused the empty white bar.
-    email = st.text_input("Email", placeholder="name@example.com")
-    password = st.text_input("Password", type="password", placeholder="••••••••")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Log In", type="primary", use_container_width=True):
-            try:
-                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                st.session_state.user = res.user
-                st.session_state.is_subscribed = check_subscription_status(res.user.email)
-                
-                # [PRODUCTION CRITICAL] Ensure hierarchy is set on every login
-                ensure_referral_link(res.user.id, res.user.user_metadata)
-                
-                st.rerun()
-            except Exception as e: st.error(str(e))
-    
-    with c2:
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Sign Up", type="secondary", use_container_width=True):
-            try:
-                # Capture the referral code during sign up
-                meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
-                res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
-                if res.user: st.success("Account created! Log in."); 
-            except Exception as e: st.error(str(e))
-    st.stop()
-
-if not st.session_state.is_subscribed:
-    if "session_id" in st.query_params:
-        st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
-        if st.session_state.is_subscribed: st.rerun()
-    st.markdown("""<div style="text-align:center; padding: 40px 20px;"><h1>Upgrade Plan</h1><p>Unlock unlimited leads and pipeline storage.</p><div class="airbnb-card" style="margin-top:20px;"><h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2></div></div>""", unsafe_allow_html=True)
-    
-    # --- UPDATED CHECKOUT LOGIC WITH AUTO-REDIRECT ---
-    if st.button("Subscribe Now", type="primary", use_container_width=True):
-        with st.spinner("Redirecting to checkout..."):
-            url = create_checkout_session(st.session_state.user.email, st.session_state.user.id)
-            if url:
-                 st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
-    # -------------------------------------------------
-    
-    st.stop()
-
 tabs = { "🎙️ Assistant": "omni", "📇 Rolodex": "pipeline", "📊 Analytics": "analytics" }
 rev_tabs = {v: k for k, v in tabs.items()}
 current_label = rev_tabs.get(st.session_state.active_tab, "🎙️ Assistant")
@@ -964,111 +1072,3 @@ if tabs[selected_label] != st.session_state.active_tab:
 if st.session_state.active_tab == "omni": view_omni()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
-
-# --- REPLACED: REFERRAL HUB UI (CREATOR WALLET EDITION) ---
-with st.popover("👤", use_container_width=True):
-    st.subheader("Profile")
-    st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-    if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
-        supabase.auth.sign_out()
-        st.session_state.user = None
-        st.rerun()
-
-    # NEW: Cancel Subscription with Confirmation Dialog
-    if st.session_state.get('is_subscribed', False):
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Cancel Subscription", key="cancel_sub_btn", type="primary", use_container_width=True):
-            confirm_cancellation_dialog(st.session_state.user.email)
-
-    st.markdown("---")
-    
-    st.subheader("Referral Hub")
-    
-    my_profile = fetch_user_profile(st.session_state.user.id)
-    if my_profile:
-        balance = my_profile.get('commission_balance') or 0.00
-        # [NEW] GET REFERRAL COUNT
-        ref_count = count_user_referrals(st.session_state.user.id)
-        
-        # Fetch existing settings
-        saved_method = my_profile.get('payout_method') or "Venmo"
-        saved_handle = my_profile.get('payout_handle') or ""
-        payout_req_time = my_profile.get('payout_requested_at')
-        
-        referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
-
-        # 1. BALANCE CARD & REFERRAL COUNT
-        st.markdown(f"""
-            <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
-                <div class="stat-title">WALLET BALANCE</div>
-                <div class="stat-metric">${balance:,.2f}</div>
-                <div class="stat-sub">Available for payout</div>
-            </div>
-            
-            <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
-                <div class="stat-title">TOTAL REFERRALS</div>
-                <div class="stat-metric">{ref_count}</div>
-                <div class="stat-sub">Users signed up with your code</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # 2. REFERRAL LINK
-        st.caption("Your Referral Link")
-        st.code(referral_link, language="text")
-        
-        # 3. PAYOUT SETTINGS (FLEXIBLE WALLET)
-        st.markdown("### Payout Settings")
-        
-        with st.form("payout_form"):
-            # Select Method
-            method_opts = ["Venmo", "CashApp", "PayPal", "Zelle"]
-            # specific index logic to handle defaults if saved_method is not in list
-            try:
-                idx = method_opts.index(saved_method)
-            except:
-                idx = 0
-                
-            new_method = st.selectbox("Preferred Method", method_opts, index=idx)
-            
-            # Dynamic Placeholder based on selection
-            placeholders = {
-                "Venmo": "@username", 
-                "CashApp": "$cashtag", 
-                "PayPal": "name@example.com", 
-                "Zelle": "Phone or Email"
-            }
-            new_handle = st.text_input(f"Your {new_method} Handle", value=saved_handle, placeholder=placeholders.get(new_method, ""))
-            
-            # LOGIC: Can withdraw if POSITIVE balance and NO pending request
-            can_withdraw = (balance > 0.00) and (payout_req_time is None)
-            
-            # Dynamic Button Label
-            if payout_req_time:
-                btn_label = "Payout Pending..."
-            elif balance <= 0.00:
-                btn_label = "No Balance to Withdraw"
-            else:
-                btn_label = f"Cash Out ${balance:,.2f} to {new_method}"
-            
-            # Save Details Logic
-            if st.form_submit_button("Update Details"):
-                supabase.table("profiles").update({
-                    "payout_method": new_method, 
-                    "payout_handle": new_handle
-                }).eq("id", st.session_state.user.id).execute()
-                st.success("Details saved.")
-                st.rerun()
-
-        # 4. WITHDRAW ACTION (Outside form to prevent double-submit)
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button(btn_label, disabled=not can_withdraw, type="primary", use_container_width=True):
-            if not saved_handle:
-                st.error("Please save your payout details above first.")
-            else:
-                # Mark as requested
-                now_iso = datetime.now().isoformat()
-                supabase.table("profiles").update({"payout_requested_at": now_iso}).eq("id", st.session_state.user.id).execute()
-                st.balloons()
-                st.success(f"Request sent! We will {saved_method} you shortly.")
-                st.rerun()
-
