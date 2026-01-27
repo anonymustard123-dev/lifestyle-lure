@@ -680,6 +680,11 @@ def render_profile_hub():
         return
 
     with st.popover("👤", use_container_width=True):
+        # --- NEW: BACK ARROW TO CLOSE ---
+        # Clicking this reruns the app, which collapses the popover
+        if st.button("← Back", key="close_menu_btn", type="tertiary"):
+            st.rerun()
+            
         st.subheader("Profile")
         st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
         if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
@@ -849,7 +854,9 @@ if not st.session_state.is_subscribed:
             if url:
                  st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
     
-    # 4. PROFILE BUTTON (Moved below Subscribe button) - spacer removed
+    # 4. PROFILE BUTTON (Moved below Subscribe button with MORE SPACING)
+    # [FIX] Added height spacer to separate buttons
+    st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
     render_profile_hub()
     
     st.stop()
