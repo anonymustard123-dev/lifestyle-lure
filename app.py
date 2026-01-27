@@ -1071,3 +1071,4 @@ with st.popover("👤", use_container_width=True):
                 st.balloons()
                 st.success(f"Request sent! We will {saved_method} you shortly.")
                 st.rerun()
+
