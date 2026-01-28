@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 import stripe
 import textwrap
+import extra_streamlit_components as stx
 
 # ==========================================
 # 1. CONFIG & STATE
@@ -18,6 +19,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Initialize Cookie Manager for Persistence
+cookie_manager = stx.CookieManager()
 
 # Initialize Session State
 if 'user' not in st.session_state: st.session_state.user = None
@@ -62,6 +66,29 @@ supabase = init_supabase()
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
+
+# --- PERSISTENT SESSION RESTORATION ---
+# Check if user is not logged in but has a cookie
+if not st.session_state.user:
+    # Attempt to fetch the session cookie
+    # Note: cookie_manager.get() may return None on the very first render pass
+    saved_session = cookie_manager.get("sb_session")
+    
+    if saved_session:
+        try:
+            # Restore session using the tokens from the cookie
+            res = supabase.auth.set_session(
+                saved_session['access_token'], 
+                saved_session['refresh_token']
+            )
+            st.session_state.user = res.user
+            st.session_state.is_subscribed = check_subscription_status(res.user.email)
+            # Rerun to update UI immediately after restoration
+            st.rerun()
+        except Exception as e:
+            # If tokens are invalid/expired, clear the cookie
+            print(f"Session restoration failed: {e}")
+            cookie_manager.delete("sb_session")
 
 # ==========================================
 # 3. CSS (COMPLETE REFACTOR)
@@ -688,8 +715,14 @@ def render_profile_view_overlay():
 
     st.subheader("Profile")
     st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+    
+    # --- LOGOUT LOGIC (MODIFIED FOR COOKIES) ---
     if st.button("Sign Out", key="logout_btn", type="secondary", use_container_width=True):
+        # 1. Sign out from Supabase
         supabase.auth.sign_out()
+        # 2. Delete the session cookie
+        cookie_manager.delete("sb_session")
+        # 3. Clear State & Rerun
         st.session_state.user = None
         st.session_state.show_profile = False
         st.rerun()
@@ -799,12 +832,21 @@ if not st.session_state.user:
     c1, c2 = st.columns(2)
     with c1:
         st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+        # --- MODIFIED LOGIN LOGIC ---
         if st.button("Log In", type="primary", use_container_width=True):
             try:
                 res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                 st.session_state.user = res.user
                 st.session_state.is_subscribed = check_subscription_status(res.user.email)
                 ensure_referral_link(res.user.id, res.user.user_metadata)
+                
+                # SAVE SESSION TO COOKIE (Expires in 7 days)
+                if res.session:
+                    cookie_manager.set("sb_session", {
+                        "access_token": res.session.access_token,
+                        "refresh_token": res.session.refresh_token
+                    }, expires_at=datetime.now() + timedelta(days=7))
+                
                 st.rerun()
             except Exception as e: st.error(str(e))
     
