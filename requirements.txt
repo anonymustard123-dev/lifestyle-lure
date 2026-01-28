@@ -7,3 +7,4 @@ stripe
 gotrue
 st-click-detector
 flask
+extra-streamlit-components
