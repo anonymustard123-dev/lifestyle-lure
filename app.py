@@ -300,7 +300,8 @@ st.markdown("""
            ========================================================= */
         
         /* 1. APPLY STYLE TO OUTER WRAPPER ONLY (Fixes Double Box Issue) */
-        div[data-baseweb="input"], div[data-baseweb="select"], div[data-testid="stMarkdownContainer"] textarea {
+        /* ADDED: div[data-baseweb="textarea"] to fix black box issue */
+        div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"], div[data-testid="stMarkdownContainer"] textarea {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
             border: 1px solid transparent !important;
@@ -1093,4 +1094,3 @@ if tabs[selected_label] != st.session_state.active_tab:
 if st.session_state.active_tab == "omni": view_omni()
 elif st.session_state.active_tab == "pipeline": view_pipeline()
 elif st.session_state.active_tab == "analytics": view_analytics()
-
