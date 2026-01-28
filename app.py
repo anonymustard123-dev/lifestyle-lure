@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 import stripe
 import textwrap
+import re
 
 # ==========================================
 # 1. CONFIG & STATE
@@ -494,6 +495,30 @@ def ensure_referral_link(user_id, user_meta):
     except Exception as e:
         print(f"Hierarchy Error: {e}")
 
+# --- CONTACT FORMATTING HELPER ---
+def format_contact_details(contact_info):
+    """
+    Formats contact info.
+    - If it's a phone number (10 or 11 digits starting with 1), formats as (XXX)-XXX-XXXX.
+    - If it looks like an email or text, leaves it alone.
+    - If it's mixed, tries to format the phone part.
+    """
+    if not contact_info: return "-"
+    s = str(contact_info).strip()
+    
+    # Regex to find 10 or 11 digit sequences (US Phone) not surrounded by other digits
+    # Matches: optional '1', then 10 digits
+    pattern = r'(?<!\d)(1?)(\d{3})(\d{3})(\d{4})(?!\d)'
+    
+    def repl(m):
+        # m.group(1) is leading '1' (optional, discarded in format)
+        # m.group(2) is Area Code
+        # m.group(3) is Prefix
+        # m.group(4) is Line
+        return f"({m.group(2)})-{m.group(3)}-{m.group(4)}"
+        
+    return re.sub(pattern, repl, s)
+
 # ==========================================
 # 5. OMNI-TOOL BACKEND (AI CORE)
 # ==========================================
@@ -948,10 +973,11 @@ def render_executive_card(data):
                     else: st.error("Missing ID")
                         
         else:
+            # APPLIED FIX: Using helper to format contact info in the display card
             html_body = f"""
 <div class="stat-grid">
     <div class="stat-item"><div class="stat-label">Product Fit</div><div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div></div>
-    <div class="stat-item"><div class="stat-label">Contact</div><div class="stat-value">{lead.get('contact_info') or '-'}</div></div>
+    <div class="stat-item"><div class="stat-label">Contact</div><div class="stat-value">{format_contact_details(lead.get('contact_info'))}</div></div>
 </div>
 <div class="report-bubble"><div class="stat-label" style="color:#222; margin-bottom:8px;">Background / Notes</div><p style="font-size:14px; margin:0; line-height:1.6; color:#717171;">{lead.get('background') or '-'}</p></div>
 <div class="transaction-bubble"><div class="stat-label" style="color:#222; margin-bottom:8px;">Purchase History</div><p style="font-size:14px; margin:0; line-height:1.6; color:#717171; white-space: pre-line;">{lead.get('transactions') or 'No recorded transactions.'}</p></div>
