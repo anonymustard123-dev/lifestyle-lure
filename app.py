@@ -9,6 +9,10 @@ from supabase import create_client, Client
 import stripe
 import textwrap
 import re
+from dotenv import load_dotenv  #
+
+# FORCE LOAD ENV VARIABLES (Fixes missing keys locally)
+load_dotenv()
 
 # ==========================================
 # 1. CONFIG & STATE
@@ -387,7 +391,10 @@ def count_user_referrals(user_id):
     except: return 0
 
 def check_subscription_status(email):
-    if not STRIPE_SECRET_KEY: return True 
+    # FIX: FAIL SAFE - If Stripe is missing, return FALSE (Not Subscribed)
+    if not STRIPE_SECRET_KEY: 
+        return False
+        
     try:
         customers = stripe.Customer.list(email=email).data
         if not customers: return False
@@ -396,6 +403,7 @@ def check_subscription_status(email):
     except: return False
 
 def create_checkout_session(email, user_id):
+    if not STRIPE_SECRET_KEY: return None
     try:
         customers = stripe.Customer.list(email=email).data
         customer_id = customers[0].id if customers else stripe.Customer.create(email=email).id
@@ -411,7 +419,9 @@ def create_checkout_session(email, user_id):
             metadata=metadata
         )
         return session.url
-    except: return None
+    except Exception as e:
+        st.error(f"Stripe Error: {e}")
+        return None
 
 def cancel_active_subscription(email):
     """
@@ -657,7 +667,6 @@ def confirm_cancellation_dialog(email):
 def render_profile_view_overlay():
     """
     Renders the Full Page Profile Overlay.
-    UPDATED: Simplified for Flat $10 Commission System.
     """
     # Top Bar: Back Button
     c_back, c_void = st.columns([1, 5])
@@ -717,7 +726,7 @@ def render_profile_view_overlay():
         # FIX 3: UPDATED TEXT
         st.info("You earn $10 per month for every subscribed user that uses your link. Payouts will be made the first week of each month.")
 
-        # 3. COMMISSION HISTORY (NEW)
+        # 3. COMMISSION HISTORY
         with st.expander("📜 Transaction History"):
             try:
                 commissions = supabase.table("commissions").select("*").eq("recipient_id", st.session_state.user.id).order("created_at", desc=True).limit(20).execute()
@@ -728,10 +737,8 @@ def render_profile_view_overlay():
                     df['date'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d')
                     st.table(df[['date', 'source_user_email', 'amount']])
                 else:
-                    # FIX 2: UPDATED EMPTY STATE MESSAGE
                     st.write("No referral history")
             except Exception as e:
-                # FIX 2: UPDATED ERROR MESSAGE
                 st.write("No referral history")
         
         # 4. PAYOUT SETTINGS
@@ -832,7 +839,7 @@ if not st.session_state.user:
     if st.session_state.referral_captured:
         redirect_target = f"{APP_BASE_URL}?ref={st.session_state.referral_captured}"
 
-    # FIX: Replace get_url_for_provider with sign_in_with_oauth
+    # FIX: Replace broken get_url_for_provider with sign_in_with_oauth
     try:
         data = supabase.auth.sign_in_with_oauth({
             "provider": "google",
