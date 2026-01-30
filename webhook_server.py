@@ -14,11 +14,7 @@ app = Flask(__name__)
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
 url = os.getenv('SUPABASE_URL')
-
-# RECOMMENDATION: Use the SERVICE_ROLE_KEY for webhooks to bypass RLS policies
-# If you don't have it in your .env, fall back to the standard key, 
-# but you must ensure RLS policies allow inserts.
-key = os.getenv('SUPABASE_SERVICE_ROLE_KEY') or os.getenv('SUPABASE_KEY')
+key = os.getenv('SUPABASE_KEY')
 
 if not url or not key:
     raise ValueError("CRITICAL: Supabase URL or KEY is missing.")
@@ -75,7 +71,7 @@ def handle_new_subscription(session):
             print(f"ERROR Stamping Subscription: {e}")
 
     # C. Pay Month 1 Commission
-    record_commission(referrer_id, session.get('customer_details', {}).get('email'), "Direct Referral (Month 1)")
+    process_payout(referrer_id, session.get('customer_details', {}).get('email'), "Direct Referral (Month 1)")
 
 def handle_renewal_payment(invoice):
     """
@@ -96,7 +92,7 @@ def handle_renewal_payment(invoice):
         referrer_id = sub.get('metadata', {}).get('referred_by')
 
         if referrer_id:
-            record_commission(referrer_id, invoice.get('customer_email'), "Monthly Renewal Commission")
+            process_payout(referrer_id, invoice.get('customer_email'), "Monthly Renewal Commission")
         else:
             print(f"Renewal: No referrer stamp found on Subscription {subscription_id}")
 
@@ -104,49 +100,52 @@ def handle_renewal_payment(invoice):
         print(f"Error processing renewal: {e}")
         raise e
 
-def record_commission(referrer_id, customer_email, desc):
+def process_payout(referrer_id, customer_email, desc):
     """
-    1. Inserts into commissions table (ledger).
-    2. MANUALLY updates the profiles table (balance).
+    1. Updates the Profile Balance (CRITICAL).
+    2. Logs to Commissions Table (History).
     """
     amount = 10.00
-    print(f"PROCESSING COMMISSION: {referrer_id} | ${amount} | {desc}")
+    print(f"PROCESSING PAYOUT: {referrer_id} | ${amount} | {desc}")
 
-    # 1. INSERT LEDGER RECORD
+    # --- STEP 1: UPDATE WALLET BALANCE (The part that was missing) ---
+    try:
+        # Fetch current balance
+        res = supabase.table("profiles").select("commission_balance").eq("id", referrer_id).execute()
+        
+        if res.data:
+            current_balance = float(res.data[0].get('commission_balance') or 0.0)
+            new_balance = current_balance + amount
+            
+            # Write new balance
+            supabase.table("profiles").update({
+                "commission_balance": new_balance
+            }).eq("id", referrer_id).execute()
+            
+            print(f"SUCCESS: Updated wallet for {referrer_id} to ${new_balance}")
+        else:
+            print(f"ERROR: User {referrer_id} not found.")
+            return # Stop if user doesn't exist
+            
+    except Exception as e:
+        print(f"CRITICAL ERROR updating wallet: {e}")
+        return # Stop if wallet update failed
+
+    # --- STEP 2: INSERT HISTORY LOG (Secondary) ---
+    # We wrap this in try/except so it doesn't crash the script if RLS blocks it
     try:
         data = {
             'recipient_id': referrer_id,      
             'source_user_email': customer_email, 
             'amount': amount,
-            'status': 'paid', # Mark as paid since we are updating balance immediately             
+            'status': 'paid',             
             'type': 'recurring_renewal' if 'Renewal' in desc else 'direct_referral',        
             'description': desc
         }
         supabase.table('commissions').insert(data).execute()
+        print("SUCCESS: History log created.")
     except Exception as e:
-        # Don't crash if ledger fails, we still want to pay the user
-        print(f"WARNING: Failed to insert into commissions table: {e}")
-
-    # 2. UPDATE USER BALANCE (The Logic Missing from your previous code)
-    try:
-        # A. Get current balance
-        res = supabase.table("profiles").select("commission_balance").eq("id", referrer_id).execute()
-        
-        if res.data:
-            current_balance = res.data[0].get('commission_balance') or 0.0
-            new_balance = float(current_balance) + amount
-            
-            # B. Write new balance
-            supabase.table("profiles").update({
-                "commission_balance": new_balance
-            }).eq("id", referrer_id).execute()
-            
-            print(f"SUCCESS: Updated balance for {referrer_id} from ${current_balance} to ${new_balance}")
-        else:
-            print(f"ERROR: Profile not found for {referrer_id}")
-
-    except Exception as e:
-        print(f"CRITICAL ERROR updating profile balance: {e}")
+        print(f"WARNING: Could not write to commissions table (likely RLS). Wallet WAS updated. Error: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 4242))
