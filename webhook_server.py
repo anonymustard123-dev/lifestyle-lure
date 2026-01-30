@@ -50,7 +50,7 @@ def handle_checkout_session(session):
     SIMPLIFIED LOGIC: Flat $10 commission to the direct referrer.
     """
     
-    # FIX 1: Use 'referred_by' to match the key sent from app.py
+    # Use 'referred_by' to match the key sent from app.py
     referrer_id = session.get('client_reference_id') or session.get('metadata', {}).get('referred_by')
 
     if not referrer_id:
@@ -69,6 +69,7 @@ def handle_checkout_session(session):
     
     try:
         # 2. Record the transaction in the 'commissions' table (Receipt)
+        # The SQL Trigger will detect this insert and automatically update the profile balance.
         supabase.table('commissions').insert({
             'recipient_id': referrer_id,      # The person getting paid
             'source_user_email': customer_email, # The person who bought
@@ -79,23 +80,6 @@ def handle_checkout_session(session):
         }).execute()
         
         print(f"Success: Recorded $10 commission receipt for {referrer_id}")
-        
-        # FIX 2: Update the Wallet Balance in the 'profiles' table
-        # Step A: Get current balance
-        user_profile = supabase.table('profiles').select('commission_balance').eq('id', referrer_id).execute()
-        
-        if user_profile.data:
-            current_balance = user_profile.data[0].get('commission_balance') or 0.0
-            new_balance = current_balance + commission_amount
-            
-            # Step B: Write new balance back to DB
-            supabase.table('profiles').update({
-                'commission_balance': new_balance
-            }).eq('id', referrer_id).execute()
-            
-            print(f"Success: Wallet updated. New Balance: ${new_balance}")
-        else:
-            print(f"Error: Referrer profile {referrer_id} not found.")
 
     except Exception as e:
         print(f"Error processing commission: {str(e)}")
