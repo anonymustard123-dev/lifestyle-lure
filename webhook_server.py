@@ -50,14 +50,8 @@ def handle_checkout_session(session):
     SIMPLIFIED LOGIC: Flat $10 commission to the direct referrer.
     """
     
-    # Get the user who bought the subscription (The "New User")
-    # In Stripe Checkout, client_reference_id is usually set to the Referrer's ID
-    # But often we store the *Buyer's* ID in metadata or lookup by email.
-    # Assuming standard setup: we need to find who *Referred* this sale.
-    
-    # Check if there is a referrer attached to this session
-    # (Adjust this based on how you pass the referrer ID in app.py)
-    referrer_id = session.get('client_reference_id') or session.get('metadata', {}).get('referrer_id')
+    # FIX 1: Use 'referred_by' to match the key sent from app.py
+    referrer_id = session.get('client_reference_id') or session.get('metadata', {}).get('referred_by')
 
     if not referrer_id:
         print("No referrer found for this sale. No commission payout.")
@@ -65,32 +59,46 @@ def handle_checkout_session(session):
 
     # Get the details of the sale
     customer_email = session.get('customer_details', {}).get('email')
-    amount_paid = session.get('amount_total', 0) / 100  # Convert cents to dollars
-
+    
     print(f"Processing sale for {customer_email}. Referrer: {referrer_id}")
 
-    # --- NEW SIMPLIFIED LOGIC START ---
+    # --- COMMISSION LOGIC ---
     
     # 1. Define the flat commission amount
     commission_amount = 10.00
     
     try:
-        # 2. Insert the Commission Record into Supabase
-        data, count = supabase.table('commissions').insert({
+        # 2. Record the transaction in the 'commissions' table (Receipt)
+        supabase.table('commissions').insert({
             'recipient_id': referrer_id,      # The person getting paid
             'source_user_email': customer_email, # The person who bought
             'amount': commission_amount,
-            'status': 'pending',              # Or 'paid' depending on your flow
-            'type': 'direct_referral',        # Tag it clearly
+            'status': 'pending',              
+            'type': 'direct_referral',        
             'description': 'Flat $10 Direct Referral Commission'
         }).execute()
         
-        print(f"Success: Recorded $10 commission for {referrer_id}")
+        print(f"Success: Recorded $10 commission receipt for {referrer_id}")
+        
+        # FIX 2: Update the Wallet Balance in the 'profiles' table
+        # Step A: Get current balance
+        user_profile = supabase.table('profiles').select('commission_balance').eq('id', referrer_id).execute()
+        
+        if user_profile.data:
+            current_balance = user_profile.data[0].get('commission_balance') or 0.0
+            new_balance = current_balance + commission_amount
+            
+            # Step B: Write new balance back to DB
+            supabase.table('profiles').update({
+                'commission_balance': new_balance
+            }).eq('id', referrer_id).execute()
+            
+            print(f"Success: Wallet updated. New Balance: ${new_balance}")
+        else:
+            print(f"Error: Referrer profile {referrer_id} not found.")
 
     except Exception as e:
-        print(f"Error recording commission: {str(e)}")
-
-    # --- NEW SIMPLIFIED LOGIC END ---
+        print(f"Error processing commission: {str(e)}")
 
 if __name__ == '__main__':
     # Run on port 4242 (or whatever port you use in Railway)
