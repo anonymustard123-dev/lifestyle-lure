@@ -442,10 +442,11 @@ def cancel_active_subscription(email):
         return False, f"Error: {str(e)}"
 
 # --- HIERARCHY LOGIC (SIMPLIFIED) ---
-def ensure_referral_link(user_id, user_meta):
+def ensure_referral_link(user_id, user_meta, ref_override=None):
     """
     Called on login.
-    Links the new user to their Direct Referrer (Tier 1) only.
+    Links the new user to their Direct Referrer (Tier 1).
+    Now accepts an override for Google Login flow.
     """
     try:
         profile = fetch_user_profile(user_id)
@@ -454,8 +455,8 @@ def ensure_referral_link(user_id, user_meta):
         # Check if already linked
         if profile.get('referred_by'): return
 
-        # Get Direct Referrer from metadata
-        referrer_id = user_meta.get('referred_by')
+        # Priority: 1. URL Override (Google) -> 2. Metadata (Email/Pass)
+        referrer_id = ref_override if ref_override else user_meta.get('referred_by')
         
         if referrer_id:
              supabase.table("profiles").update({'referred_by': referrer_id}).eq("id", user_id).execute()
@@ -795,12 +796,20 @@ def handle_google_callback():
         query_params = st.query_params
         if "code" in query_params:
             code = query_params["code"]
-            # Exchange code for session
+            
+            # 1. Exchange code for session
             res = supabase.auth.exchange_code_for_session({"auth_code": code})
             if res.user:
                 st.session_state.user = res.user
                 st.session_state.is_subscribed = check_subscription_status(res.user.email)
-                ensure_referral_link(res.user.id, res.user.user_metadata)
+                
+                # 2. CHECK FOR REFERRAL IN URL (Crucial for Google Signups)
+                # If we passed ?ref=... in the redirect_to, it will be here now.
+                ref_from_url = query_params.get("ref")
+                
+                # 3. Ensure Link
+                # We pass the URL ref explicitly because Google metadata might be empty
+                ensure_referral_link(res.user.id, res.user.user_metadata, ref_override=ref_from_url)
                 
                 # Clear the code from URL so it doesn't try to re-use it on refresh
                 st.query_params.clear()
@@ -818,12 +827,24 @@ if not st.session_state.user:
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
     
     # --- GOOGLE LOGIN BUTTON ---
-    # We generate the auth URL dynamically
-    auth_url_res = supabase.auth.get_url_for_provider(
-        provider="google",
-        redirect_to=APP_BASE_URL  # Ensure this matches your Redirect URL in Supabase
-    )
-    google_auth_url = auth_url_res
+    # DYNAMIC REDIRECT: Pass the referral code through the redirect URL
+    redirect_target = APP_BASE_URL
+    if st.session_state.referral_captured:
+        redirect_target = f"{APP_BASE_URL}?ref={st.session_state.referral_captured}"
+
+    # FIX: Replace get_url_for_provider with sign_in_with_oauth
+    try:
+        data = supabase.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+                "redirect_to": redirect_target
+            }
+        })
+        google_auth_url = data.url
+    except Exception as e:
+        # Fallback if the URL generation fails (e.g., config error)
+        st.error(f"Config Error: {e}")
+        google_auth_url = "#"
 
     # Custom Google Button Styling
     st.markdown(f"""
