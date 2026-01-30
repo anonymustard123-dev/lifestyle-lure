@@ -787,11 +787,59 @@ def render_header():
 # ==========================================
 # 7. MAIN ROUTER
 # ==========================================
+
+# --- AUTH HELPER: EXCHANGE GOOGLE CODE ---
+def handle_google_callback():
+    """Checks for OAuth 'code' in URL and exchanges it for a session."""
+    try:
+        query_params = st.query_params
+        if "code" in query_params:
+            code = query_params["code"]
+            # Exchange code for session
+            res = supabase.auth.exchange_code_for_session({"auth_code": code})
+            if res.user:
+                st.session_state.user = res.user
+                st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                ensure_referral_link(res.user.id, res.user.user_metadata)
+                
+                # Clear the code from URL so it doesn't try to re-use it on refresh
+                st.query_params.clear()
+                st.rerun()
+    except Exception as e:
+        st.error(f"Login Error: {e}")
+
+# 1. First, check for Google Callback immediately
+handle_google_callback()
+
 if not st.session_state.user:
     # --- LOGIN SCREEN ---
     render_header() # Shows Logo Only
     
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+    
+    # --- GOOGLE LOGIN BUTTON ---
+    # We generate the auth URL dynamically
+    auth_url_res = supabase.auth.get_url_for_provider(
+        provider="google",
+        redirect_to=APP_BASE_URL  # Ensure this matches your Redirect URL in Supabase
+    )
+    google_auth_url = auth_url_res
+
+    # Custom Google Button Styling
+    st.markdown(f"""
+        <a href="{google_auth_url}" target="_self" style="text-decoration: none;">
+            <div style="
+                display: flex; align-items: center; justify-content: center;
+                background-color: white; border: 1px solid #ddd; border-radius: 12px;
+                padding: 12px; margin-bottom: 20px; cursor: pointer;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
+                <img src="[https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1i2rDtt8M36XsoJuVPbtGaf8lz52s_M49ueo3cwLD_2ln91ouoEsqxpG9K_y_m8CM_D=s32](https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1i2rDtt8M36XsoJuVPbtGaf8lz52s_M49ueo3cwLD_2ln91ouoEsqxpG9K_y_m8CM_D=s32)" 
+                     style="width: 20px; height: 20px; margin-right: 12px;">
+                <span style="font-weight: 600; color: #555; font-size: 16px;">Sign in with Google</span>
+            </div>
+        </a>
+        <div style="text-align: center; color: #aaa; margin-bottom: 20px;">— OR —</div>
+    """, unsafe_allow_html=True)
     
     email = st.text_input("Email", placeholder="name@example.com")
     password = st.text_input("Password", type="password", placeholder="••••••••")
