@@ -49,8 +49,8 @@ if not st.session_state.referral_captured:
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID") # Make sure this is the $20 Price ID in Railway
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID") 
+APP_BASE_URL = "https://app.nexusflowapp.pro" # Hardcoded to ensure custom domain is used
 
 @st.cache_resource
 def init_supabase():
@@ -692,6 +692,7 @@ def render_profile_view_overlay():
         saved_method = my_profile.get('payout_method') or "Venmo"
         saved_handle = my_profile.get('payout_handle') or ""
         
+        # FIX 1: FORCE CUSTOM DOMAIN
         referral_link = f"{APP_BASE_URL}?ref={st.session_state.user.id}"
 
         # 1. BALANCE CARD & REFERRAL COUNT
@@ -712,7 +713,8 @@ def render_profile_view_overlay():
         # 2. REFERRAL LINK
         st.caption("Your Referral Link")
         st.code(referral_link, language="text")
-        st.info("Share this link. You earn a flat **$10.00** immediately when someone subscribes.")
+        # FIX 3: UPDATED TEXT
+        st.info("You earn $10 per month for every subscribed user that uses your link. Payouts will be made the first week of each month.")
 
         # 3. COMMISSION HISTORY (NEW)
         with st.expander("📜 Transaction History"):
@@ -725,9 +727,11 @@ def render_profile_view_overlay():
                     df['date'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d')
                     st.table(df[['date', 'source_user_email', 'amount']])
                 else:
-                    st.write("No commissions yet.")
+                    # FIX 2: UPDATED EMPTY STATE MESSAGE
+                    st.write("No referral history")
             except Exception as e:
-                st.write("Could not load history.")
+                # FIX 2: UPDATED ERROR MESSAGE
+                st.write("No referral history")
         
         # 4. PAYOUT SETTINGS
         st.markdown("### Payout Settings")
