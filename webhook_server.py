@@ -1,201 +1,98 @@
 import os
-import json
-import logging
 import stripe
-from flask import Flask, jsonify, request
-from supabase import create_client
+from flask import Flask, request, jsonify
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
-# ==========================================
-# 0. LOGGING CONFIGURATION (NEW)
-# ==========================================
-# Configure the logger to show timestamps and log levels (INFO, ERROR, etc.)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+# Load environment variables
+load_dotenv()
 
-# ==========================================
-# 1. CONFIG & CONSTANTS
-# ==========================================
-# Load keys from environment variables
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET") 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-# --- COMMISSION STRUCTURE ---
-# Tier 1: Direct Referrer
-DIRECT_COMMISSION = 2.25  # 15% of $15
-
-# Overrides (Performance Bonuses)
-SCOUT_BONUS = 0.30       # 2% of $15
-ELITE_BONUS = 0.75       # 5% of $15
-
-# Thresholds
-SCOUT_THRESHOLD = 10     # Referrals needed for Scout status
-ELITE_THRESHOLD = 100    # Referrals needed for Elite status
-
-# Initialize App & DB
+# Setup Flask
 app = Flask(__name__)
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ==========================================
-# 2. WEBHOOK LOGIC
-# ==========================================
+# Setup Stripe
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+# Setup Supabase
+url: str = os.getenv('SUPABASE_URL')
+key: str = os.getenv('SUPABASE_KEY')
+supabase: Client = create_client(url, key)
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     payload = request.get_data()
     sig_header = request.headers.get('Stripe-Signature')
     event = None
 
+    # 1. Verify the Webhook Signature
     try:
-        # Verify the event came from Stripe
         event = stripe.Webhook.construct_event(
             payload, sig_header, endpoint_secret
         )
     except ValueError as e:
-        logger.warning(f"Invalid payload received: {e}") # Logged as warning
-        return 'Invalid payload', 400
+        # Invalid payload
+        return jsonify({'error': 'Invalid payload'}), 400
     except stripe.error.SignatureVerificationError as e:
-        logger.warning(f"Invalid signature received: {e}") # Logged as warning
-        return 'Invalid signature', 400
+        # Invalid signature
+        return jsonify({'error': 'Invalid signature'}), 400
 
-    # Handle the event
+    # 2. Handle the Checkout Session Completed Event
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         handle_checkout_session(session)
 
-    return jsonify(success=True)
+    return jsonify({'status': 'success'}), 200
 
 def handle_checkout_session(session):
     """
-    Orchestrates the commission payouts:
-    1. Direct Commission to the immediate referrer.
-    2. Scout & Elite bonuses up the hierarchy (with Shark Rule).
+    Handles the logic when a user successfully pays.
+    SIMPLIFIED LOGIC: Flat $10 commission to the direct referrer.
     """
-    metadata = session.get('metadata', {})
-    direct_referrer_id = metadata.get('referred_by')
     
-    if not direct_referrer_id:
-        logger.info("No referrer found in metadata. Skipping commission.")
+    # Get the user who bought the subscription (The "New User")
+    # In Stripe Checkout, client_reference_id is usually set to the Referrer's ID
+    # But often we store the *Buyer's* ID in metadata or lookup by email.
+    # Assuming standard setup: we need to find who *Referred* this sale.
+    
+    # Check if there is a referrer attached to this session
+    # (Adjust this based on how you pass the referrer ID in app.py)
+    referrer_id = session.get('client_reference_id') or session.get('metadata', {}).get('referrer_id')
+
+    if not referrer_id:
+        print("No referrer found for this sale. No commission payout.")
         return
 
-    logger.info(f"--- Processing Sale for Referrer: {direct_referrer_id} ---")
+    # Get the details of the sale
+    customer_email = session.get('customer_details', {}).get('email')
+    amount_paid = session.get('amount_total', 0) / 100  # Convert cents to dollars
 
-    # ---------------------------------------------------------
-    # STEP 1: DIRECT COMMISSION (15%)
-    # ---------------------------------------------------------
-    credit_user(direct_referrer_id, DIRECT_COMMISSION, "Direct Commission")
+    print(f"Processing sale for {customer_email}. Referrer: {referrer_id}")
 
-    # ---------------------------------------------------------
-    # STEP 2: OVERRIDES (Scout & Elite)
-    # ---------------------------------------------------------
-    current_user_id = direct_referrer_id
-    scout_bonus_remaining = True
-    elite_bonus_remaining = True
+    # --- NEW SIMPLIFIED LOGIC START ---
     
-    # Safety limit to prevent infinite loops
-    loop_limit = 20 
-    depth = 0
-
-    while (scout_bonus_remaining or elite_bonus_remaining) and current_user_id and depth < loop_limit:
-        
-        # A. Get Profile Data (Upline & Balance)
-        profile = get_profile(current_user_id)
-        if not profile:
-            break # User deleted or invalid
-            
-        # B. Check Status (Count Referrals)
-        ref_count = count_referrals(current_user_id)
-        is_scout = ref_count >= SCOUT_THRESHOLD
-        is_elite = ref_count >= ELITE_THRESHOLD
-        
-        payout_amount = 0.0
-        payout_notes = []
-
-        # C. Calculate Payouts based on Status & Remaining Pools
-        
-        # ELITE LOGIC (Includes Shark Rule)
-        if is_elite:
-            if elite_bonus_remaining:
-                payout_amount += ELITE_BONUS
-                elite_bonus_remaining = False
-                payout_notes.append("Elite Bonus")
-            
-            if scout_bonus_remaining:
-                payout_amount += SCOUT_BONUS
-                scout_bonus_remaining = False
-                payout_notes.append("Shark Bonus (Scout Override)")
-
-        # SCOUT LOGIC
-        elif is_scout:
-            if scout_bonus_remaining:
-                payout_amount += SCOUT_BONUS
-                scout_bonus_remaining = False
-                payout_notes.append("Scout Bonus")
-
-        # D. Credit User if applicable
-        if payout_amount > 0:
-            credit_user(current_user_id, payout_amount, ", ".join(payout_notes))
-
-        # E. Move Up the Chain
-        current_user_id = profile.get('referred_by')
-        depth += 1
-
-    logger.info("--- Commission Processing Complete ---")
-
-# ==========================================
-# 3. HELPER FUNCTIONS
-# ==========================================
-def get_profile(user_id):
-    """Fetches profile to find the upline (referred_by)."""
+    # 1. Define the flat commission amount
+    commission_amount = 10.00
+    
     try:
-        res = supabase.table("profiles").select("referred_by").eq("id", user_id).execute()
-        if res.data:
-            return res.data[0]
-    except Exception as e:
-        logger.error(f"Error fetching profile {user_id}: {e}")
-    return None
-
-def count_referrals(user_id):
-    """Counts how many people this user has directly referred."""
-    try:
-        res = supabase.table("profiles").select("id", count="exact").eq("referred_by", user_id).execute()
-        return res.count
-    except Exception as e:
-        logger.error(f"Error counting referrals for {user_id}: {e}")
-        return 0
-
-def credit_user(user_id, amount, note=""):
-    """Updates the user's commission balance safely."""
-    try:
-        # 1. Fetch current balance
-        res = supabase.table("profiles").select("commission_balance").eq("id", user_id).execute()
-        if not res.data:
-            logger.warning(f"User {user_id} not found for credit.")
-            return
-
-        current_balance = res.data[0].get('commission_balance') or 0.0
-        new_balance = current_balance + amount
+        # 2. Insert the Commission Record into Supabase
+        data, count = supabase.table('commissions').insert({
+            'recipient_id': referrer_id,      # The person getting paid
+            'source_user_email': customer_email, # The person who bought
+            'amount': commission_amount,
+            'status': 'pending',              # Or 'paid' depending on your flow
+            'type': 'direct_referral',        # Tag it clearly
+            'description': 'Flat $10 Direct Referral Commission'
+        }).execute()
         
-        # 2. Update balance
-        supabase.table("profiles").update({
-            "commission_balance": new_balance
-        }).eq("id", user_id).execute()
-        
-        logger.info(f"SUCCESS: Credited ${amount:.2f} to {user_id} [{note}]. New Balance: ${new_balance:.2f}")
-        
-    except Exception as e:
-        logger.critical(f"CRITICAL ERROR: Failed to credit {user_id}: {e}")
+        print(f"Success: Recorded $10 commission for {referrer_id}")
 
-# ==========================================
-# 4. RUN SERVER (FOR LOCAL DEV)
-# ==========================================
+    except Exception as e:
+        print(f"Error recording commission: {str(e)}")
+
+    # --- NEW SIMPLIFIED LOGIC END ---
+
 if __name__ == '__main__':
-    # This block is only used when you run `python webhook_server.py` locally.
-    # Gunicorn ignores this block.
-    port = int(os.environ.get('PORT', 5000))
-    print("Starting Flask Development Server...")
+    # Run on port 4242 (or whatever port you use in Railway)
+    port = int(os.environ.get("PORT", 4242))
     app.run(host='0.0.0.0', port=port)
