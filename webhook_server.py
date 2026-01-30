@@ -8,11 +8,17 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# 1. Setup & Validation
+# ==========================================
+# 1. SETUP & VALIDATION
+# ==========================================
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
 url = os.getenv('SUPABASE_URL')
-key = os.getenv('SUPABASE_KEY')
+
+# RECOMMENDATION: Use the SERVICE_ROLE_KEY for webhooks to bypass RLS policies
+# If you don't have it in your .env, fall back to the standard key, 
+# but you must ensure RLS policies allow inserts.
+key = os.getenv('SUPABASE_SERVICE_ROLE_KEY') or os.getenv('SUPABASE_KEY')
 
 if not url or not key:
     raise ValueError("CRITICAL: Supabase URL or KEY is missing.")
@@ -48,8 +54,6 @@ def webhook():
 def handle_new_subscription(session):
     """
     Runs only on the FIRST payment (Signup).
-    1. Pays the first $10.
-    2. STAMPS the 'referred_by' ID onto the Stripe Subscription so we remember it forever.
     """
     # A. Find Referrer
     referrer_id = session.get('client_reference_id') or session.get('metadata', {}).get('referred_by')
@@ -59,7 +63,6 @@ def handle_new_subscription(session):
         return
 
     # B. Stamp the Subscription for Future Months
-    # We do this immediately so next month's invoice knows who gets paid.
     subscription_id = session.get('subscription')
     if subscription_id:
         try:
@@ -77,58 +80,73 @@ def handle_new_subscription(session):
 def handle_renewal_payment(invoice):
     """
     Runs on MONTH 2, 3, 4...
-    1. Checks if this is a renewal (billing_reason='subscription_cycle').
-    2. Looks up the Subscription to see if it was stamped with a referrer.
-    3. Pays the $10.
     """
-    # A. Only pay on Renewals (Ignore 'subscription_create' because handle_new_subscription handles that)
+    # A. Only pay on Renewals
     if invoice.get('billing_reason') != 'subscription_cycle':
-        print(f"Skipping Invoice {invoice['id']}: Reason is {invoice.get('billing_reason')}")
+        print(f"Skipping Invoice {invoice.get('id')}: Reason is {invoice.get('billing_reason')}")
         return
 
-    # B. Get the Subscription to look for the "Stamp"
+    # B. Get the Subscription
     subscription_id = invoice.get('subscription')
     if not subscription_id:
         return
 
     try:
-        # Fetch fresh subscription data from Stripe to get metadata
         sub = stripe.Subscription.retrieve(subscription_id)
         referrer_id = sub.get('metadata', {}).get('referred_by')
 
         if referrer_id:
-            # C. Pay Renewal Commission
             record_commission(referrer_id, invoice.get('customer_email'), "Monthly Renewal Commission")
         else:
             print(f"Renewal: No referrer stamp found on Subscription {subscription_id}")
 
     except Exception as e:
         print(f"Error processing renewal: {e}")
-        # We raise error here so Stripe retries if it's a temp network issue
         raise e
 
 def record_commission(referrer_id, customer_email, desc):
     """
-    Reusable function to insert into Supabase.
-    The SQL Trigger automatically updates the balance.
+    1. Inserts into commissions table (ledger).
+    2. MANUALLY updates the profiles table (balance).
     """
-    print(f"PAYING COMMISSION: {referrer_id} for {customer_email} ({desc})")
-    
-    data = {
-        'recipient_id': referrer_id,      
-        'source_user_email': customer_email, 
-        'amount': 10.00,
-        'status': 'pending',              
-        'type': 'recurring_renewal' if 'Renewal' in desc else 'direct_referral',        
-        'description': desc
-    }
-    
-    response = supabase.table('commissions').insert(data).execute()
-    
-    if hasattr(response, 'error') and response.error:
-        raise Exception(f"Supabase DB Error: {response.error}")
+    amount = 10.00
+    print(f"PROCESSING COMMISSION: {referrer_id} | ${amount} | {desc}")
+
+    # 1. INSERT LEDGER RECORD
+    try:
+        data = {
+            'recipient_id': referrer_id,      
+            'source_user_email': customer_email, 
+            'amount': amount,
+            'status': 'paid', # Mark as paid since we are updating balance immediately             
+            'type': 'recurring_renewal' if 'Renewal' in desc else 'direct_referral',        
+            'description': desc
+        }
+        supabase.table('commissions').insert(data).execute()
+    except Exception as e:
+        # Don't crash if ledger fails, we still want to pay the user
+        print(f"WARNING: Failed to insert into commissions table: {e}")
+
+    # 2. UPDATE USER BALANCE (The Logic Missing from your previous code)
+    try:
+        # A. Get current balance
+        res = supabase.table("profiles").select("commission_balance").eq("id", referrer_id).execute()
         
-    print(f"SUCCESS: Commission Recorded.")
+        if res.data:
+            current_balance = res.data[0].get('commission_balance') or 0.0
+            new_balance = float(current_balance) + amount
+            
+            # B. Write new balance
+            supabase.table("profiles").update({
+                "commission_balance": new_balance
+            }).eq("id", referrer_id).execute()
+            
+            print(f"SUCCESS: Updated balance for {referrer_id} from ${current_balance} to ${new_balance}")
+        else:
+            print(f"ERROR: Profile not found for {referrer_id}")
+
+    except Exception as e:
+        print(f"CRITICAL ERROR updating profile balance: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 4242))
