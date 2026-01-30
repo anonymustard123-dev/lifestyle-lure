@@ -28,7 +28,6 @@ if 'omni_result' not in st.session_state: st.session_state.omni_result = None
 if 'selected_lead' not in st.session_state: st.session_state.selected_lead = None
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'is_editing' not in st.session_state: st.session_state.is_editing = False
-# NEW: State to track if Profile Menu is open
 if 'show_profile' not in st.session_state: st.session_state.show_profile = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
@@ -50,7 +49,7 @@ if not st.session_state.referral_captured:
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID") # Make sure this is the $20 Price ID in Railway
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
 
 @st.cache_resource
@@ -80,7 +79,6 @@ st.markdown("""
             font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
             background-color: #FFFFFF !important;
             color: #222222;
-            /* Use dynamic viewport height for mobile browsers */
             min-height: 100dvh !important;
             width: 100vw;
             margin: 0;
@@ -116,7 +114,6 @@ st.markdown("""
             gap: 0px !important;
         }
         
-        /* Target the vertical block to ensure no internal bottom padding */
         [data-testid="stVerticalBlock"] {
             gap: 0rem !important;
             padding-bottom: 0rem !important;
@@ -187,7 +184,6 @@ st.markdown("""
             border: 1px solid #EBEBEB; white-space: nowrap; vertical-align: middle; display: inline-flex; align-items: center;
         }
         
-        /* BUBBLE COLORS */
         .bubble-client { background-color: #E6FFFA; color: #008a73; border-color: #008a73; }
         .bubble-lead { background-color: #FFF5F7; color: #FF385C; border-color: #FF385C; } 
         .bubble-outreach { background-color: #FFFFF0; color: #D69E2E; border-color: #D69E2E; }
@@ -195,10 +191,7 @@ st.markdown("""
         .report-bubble { background-color: #F7F7F7; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #EBEBEB; }
         .transaction-bubble { background-color: #F0FFF4; border-radius: 16px; padding: 20px; margin-top: 16px; border: 1px solid #C6F6D5; }
         
-        /* =========================================================
-           BUTTONS & ACTIONS
-           ========================================================= */
-        
+        /* BUTTONS & ACTIONS */
         div[data-testid="stButton"] > button, div[data-testid="stDownloadButton"] > button {
             background-color: #FFFFFF !important;
             border: 1px solid #EBEBEB !important; 
@@ -209,8 +202,6 @@ st.markdown("""
             font-weight: 600 !important;
             transition: all 0.2s ease !important;
             color: #222222 !important;
-            
-            /* DEFAULT: Center Align (Good for Edit/Save buttons) */
             text-align: center !important;
             justify-content: center !important;
             display: flex !important;
@@ -231,17 +222,12 @@ st.markdown("""
             color: #FF385C !important; 
         }
 
-        /* =========================================================
-           ROLODEX SPECIFIC OVERRIDES
-           ========================================================= */
-        
-        /* Rolodex items use the .rolodex-marker to force LEFT alignment and BOLD */
+        /* ROLODEX OVERRIDES */
         div.element-container:has(.rolodex-marker) + div.element-container button {
             text-align: left !important;
             justify-content: flex-start !important;
             font-weight: 800 !important;
         }
-        /* SPECIFIC: Target the text paragraph INSIDE the button to force bold */
         div.element-container:has(.rolodex-marker) + div.element-container button p {
             font-weight: 800 !important;
             color: #222222 !important;
@@ -250,7 +236,6 @@ st.markdown("""
             justify-content: flex-start !important; 
         }
 
-        /* Rolodex Client Marker (Green) */
         div.element-container:has(.client-marker) + div.element-container button { border-left-color: #008a73 !important; }
         div.element-container:has(.client-marker) + div.element-container button:hover {
             border-color: #008a73 !important;
@@ -259,13 +244,11 @@ st.markdown("""
         }
         div.element-container:has(.client-marker) + div.element-container button:hover p { color: #008a73 !important; }
 
-        /* =========================================================
-           BOLD LEFT BUTTON OVERRIDES (Login, Signup, Downloads)
-           ========================================================= */
+        /* BOLD LEFT BUTTON OVERRIDES */
         div.element-container:has(.bold-left-marker) + div.element-container button {
             text-align: left !important;
             justify-content: flex-start !important;
-            font-weight: 800 !important; /* Extra Bold */
+            font-weight: 800 !important; 
         }
         div.element-container:has(.bold-left-marker) + div.element-container button p {
             font-weight: 800 !important;
@@ -274,8 +257,7 @@ st.markdown("""
             justify-content: flex-start !important; 
         }
 
-
-        /* ANALYTICS */
+        /* ANALYTICS & STATS */
         .analytics-card {
             background-color: #FFFFFF;
             border: 1px solid #EBEBEB;
@@ -296,26 +278,18 @@ st.markdown("""
         .stat-metric { font-size: 26px; font-weight: 900; color: #222222; margin: 0; line-height: 1.1; }
         .stat-sub { font-size: 14px; font-weight: 500; color: #717171; margin-top: 4px; }
 
-        /* =========================================================
-           INPUT FIELDS - FIX DARK MODE & PLACEHOLDERS & ALIGNMENT
-           ========================================================= */
-        
-        /* 1. APPLY STYLE TO OUTER WRAPPER ONLY (Fixes Double Box Issue) */
-        /* ADDED: div[data-baseweb="textarea"] to fix black box issue */
+        /* INPUT FIELDS */
         div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"], div[data-testid="stMarkdownContainer"] textarea {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
             border: 1px solid transparent !important;
             border-radius: 12px !important;
         }
-        
-        /* 2. MAKE INNER CONTAINER TRANSPARENT (Fixes smaller text field issue) */
         div[data-baseweb="base-input"] {
             background-color: transparent !important;
             border: none !important;
             width: 100% !important;
         }
-
         input, textarea, select {
             color: #222222 !important;
             background-color: transparent !important;
@@ -323,19 +297,15 @@ st.markdown("""
             caret-color: #FF385C !important; 
             width: 100% !important;
         }
-
-        /* PLACEHOLDER FIXES FOR MOBILE */
         input::placeholder, textarea::placeholder {
             color: #717171 !important;
             opacity: 1 !important;
             -webkit-text-fill-color: #717171 !important;
         }
-        
         div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within { 
             border: 1px solid #222222 !important; 
             background-color: #FFFFFF !important; 
         }
-        
         div[data-baseweb="select"] > div {
             background-color: #F7F7F7 !important;
             color: #222222 !important;
@@ -369,7 +339,6 @@ st.markdown("""
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #717171; letter-spacing: 0.5px; }
         .stat-value { font-size: 14px; font-weight: 600; color: #222222; margin-top: 4px; line-height: 1.3; }
         
-        /* REFERRAL BOX */
         .referral-box {
             background-color: #F7F7F7;
             border: 1px dashed #dddddd;
@@ -388,14 +357,12 @@ st.markdown("""
             font-weight: 600;
             word-break: break-all;
         }
-        /* CODE BLOCK OVERRIDE FOR REFERRAL LINK */
         .stCodeBlock {
             background-color: #F7F7F7 !important;
             border-radius: 12px !important;
             border: 1px dashed #dddddd !important;
         }
         
-        /* PROFILE BUTTON ALIGNMENT */
         .profile-container {
             display: flex;
             justify-content: flex-end;
@@ -474,7 +441,7 @@ def cancel_active_subscription(email):
     except Exception as e:
         return False, f"Error: {str(e)}"
 
-# --- HIERARCHY LOGIC ---
+# --- HIERARCHY LOGIC (SIMPLIFIED) ---
 def ensure_referral_link(user_id, user_meta):
     """
     Called on login.
@@ -497,26 +464,10 @@ def ensure_referral_link(user_id, user_meta):
 
 # --- CONTACT FORMATTING HELPER ---
 def format_contact_details(contact_info):
-    """
-    Formats contact info.
-    - If it's a phone number (10 or 11 digits starting with 1), formats as (XXX)-XXX-XXXX.
-    - If it looks like an email or text, leaves it alone.
-    - If it's mixed, tries to format the phone part.
-    """
     if not contact_info: return "-"
     s = str(contact_info).strip()
-    
-    # Regex to find 10 or 11 digit sequences (US Phone) not surrounded by other digits
-    # Matches: optional '1', then 10 digits
     pattern = r'(?<!\d)(1?)(\d{3})(\d{3})(\d{4})(?!\d)'
-    
-    def repl(m):
-        # m.group(1) is leading '1' (optional, discarded in format)
-        # m.group(2) is Area Code
-        # m.group(3) is Prefix
-        # m.group(4) is Line
-        return f"({m.group(2)})-{m.group(3)}-{m.group(4)}"
-        
+    def repl(m): return f"({m.group(2)})-{m.group(3)}-{m.group(4)}"
     return re.sub(pattern, repl, s)
 
 # ==========================================
@@ -703,7 +654,10 @@ def confirm_cancellation_dialog(email):
             st.rerun()
 
 def render_profile_view_overlay():
-    """Renders the Full Page Profile Overlay to ensure closing works."""
+    """
+    Renders the Full Page Profile Overlay.
+    UPDATED: Simplified for Flat $10 Commission System.
+    """
     # Top Bar: Back Button
     c_back, c_void = st.columns([1, 5])
     with c_back:
@@ -745,11 +699,11 @@ def render_profile_view_overlay():
             <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
                 <div class="stat-title">WALLET BALANCE</div>
                 <div class="stat-metric">${balance:,.2f}</div>
-                <div class="stat-sub">Payouts disbursed monthly</div>
+                <div class="stat-sub">You earn $10.00 per referral</div>
             </div>
             
             <div class="analytics-card analytics-card-green" style="margin-bottom: 16px;">
-                <div class="stat-title">TOTAL REFERRALS</div>
+                <div class="stat-title">ACTIVE REFERRALS</div>
                 <div class="stat-metric">{ref_count}</div>
                 <div class="stat-sub">Users signed up with your code</div>
             </div>
@@ -758,8 +712,24 @@ def render_profile_view_overlay():
         # 2. REFERRAL LINK
         st.caption("Your Referral Link")
         st.code(referral_link, language="text")
+        st.info("Share this link. You earn a flat **$10.00** immediately when someone subscribes.")
+
+        # 3. COMMISSION HISTORY (NEW)
+        with st.expander("📜 Transaction History"):
+            try:
+                commissions = supabase.table("commissions").select("*").eq("recipient_id", st.session_state.user.id).order("created_at", desc=True).limit(20).execute()
+                if commissions.data:
+                    df = pd.DataFrame(commissions.data)
+                    # Clean up for display
+                    df['amount'] = df['amount'].apply(lambda x: f"${x:.2f}")
+                    df['date'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d')
+                    st.table(df[['date', 'source_user_email', 'amount']])
+                else:
+                    st.write("No commissions yet.")
+            except Exception as e:
+                st.write("Could not load history.")
         
-        # 3. PAYOUT SETTINGS
+        # 4. PAYOUT SETTINGS
         st.markdown("### Payout Settings")
         
         with st.form("payout_form"):
@@ -850,7 +820,7 @@ if not st.session_state.is_subscribed:
         st.session_state.is_subscribed = check_subscription_status(st.session_state.user.email)
         if st.session_state.is_subscribed: st.rerun()
 
-    # 1. RENDER LOGO (Centered, manual column layout to match header style)
+    # 1. RENDER LOGO
     c1, c2, c3 = st.columns([1, 2, 1], vertical_alignment="center")
     with c2:
         try:
@@ -859,8 +829,8 @@ if not st.session_state.is_subscribed:
             st.markdown("<h1 style='text-align: center; color: #FF385C;'>NexusFlowAI</h1>", unsafe_allow_html=True)
             st.markdown("<p style='text-align: center;'>Gravity for leads. Flow for deals.</p>", unsafe_allow_html=True)
     
-    # 2. RENDER UPGRADE CARD
-    st.markdown("""<div style="text-align:center; padding: 20px 20px;"><h1>Upgrade Plan</h1><p>Unlock unlimited leads and pipeline storage.</p><div class="airbnb-card" style="margin-top:20px;"><h2 style="margin:0;">$15<small style="font-size:16px; color:#717171;">/mo</small></h2></div></div>""", unsafe_allow_html=True)
+    # 2. RENDER UPGRADE CARD ($20 UPDATE)
+    st.markdown("""<div style="text-align:center; padding: 20px 20px;"><h1>Upgrade Plan</h1><p>Unlock unlimited leads and pipeline storage.</p><div class="airbnb-card" style="margin-top:20px;"><h2 style="margin:0;">$20<small style="font-size:16px; color:#717171;">/mo</small></h2></div></div>""", unsafe_allow_html=True)
     
     # 3. SUBSCRIBE BUTTON
     if st.button("Subscribe Now", type="primary", use_container_width=True):
@@ -869,9 +839,8 @@ if not st.session_state.is_subscribed:
             if url:
                  st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
     
-    # 4. PROFILE BUTTON (Moved below Subscribe button with MORE SPACING)
+    # 4. PROFILE BUTTON
     st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
-    # Replaced render_profile_hub with simple button that triggers the overlay
     if st.button("👤", key="upgrade_profile_btn"):
         st.session_state.show_profile = True
         st.rerun()
@@ -973,7 +942,6 @@ def render_executive_card(data):
                     else: st.error("Missing ID")
                         
         else:
-            # APPLIED FIX: Using helper to format contact info in the display card
             html_body = f"""
 <div class="stat-grid">
     <div class="stat-item"><div class="stat-label">Product Fit</div><div class="stat-value">{lead.get('product_pitch') or 'None specified'}</div></div>
@@ -1052,7 +1020,6 @@ def view_pipeline():
         render_executive_card({'lead_data': st.session_state.selected_lead, 'action': 'QUERY'})
         return
 
-    # [FIX] INCREASED TOP PADDING TO PREVENT OVERLAP WITH TABS
     st.markdown("<h2 style='padding: 24px 0 12px 0;'>Rolodex</h2>", unsafe_allow_html=True)
     if not st.session_state.user: return
 
