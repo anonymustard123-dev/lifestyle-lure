@@ -33,6 +33,8 @@ if 'selected_lead' not in st.session_state: st.session_state.selected_lead = Non
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'is_editing' not in st.session_state: st.session_state.is_editing = False
 if 'show_profile' not in st.session_state: st.session_state.show_profile = False
+# NEW: State for toggling email login visibility
+if 'show_email_login' not in st.session_state: st.session_state.show_email_login = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
 if not st.session_state.referral_captured:
@@ -854,49 +856,67 @@ if not st.session_state.user:
         google_auth_url = "#"
 
     # Custom Google Button Styling - FIXED with INLINE SVG (No broken links)
-    # This SVG is embedded directly in the code, so it cannot fail to load.
     google_icon_svg = """<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" viewBox="0 0 48 48" width="20px" height="20px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>"""
 
+    # --- NEW: "FASTEST" BADGE & HIGHLIGHTED BUTTON ---
     button_html = f"""
+        <div style="text-align: center; margin-bottom: 8px;">
+            <span style="background-color: #E6FFFA; color: #008a73; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; letter-spacing: 0.5px;">
+                FASTEST
+            </span>
+        </div>
         <a href="{google_auth_url}" target="_self" style="text-decoration: none;">
             <div style="
                 display: flex; align-items: center; justify-content: center;
-                background-color: white; border: 1px solid #ddd; border-radius: 12px;
+                background-color: white; border: 2px solid #008a73; border-radius: 12px;
                 padding: 12px; margin-bottom: 20px; cursor: pointer;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
+                box-shadow: 0 4px 12px rgba(0,138,115,0.15); transition: all 0.2s;">
                 <div style="margin-right: 12px; display: flex; align-items: center;">
                     {google_icon_svg}
                 </div>
-                <span style="font-weight: 600; color: #555; font-size: 16px;">Sign in with Google</span>
+                <span style="font-weight: 700; color: #222; font-size: 16px;">Continue with Google</span>
             </div>
         </a>
-        <div style="text-align: center; color: #aaa; margin-bottom: 20px;">— OR —</div>
     """
     st.markdown(button_html, unsafe_allow_html=True)
     
-    email = st.text_input("Email", placeholder="name@example.com")
-    password = st.text_input("Password", type="password", placeholder="••••••••")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Log In", type="primary", use_container_width=True):
-            try:
-                res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                st.session_state.user = res.user
-                st.session_state.is_subscribed = check_subscription_status(res.user.email)
-                ensure_referral_link(res.user.id, res.user.user_metadata)
-                st.rerun()
-            except Exception as e: st.error(str(e))
-    
-    with c2:
-        st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
-        if st.button("Sign Up", type="secondary", use_container_width=True):
-            try:
-                meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
-                res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
-                if res.user: st.success("Account created! Log in."); 
-            except Exception as e: st.error(str(e))
+    # --- NEW: PROGRESSIVE DISCLOSURE FOR EMAIL LOGIN ---
+    if not st.session_state.show_email_login:
+        # Show only the subtle "Reveal" button
+        st.markdown("<div style='text-align: center; color: #717171; margin-bottom: 12px; font-size: 14px;'></div>", unsafe_allow_html=True)
+        if st.button("I don't have a Google account", type="tertiary", use_container_width=True):
+            st.session_state.show_email_login = True
+            st.rerun()
+    else:
+        # Show "Back" button + The Form
+        st.markdown("---")
+        if st.button("← Back to Google", type="tertiary"):
+             st.session_state.show_email_login = False
+             st.rerun()
+
+        email = st.text_input("Email", placeholder="name@example.com")
+        password = st.text_input("Password", type="password", placeholder="••••••••")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+            if st.button("Log In", type="primary", use_container_width=True):
+                try:
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user = res.user
+                    st.session_state.is_subscribed = check_subscription_status(res.user.email)
+                    ensure_referral_link(res.user.id, res.user.user_metadata)
+                    st.rerun()
+                except Exception as e: st.error(str(e))
+        
+        with c2:
+            st.markdown('<div class="bold-left-marker"></div>', unsafe_allow_html=True)
+            if st.button("Sign Up", type="secondary", use_container_width=True):
+                try:
+                    meta = {"referred_by": st.session_state.referral_captured} if st.session_state.referral_captured else {}
+                    res = supabase.auth.sign_up({"email": email, "password": password, "options": {"data": meta}})
+                    if res.user: st.success("Account created! Log in."); 
+                except Exception as e: st.error(str(e))
     st.stop()
 
 if not st.session_state.is_subscribed:
