@@ -783,79 +783,85 @@ def render_install_guide():
     # Two Cards
     c1, c2 = st.columns(2)
     
+    # NOTE: The strings below are purposely NOT indented to prevent Markdown
+    # from interpreting them as code blocks.
+    
+    ios_html = """
+<div class="airbnb-card" style="height: 100%; padding: 32px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom: 24px;">
+        <div style="background: #222; color:white; padding: 10px; border-radius: 12px;"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></div>
+        <div>
+            <h3 style="margin:0; color:#222;">iOS</h3>
+            <span style="font-size:13px; color:#717171;">iPhone & iPad</span>
+        </div>
+    </div>
+    
+    <div style="display:flex; gap:16px; margin-bottom: 20px;">
+        <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">1</div>
+        <div>
+            <strong style="color:#222; display:block; margin-bottom:4px;">Open in Safari</strong>
+            <span style="font-size:14px; color:#717171;">Visit the app URL in Safari browser</span>
+        </div>
+    </div>
+    
+     <div style="display:flex; gap:16px; margin-bottom: 20px;">
+        <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">2</div>
+        <div>
+            <strong style="color:#222; display:block; margin-bottom:4px;">Tap the Share icon ⍐</strong>
+            <span style="font-size:14px; color:#717171;">Located at the bottom of Safari</span>
+        </div>
+    </div>
+    
+     <div style="display:flex; gap:16px;">
+        <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">3</div>
+        <div>
+            <strong style="color:#222; display:block; margin-bottom:4px;">Add to Home Screen +</strong>
+            <span style="font-size:14px; color:#717171;">Scroll down and tap the option</span>
+        </div>
+    </div>
+</div>
+"""
+    android_html = """
+<div class="airbnb-card" style="height: 100%; padding: 32px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom: 24px;">
+        <div style="background: #008a73; color:white; padding: 10px; border-radius: 12px;"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></div>
+        <div>
+            <h3 style="margin:0; color:#222;">Android</h3>
+            <span style="font-size:13px; color:#717171;">All Android devices</span>
+        </div>
+    </div>
+    
+    <div style="display:flex; gap:16px; margin-bottom: 20px;">
+        <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">1</div>
+        <div>
+            <strong style="color:#222; display:block; margin-bottom:4px;">Open in Chrome</strong>
+            <span style="font-size:14px; color:#717171;">Visit the app URL in Chrome browser</span>
+        </div>
+    </div>
+    
+     <div style="display:flex; gap:16px; margin-bottom: 20px;">
+        <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">2</div>
+        <div>
+            <strong style="color:#222; display:block; margin-bottom:4px;">Tap the menu icon ⋮</strong>
+            <span style="font-size:14px; color:#717171;">Three dots in the top right</span>
+        </div>
+    </div>
+    
+     <div style="display:flex; gap:16px;">
+        <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">3</div>
+        <div>
+            <strong style="color:#222; display:block; margin-bottom:4px;">Install App ↓</strong>
+            <span style="font-size:14px; color:#717171;">Or "Add to Home Screen"</span>
+        </div>
+    </div>
+</div>
+"""
+    
     with c1:
-        st.markdown("""
-            <div class="airbnb-card" style="height: 100%; padding: 32px;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom: 24px;">
-                    <div style="background: #222; color:white; padding: 10px; border-radius: 12px;"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></div>
-                    <div>
-                        <h3 style="margin:0; color:#222;">iOS</h3>
-                        <span style="font-size:13px; color:#717171;">iPhone & iPad</span>
-                    </div>
-                </div>
-                
-                <div style="display:flex; gap:16px; margin-bottom: 20px;">
-                    <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">1</div>
-                    <div>
-                        <strong style="color:#222; display:block; margin-bottom:4px;">Open in Safari</strong>
-                        <span style="font-size:14px; color:#717171;">Visit the app URL in Safari browser</span>
-                    </div>
-                </div>
-                
-                 <div style="display:flex; gap:16px; margin-bottom: 20px;">
-                    <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">2</div>
-                    <div>
-                        <strong style="color:#222; display:block; margin-bottom:4px;">Tap the Share icon ⍐</strong>
-                        <span style="font-size:14px; color:#717171;">Located at the bottom of Safari</span>
-                    </div>
-                </div>
-                
-                 <div style="display:flex; gap:16px;">
-                    <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">3</div>
-                    <div>
-                        <strong style="color:#222; display:block; margin-bottom:4px;">Add to Home Screen +</strong>
-                        <span style="font-size:14px; color:#717171;">Scroll down and tap the option</span>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(ios_html, unsafe_allow_html=True)
         
     with c2:
-        st.markdown("""
-            <div class="airbnb-card" style="height: 100%; padding: 32px;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom: 24px;">
-                    <div style="background: #008a73; color:white; padding: 10px; border-radius: 12px;"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></div>
-                    <div>
-                        <h3 style="margin:0; color:#222;">Android</h3>
-                        <span style="font-size:13px; color:#717171;">All Android devices</span>
-                    </div>
-                </div>
-                
-                <div style="display:flex; gap:16px; margin-bottom: 20px;">
-                    <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">1</div>
-                    <div>
-                        <strong style="color:#222; display:block; margin-bottom:4px;">Open in Chrome</strong>
-                        <span style="font-size:14px; color:#717171;">Visit the app URL in Chrome browser</span>
-                    </div>
-                </div>
-                
-                 <div style="display:flex; gap:16px; margin-bottom: 20px;">
-                    <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">2</div>
-                    <div>
-                        <strong style="color:#222; display:block; margin-bottom:4px;">Tap the menu icon ⋮</strong>
-                        <span style="font-size:14px; color:#717171;">Three dots in the top right</span>
-                    </div>
-                </div>
-                
-                 <div style="display:flex; gap:16px;">
-                    <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">3</div>
-                    <div>
-                        <strong style="color:#222; display:block; margin-bottom:4px;">Install App ↓</strong>
-                        <span style="font-size:14px; color:#717171;">Or "Add to Home Screen"</span>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(android_html, unsafe_allow_html=True)
 
 
 # --- INTERCEPTOR: If Profile Mode is active, render it and stop ---
