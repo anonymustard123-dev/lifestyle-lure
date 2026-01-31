@@ -35,6 +35,8 @@ if 'is_editing' not in st.session_state: st.session_state.is_editing = False
 if 'show_profile' not in st.session_state: st.session_state.show_profile = False
 # NEW: State for toggling email login visibility
 if 'show_email_login' not in st.session_state: st.session_state.show_email_login = False
+# NEW: State for PWA Install Guide
+if 'show_install_guide' not in st.session_state: st.session_state.show_install_guide = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
 if not st.session_state.referral_captured:
@@ -756,9 +758,114 @@ def render_profile_view_overlay():
                 st.success("Details saved.")
                 st.rerun()
 
+# --- NEW: INSTALL GUIDE OVERLAY ---
+def render_install_guide():
+    """Renders the PWA Installation Instructions."""
+    
+    # Back Button
+    c_back, c_void = st.columns([1, 5])
+    with c_back:
+        if st.button("← Back", key="back_from_install", type="tertiary"):
+            st.session_state.show_install_guide = False
+            st.rerun()
+
+    # Header
+    st.markdown("""
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="display:inline-block; background-color: #FFF5F7; color: #FF385C; font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 20px; text-transform: uppercase; margin-bottom: 12px;">Mobile App</div>
+            <h1 style="margin: 0; font-size: 32px; letter-spacing: -1px;">Install as an App</h1>
+            <p style="font-size: 16px; margin-top: 10px; max-width: 600px; margin-left: auto; margin-right: auto; color: #717171;">
+                NexusFlowAI is a Progressive Web App (PWA) that lives right on your home screen—no app store required.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Two Cards
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.markdown("""
+            <div class="airbnb-card" style="height: 100%; padding: 32px;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom: 24px;">
+                    <div style="background: #222; color:white; padding: 10px; border-radius: 12px;"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></div>
+                    <div>
+                        <h3 style="margin:0; color:#222;">iOS</h3>
+                        <span style="font-size:13px; color:#717171;">iPhone & iPad</span>
+                    </div>
+                </div>
+                
+                <div style="display:flex; gap:16px; margin-bottom: 20px;">
+                    <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">1</div>
+                    <div>
+                        <strong style="color:#222; display:block; margin-bottom:4px;">Open in Safari</strong>
+                        <span style="font-size:14px; color:#717171;">Visit the app URL in Safari browser</span>
+                    </div>
+                </div>
+                
+                 <div style="display:flex; gap:16px; margin-bottom: 20px;">
+                    <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">2</div>
+                    <div>
+                        <strong style="color:#222; display:block; margin-bottom:4px;">Tap the Share icon ⍐</strong>
+                        <span style="font-size:14px; color:#717171;">Located at the bottom of Safari</span>
+                    </div>
+                </div>
+                
+                 <div style="display:flex; gap:16px;">
+                    <div style="background:#FFF5F7; color:#FF385C; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">3</div>
+                    <div>
+                        <strong style="color:#222; display:block; margin-bottom:4px;">Add to Home Screen +</strong>
+                        <span style="font-size:14px; color:#717171;">Scroll down and tap the option</span>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+    with c2:
+        st.markdown("""
+            <div class="airbnb-card" style="height: 100%; padding: 32px;">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom: 24px;">
+                    <div style="background: #008a73; color:white; padding: 10px; border-radius: 12px;"><svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></div>
+                    <div>
+                        <h3 style="margin:0; color:#222;">Android</h3>
+                        <span style="font-size:13px; color:#717171;">All Android devices</span>
+                    </div>
+                </div>
+                
+                <div style="display:flex; gap:16px; margin-bottom: 20px;">
+                    <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">1</div>
+                    <div>
+                        <strong style="color:#222; display:block; margin-bottom:4px;">Open in Chrome</strong>
+                        <span style="font-size:14px; color:#717171;">Visit the app URL in Chrome browser</span>
+                    </div>
+                </div>
+                
+                 <div style="display:flex; gap:16px; margin-bottom: 20px;">
+                    <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">2</div>
+                    <div>
+                        <strong style="color:#222; display:block; margin-bottom:4px;">Tap the menu icon ⋮</strong>
+                        <span style="font-size:14px; color:#717171;">Three dots in the top right</span>
+                    </div>
+                </div>
+                
+                 <div style="display:flex; gap:16px;">
+                    <div style="background:#E6FFFA; color:#008a73; width:24px; height:24px; border-radius:50%; text-align:center; font-weight:800; font-size:12px; line-height:24px; flex-shrink:0;">3</div>
+                    <div>
+                        <strong style="color:#222; display:block; margin-bottom:4px;">Install App ↓</strong>
+                        <span style="font-size:14px; color:#717171;">Or "Add to Home Screen"</span>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+
 # --- INTERCEPTOR: If Profile Mode is active, render it and stop ---
 if st.session_state.show_profile and st.session_state.user:
     render_profile_view_overlay()
+    st.stop()
+    
+# --- INTERCEPTOR: If Install Guide is active, render it and stop ---
+if st.session_state.show_install_guide:
+    render_install_guide()
     st.stop()
 
 def render_header():
@@ -776,10 +883,16 @@ def render_header():
     with c3:
         # Only show profile button if user is logged in
         if st.session_state.user:
-            # Trigger Profile Overlay
-            if st.button("👤", key="header_profile_btn"):
-                st.session_state.show_profile = True
-                st.rerun()
+            # Use columns to place buttons side by side
+            c_info, c_profile = st.columns([1, 1])
+            with c_info:
+                if st.button("ℹ️", key="header_info_btn"):
+                    st.session_state.show_install_guide = True
+                    st.rerun()
+            with c_profile:
+                if st.button("👤", key="header_profile_btn"):
+                    st.session_state.show_profile = True
+                    st.rerun()
 
 # ==========================================
 # 7. MAIN ROUTER
@@ -937,9 +1050,17 @@ if not st.session_state.is_subscribed:
     
     # 4. PROFILE BUTTON
     st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
-    if st.button("👤", key="upgrade_profile_btn"):
-        st.session_state.show_profile = True
-        st.rerun()
+    
+    # Updated: Add Info button here too
+    c_sub_1, c_sub_2 = st.columns([1, 1])
+    with c_sub_1:
+         if st.button("ℹ️", key="upgrade_info_btn"):
+            st.session_state.show_install_guide = True
+            st.rerun()
+    with c_sub_2:
+        if st.button("👤", key="upgrade_profile_btn"):
+            st.session_state.show_profile = True
+            st.rerun()
     
     st.stop()
 
