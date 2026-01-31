@@ -853,7 +853,7 @@ if not st.session_state.user:
         st.error(f"Config Error: {e}")
         google_auth_url = "#"
 
-    # Custom Google Button Styling - FIXED IMAGE SRC
+    # Custom Google Button Styling - FIXED IMAGE SRC (Using Reliable PNG from Wikimedia)
     st.markdown(f"""
         <a href="{google_auth_url}" target="_self" style="text-decoration: none;">
             <div style="
@@ -861,7 +861,7 @@ if not st.session_state.user:
                 background-color: white; border: 1px solid #ddd; border-radius: 12px;
                 padding: 12px; margin-bottom: 20px; cursor: pointer;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s;">
-                <img src="[https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg](https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg)" 
+                <img src="[https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/150px-Google_%22G%22_logo.svg.png](https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/150px-Google_%22G%22_logo.svg.png)" 
                      style="width: 20px; height: 20px; margin-right: 12px;">
                 <span style="font-weight: 600; color: #555; font-size: 16px;">Sign in with Google</span>
             </div>
