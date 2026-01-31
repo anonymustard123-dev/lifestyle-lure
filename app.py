@@ -728,20 +728,7 @@ def render_profile_view_overlay():
         # FIX 3: UPDATED TEXT
         st.info("You earn $10 per month for every subscribed user that uses your link. Payouts will be made the first week of each month.")
 
-        # 3. COMMISSION HISTORY
-        with st.expander("📜 Transaction History"):
-            try:
-                commissions = supabase.table("commissions").select("*").eq("recipient_id", st.session_state.user.id).order("created_at", desc=True).limit(20).execute()
-                if commissions.data:
-                    df = pd.DataFrame(commissions.data)
-                    # Clean up for display
-                    df['amount'] = df['amount'].apply(lambda x: f"${x:.2f}")
-                    df['date'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d')
-                    st.table(df[['date', 'source_user_email', 'amount']])
-                else:
-                    st.write("No referral history")
-            except Exception as e:
-                st.write("No referral history")
+        # REMOVED: 3. COMMISSION HISTORY (Transaction History Log)
         
         # 4. PAYOUT SETTINGS
         st.markdown("### Payout Settings")
