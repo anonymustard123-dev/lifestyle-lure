@@ -19,9 +19,32 @@ load_dotenv()
 # ==========================================
 st.set_page_config(
     page_title="NexusFlowAI", 
-    page_icon="🎙️", 
+    page_icon="nexus_logo.jpg", # UPDATED: Uses your local file for the browser tab
     layout="wide",
     initial_sidebar_state="collapsed"
+)
+
+# ==========================================
+# 1.1 PWA / MOBILE ICON CONFIG (INJECTED)
+# ==========================================
+# Forces iOS and Android to use the custom logo when saved to home screen
+# We point to the landing page URL to ensure the phone can fetch the image reliably
+st.markdown(
+    """
+    <style>
+    /* Hidden style block to allow head injection */
+    </style>
+    <head>
+        <link rel="apple-touch-icon" href="https://nexusflowapp.pro/nexus_logo.jpg">
+        <link rel="apple-touch-icon" sizes="152x152" href="https://nexusflowapp.pro/nexus_logo.jpg">
+        <link rel="apple-touch-icon" sizes="180x180" href="https://nexusflowapp.pro/nexus_logo.jpg">
+        <link rel="apple-touch-icon" sizes="167x167" href="https://nexusflowapp.pro/nexus_logo.jpg">
+        
+        <link rel="icon" type="image/jpeg" sizes="192x192" href="https://nexusflowapp.pro/nexus_logo.jpg">
+        <link rel="icon" type="image/jpeg" sizes="512x512" href="https://nexusflowapp.pro/nexus_logo.jpg">
+    </head>
+    """,
+    unsafe_allow_html=True
 )
 
 # Initialize Session State
