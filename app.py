@@ -9,7 +9,6 @@ from supabase import create_client, Client
 import stripe
 import textwrap
 import re
-import base64
 from dotenv import load_dotenv
 
 # FORCE LOAD ENV VARIABLES
@@ -26,47 +25,29 @@ st.set_page_config(
 )
 
 # ==========================================
-# 1.1 FOOLPROOF ICON LOADER (Base64 Injection)
+# 1.1 PWA ICON CONFIG (Clean URL Injection)
 # ==========================================
-def get_img_as_base64(file_path):
-    """Reads a local file and converts it to a base64 string for HTML injection."""
-    try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except Exception:
-        return None
+# We point to your hosted landing page image. 
+# This is the only reliable way to get the icon on iOS home screens.
+pwa_icon_url = "https://nexusflowapp.pro/nexus_logo.jpg"
 
-# Read the local logo file
-img_b64 = get_img_as_base64("nexus_logo.jpg")
-
-# Define the HTML injection
-# If the image was read successfully, we inject the base64 data directly.
-# If not, we fall back to the favicon (safeguard).
-if img_b64:
-    icon_href = f"data:image/jpeg;base64,{img_b64}"
-    
-    st.markdown(
-        f"""
-        <style>
-        /* Hidden style block to allow head injection */
-        </style>
-        <head>
-            <link rel="apple-touch-icon" href="{icon_href}">
-            <link rel="apple-touch-icon" sizes="152x152" href="{icon_href}">
-            <link rel="apple-touch-icon" sizes="180x180" href="{icon_href}">
-            <link rel="apple-touch-icon" sizes="167x167" href="{icon_href}">
-            
-            <link rel="icon" type="image/jpeg" sizes="192x192" href="{icon_href}">
-            <link rel="icon" type="image/jpeg" sizes="512x512" href="{icon_href}">
-        </head>
-        """,
-        unsafe_allow_html=True
-    )
-
-# ==========================================
-# END ICON CONFIG
-# ==========================================
+st.markdown(
+    f"""
+    <style>
+    /* No visual styles needed here */
+    </style>
+    <head>
+        <link rel="apple-touch-icon" href="{pwa_icon_url}">
+        <link rel="apple-touch-icon" sizes="152x152" href="{pwa_icon_url}">
+        <link rel="apple-touch-icon" sizes="180x180" href="{pwa_icon_url}">
+        <link rel="apple-touch-icon" sizes="167x167" href="{pwa_icon_url}">
+        
+        <link rel="icon" type="image/jpeg" sizes="192x192" href="{pwa_icon_url}">
+        <link rel="icon" type="image/jpeg" sizes="512x512" href="{pwa_icon_url}">
+    </head>
+    """,
+    unsafe_allow_html=True
+)
 
 # Initialize Session State
 if 'user' not in st.session_state: st.session_state.user = None
