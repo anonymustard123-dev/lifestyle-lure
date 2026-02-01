@@ -11,12 +11,10 @@ import textwrap
 import re
 from dotenv import load_dotenv
 
-# FORCE LOAD ENV VARIABLES
-load_dotenv()
-
 # ==========================================
 # 1. CONFIG & STATE
 # ==========================================
+# Must be the very first Streamlit command
 st.set_page_config(
     page_title="NexusFlowAI", 
     page_icon="nexus_logo.jpg", 
@@ -24,30 +22,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ==========================================
-# 1.1 PWA ICON CONFIG (Clean URL Injection)
-# ==========================================
-# We point to your hosted landing page image. 
-# This is the only reliable way to get the icon on iOS home screens.
-pwa_icon_url = "https://nexusflowapp.pro/nexus_logo.jpg"
+# Silently load env variables
+_ = load_dotenv()
 
-st.markdown(
-    f"""
-    <style>
-    /* No visual styles needed here */
-    </style>
-    <head>
-        <link rel="apple-touch-icon" href="{pwa_icon_url}">
-        <link rel="apple-touch-icon" sizes="152x152" href="{pwa_icon_url}">
-        <link rel="apple-touch-icon" sizes="180x180" href="{pwa_icon_url}">
-        <link rel="apple-touch-icon" sizes="167x167" href="{pwa_icon_url}">
-        
-        <link rel="icon" type="image/jpeg" sizes="192x192" href="{pwa_icon_url}">
-        <link rel="icon" type="image/jpeg" sizes="512x512" href="{pwa_icon_url}">
-    </head>
-    """,
-    unsafe_allow_html=True
-)
+# ==========================================
+# 1.1 AGGRESSIVE PWA ICON FIX
+# ==========================================
+# We inject these links directly. No <head> tags to avoid rendering issues.
+# NOTE: Ensure 'https://nexusflowapp.pro/nexus_logo.jpg' is LIVE and reachable.
+pwa_html = """
+<link rel="apple-touch-icon" href="https://nexusflowapp.pro/nexus_logo.jpg" />
+<link rel="icon" type="image/jpeg" href="https://nexusflowapp.pro/nexus_logo.jpg" />
+"""
+st.markdown(pwa_html, unsafe_allow_html=True)
 
 # Initialize Session State
 if 'user' not in st.session_state: st.session_state.user = None
