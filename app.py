@@ -9,9 +9,10 @@ from supabase import create_client, Client
 import stripe
 import textwrap
 import re
-from dotenv import load_dotenv  #
+import base64
+from dotenv import load_dotenv
 
-# FORCE LOAD ENV VARIABLES (Fixes missing keys locally)
+# FORCE LOAD ENV VARIABLES
 load_dotenv()
 
 # ==========================================
@@ -19,33 +20,53 @@ load_dotenv()
 # ==========================================
 st.set_page_config(
     page_title="NexusFlowAI", 
-    page_icon="nexus_logo.jpg", # UPDATED: Uses your local file for the browser tab
+    page_icon="nexus_logo.jpg", 
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # ==========================================
-# 1.1 PWA / MOBILE ICON CONFIG (INJECTED)
+# 1.1 FOOLPROOF ICON LOADER (Base64 Injection)
 # ==========================================
-# Forces iOS and Android to use the custom logo when saved to home screen
-# We point to the landing page URL to ensure the phone can fetch the image reliably
-st.markdown(
-    """
-    <style>
-    /* Hidden style block to allow head injection */
-    </style>
-    <head>
-        <link rel="apple-touch-icon" href="https://nexusflowapp.pro/nexus_logo.jpg">
-        <link rel="apple-touch-icon" sizes="152x152" href="https://nexusflowapp.pro/nexus_logo.jpg">
-        <link rel="apple-touch-icon" sizes="180x180" href="https://nexusflowapp.pro/nexus_logo.jpg">
-        <link rel="apple-touch-icon" sizes="167x167" href="https://nexusflowapp.pro/nexus_logo.jpg">
-        
-        <link rel="icon" type="image/jpeg" sizes="192x192" href="https://nexusflowapp.pro/nexus_logo.jpg">
-        <link rel="icon" type="image/jpeg" sizes="512x512" href="https://nexusflowapp.pro/nexus_logo.jpg">
-    </head>
-    """,
-    unsafe_allow_html=True
-)
+def get_img_as_base64(file_path):
+    """Reads a local file and converts it to a base64 string for HTML injection."""
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception:
+        return None
+
+# Read the local logo file
+img_b64 = get_img_as_base64("nexus_logo.jpg")
+
+# Define the HTML injection
+# If the image was read successfully, we inject the base64 data directly.
+# If not, we fall back to the favicon (safeguard).
+if img_b64:
+    icon_href = f"data:image/jpeg;base64,{img_b64}"
+    
+    st.markdown(
+        f"""
+        <style>
+        /* Hidden style block to allow head injection */
+        </style>
+        <head>
+            <link rel="apple-touch-icon" href="{icon_href}">
+            <link rel="apple-touch-icon" sizes="152x152" href="{icon_href}">
+            <link rel="apple-touch-icon" sizes="180x180" href="{icon_href}">
+            <link rel="apple-touch-icon" sizes="167x167" href="{icon_href}">
+            
+            <link rel="icon" type="image/jpeg" sizes="192x192" href="{icon_href}">
+            <link rel="icon" type="image/jpeg" sizes="512x512" href="{icon_href}">
+        </head>
+        """,
+        unsafe_allow_html=True
+    )
+
+# ==========================================
+# END ICON CONFIG
+# ==========================================
 
 # Initialize Session State
 if 'user' not in st.session_state: st.session_state.user = None
@@ -56,9 +77,7 @@ if 'selected_lead' not in st.session_state: st.session_state.selected_lead = Non
 if 'referral_captured' not in st.session_state: st.session_state.referral_captured = None
 if 'is_editing' not in st.session_state: st.session_state.is_editing = False
 if 'show_profile' not in st.session_state: st.session_state.show_profile = False
-# NEW: State for toggling email login visibility
 if 'show_email_login' not in st.session_state: st.session_state.show_email_login = False
-# NEW: State for PWA Install Guide
 if 'show_install_guide' not in st.session_state: st.session_state.show_install_guide = False
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
@@ -81,7 +100,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID") 
-APP_BASE_URL = "https://app.nexusflowapp.pro" # Hardcoded to ensure custom domain is used
+APP_BASE_URL = "https://app.nexusflowapp.pro"
 
 @st.cache_resource
 def init_supabase():
