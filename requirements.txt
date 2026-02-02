@@ -9,3 +9,4 @@ st-click-detector
 flask
 extra-streamlit-components
 gunicorn
+tenacity
