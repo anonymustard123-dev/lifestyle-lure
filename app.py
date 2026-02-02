@@ -10,6 +10,7 @@ import stripe
 import textwrap
 import re
 from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # ==========================================
 # 1. CONFIG & STATE
@@ -47,6 +48,8 @@ if 'is_editing' not in st.session_state: st.session_state.is_editing = False
 if 'show_profile' not in st.session_state: st.session_state.show_profile = False
 if 'show_email_login' not in st.session_state: st.session_state.show_email_login = False
 if 'show_install_guide' not in st.session_state: st.session_state.show_install_guide = False
+# Pagination State
+if 'pipeline_page' not in st.session_state: st.session_state.pipeline_page = 0
 
 # --- CAPTURE REFERRAL CODE (STICKY) ---
 if not st.session_state.referral_captured:
@@ -516,6 +519,16 @@ def load_leads_summary():
         return response.data
     except: return []
 
+# --- NEW: RETRY DECORATOR WRAPPER FOR GEMINI ---
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+def generate_gemini_response(audio_bytes, prompt):
+    response = client.models.generate_content(
+        model=TEXT_MODEL_ID,
+        contents=[types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"), prompt],
+        config=types.GenerateContentConfig(response_mime_type="application/json")
+    )
+    return response
+
 def process_omni_voice(audio_bytes, existing_leads_context):
     leads_json = json.dumps(existing_leads_context)
     est_now = datetime.now() - timedelta(hours=5)
@@ -561,13 +574,12 @@ def process_omni_voice(audio_bytes, existing_leads_context):
     }}
     """
     try:
-        response = client.models.generate_content(
-            model=TEXT_MODEL_ID,
-            contents=[types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"), prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json")
-        )
+        # Use the retrying helper function
+        response = generate_gemini_response(audio_bytes, prompt)
         return json.loads(clean_json_string(response.text))
-    except Exception as e: return {"error": str(e)}
+    except Exception as e: 
+        # Graceful error if retries fail
+        return {"error": "AI system is busy. Please try again in a moment."}
 
 def save_new_lead(lead_data):
     if not st.session_state.user: return None
@@ -1185,17 +1197,44 @@ def view_pipeline():
     with c_filter: filter_status = st.pills("Status", ["All", "Lead", "Client"], default="All", selection_mode="single", label_visibility="collapsed")
 
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
-    leads = supabase.table("leads").select("*").eq("user_id", st.session_state.user.id).order("created_at", desc=True).execute().data
     
-    if not leads: st.info("Rolodex is empty."); return
+    # --- PAGINATION LOGIC ---
+    PAGE_SIZE = 50
+    start = st.session_state.pipeline_page * PAGE_SIZE
+    end = start + PAGE_SIZE - 1
+    
+    # Updated Query with Range
+    query = supabase.table("leads").select("*", count="exact").eq("user_id", st.session_state.user.id).order("created_at", desc=True)
+    
+    # Apply Filters before fetching (Note: Supabase filtering happens on DB side, which is efficient)
+    # However, for simple client-side search/filter on partial data, strict DB filtering is better for scale.
+    # Since search_query requires text search, we fetch the range first. 
+    # Ideally, for massive scale, search should be a DB RPC, but here we paginate the main list.
+    
+    if search_query:
+        # If searching, we skip pagination to find matches (or implement DB-side search)
+        # For this stage, we'll fetch all if searching, but paginate default view.
+        leads_response = query.execute()
+    else:
+        leads_response = query.range(start, end).execute()
+        
+    leads = leads_response.data
+    total_count = leads_response.count if leads_response.count else 0
+    
+    if not leads: 
+        if st.session_state.pipeline_page > 0:
+             st.session_state.pipeline_page -= 1
+             st.rerun()
+        st.info("Rolodex is empty."); return
 
     filtered_leads = []
     for l in leads:
+        # Apply client side filters on the fetched page
         if search_query and search_query.lower() not in (l.get('name') or '').lower(): continue
         if filter_status and filter_status != "All" and (l.get('status') or 'Lead').lower() != filter_status.lower(): continue
         filtered_leads.append(l)
 
-    if not filtered_leads: st.caption("No matching contacts found."); return
+    if not filtered_leads and search_query: st.caption("No matching contacts found."); return
 
     for lead in filtered_leads:
         status = lead.get('status', 'Lead')
@@ -1208,6 +1247,28 @@ def view_pipeline():
         if st.button(name, key=f"card_{lead['id']}", use_container_width=True):
             st.session_state.selected_lead = lead
             st.rerun()
+
+    # --- PAGINATION CONTROLS ---
+    # Only show if not searching (Search breaks pagination flow in this simple impl)
+    if not search_query:
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+        col_prev, col_info, col_next = st.columns([1, 2, 1])
+        
+        with col_prev:
+            if st.session_state.pipeline_page > 0:
+                if st.button("Previous", key="prev_page"):
+                    st.session_state.pipeline_page -= 1
+                    st.rerun()
+                    
+        with col_info:
+            st.markdown(f"<p style='text-align:center; font-size:12px; padding-top:10px;'>Page {st.session_state.pipeline_page + 1}</p>", unsafe_allow_html=True)
+            
+        with col_next:
+            # If we fetched a full page, there might be more
+            if len(leads) == PAGE_SIZE:
+                if st.button("Next", key="next_page"):
+                    st.session_state.pipeline_page += 1
+                    st.rerun()
 
 def view_analytics():
     st.markdown("<h2 style='padding:10px 0 20px 0;'>Performance</h2>", unsafe_allow_html=True)
