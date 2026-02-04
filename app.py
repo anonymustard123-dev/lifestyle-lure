@@ -1148,23 +1148,26 @@ def view_omni():
     # --- INSTRUCTIONS BLOCK ---
     st.markdown("""
 <div style="margin-top: 20px; margin-bottom: 40px;">
-    <div class="airbnb-card" style="background: #F8F9FA; border: none;">
-        <h3 style="text-align: center; margin-bottom: 24px; font-size: 18px;">What can I do?</h3>
+    <div class="airbnb-card" style="border-left: 6px solid #FF385C; padding: 24px;">
+        <h3 style="text-align: center; margin-bottom: 12px; font-size: 18px; color: #222;">Voice Command Center</h3>
+        <p style="text-align: center; font-size: 14px; color: #717171; margin-bottom: 24px;">
+            Tap the microphone below and just speak naturally to manage your CRM.
+        </p>
         <div style="display: flex; justify-content: space-between; gap: 10px; text-align: center;">
             <div style="flex: 1;">
-                <div style="font-size: 24px; margin-bottom: 8px;">✨</div>
-                <div class="stat-label">Create</div>
-                <p style="font-size: 11px; color: #717171; line-height: 1.4;">"Add a new lead named Sarah"</p>
+                <div style="font-size: 24px; margin-bottom: 8px; color: #FF385C;">✨</div>
+                <div class="stat-label" style="color: #FF385C;">Create</div>
+                <p style="font-size: 11px; color: #717171; line-height: 1.4;">"Add a lead named Sarah"</p>
             </div>
              <div style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;">
-                <div style="font-size: 24px; margin-bottom: 8px;">🔄</div>
-                <div class="stat-label">Update</div>
+                <div style="font-size: 24px; margin-bottom: 8px; color: #FF385C;">🔄</div>
+                <div class="stat-label" style="color: #FF385C;">Update</div>
                 <p style="font-size: 11px; color: #717171; line-height: 1.4;">"I sold a kit to Mike"</p>
             </div>
              <div style="flex: 1;">
-                <div style="font-size: 24px; margin-bottom: 8px;">🔎</div>
-                <div class="stat-label">Rolodex</div>
-                <p style="font-size: 11px; color: #717171; line-height: 1.4;">"Who do I call today?"</p>
+                <div style="font-size: 24px; margin-bottom: 8px; color: #FF385C;">🔎</div>
+                <div class="stat-label" style="color: #FF385C;">Find</div>
+                <p style="font-size: 11px; color: #717171; line-height: 1.4;">"Pull up John's file"</p>
             </div>
         </div>
     </div>
