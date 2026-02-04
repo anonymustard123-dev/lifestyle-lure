@@ -1151,7 +1151,7 @@ def view_omni():
     <div class="airbnb-card" style="border-left: 6px solid #FF385C; padding: 24px;">
         <h3 style="text-align: center; margin-bottom: 12px; font-size: 18px; color: #222;">Voice Command Center</h3>
         <p style="text-align: center; font-size: 14px; color: #717171; margin-bottom: 24px;">
-            Tap the microphone below and just speak naturally to manage your CRM.
+            Tap the microphone below and just speak naturally to manage your assistant.
         </p>
         <div style="display: flex; justify-content: space-between; gap: 10px; text-align: center;">
             <div style="flex: 1;">
