@@ -1145,7 +1145,33 @@ def view_omni():
         render_executive_card(st.session_state.omni_result)
         return
 
-    st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
+    # --- INSTRUCTIONS BLOCK ---
+    st.markdown("""
+<div style="margin-top: 20px; margin-bottom: 40px;">
+    <div class="airbnb-card" style="background: #F8F9FA; border: none;">
+        <h3 style="text-align: center; margin-bottom: 24px; font-size: 18px;">What can I do?</h3>
+        <div style="display: flex; justify-content: space-between; gap: 10px; text-align: center;">
+            <div style="flex: 1;">
+                <div style="font-size: 24px; margin-bottom: 8px;">✨</div>
+                <div class="stat-label">Create</div>
+                <p style="font-size: 11px; color: #717171; line-height: 1.4;">"Add a new lead named Sarah"</p>
+            </div>
+             <div style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;">
+                <div style="font-size: 24px; margin-bottom: 8px;">🔄</div>
+                <div class="stat-label">Update</div>
+                <p style="font-size: 11px; color: #717171; line-height: 1.4;">"I sold a kit to Mike"</p>
+            </div>
+             <div style="flex: 1;">
+                <div style="font-size: 24px; margin-bottom: 8px;">🔎</div>
+                <div class="stat-label">Rolodex</div>
+                <p style="font-size: 11px; color: #717171; line-height: 1.4;">"Who do I call today?"</p>
+            </div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 5vh;'></div>", unsafe_allow_html=True)
     c_mic_1, c_mic_2, c_mic_3 = st.columns([1, 1, 1])
     with c_mic_2:
         audio_val = st.audio_input("OmniInput", label_visibility="collapsed")
