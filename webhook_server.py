@@ -10,7 +10,8 @@ load_dotenv()
 app = Flask(__name__)
 
 # --- Configuration ---
-STRIPE_API_KEY = os.getenv("STRIPE_API_KEY")
+# UPDATED: Changed to match your Railway Variable Name ("STRIPE_SECRET_KEY")
+STRIPE_API_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # MUST be the SERVICE_ROLE key to bypass RLS
